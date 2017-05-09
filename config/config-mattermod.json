@@ -1,0 +1,54 @@
+{
+    "ListenAddress": "0.0.0.0:8087",
+    "GithubAccessToken": "",
+    "Username": "",
+
+    "DriverName": "mysql",
+    "DataSource": "",
+
+    "TickRate": 300,
+
+    "Repositories": [
+        {
+            "Owner": "",
+            "Name": ""
+        }
+    ],
+
+    "SetupSpinmintTag": "",
+    "SetupSpinmintMessage": "",
+    "SetupSpinmintDoneMessage": "",
+    "DestroyedSpinmintMessage": "",
+
+    "SignedCLAURL": "",
+    "NeedsToSignCLAMessage": "",
+
+    "PrLabels": [
+    ],
+    "IssueLabels": [
+        {
+            "Label": "",
+            "Message": ""
+        }
+    ],
+
+    "JenkinsCredentials": {
+        "Username": "",
+        "ApiToken": ""
+    },
+
+    "JenkinsURL": "",
+
+    "AWSCredentials": {
+        "Id": "",
+        "Secret": "",
+        "Token": ""
+    },
+
+    "AWSRegion": "",
+    "AWSImageId": "",
+    "AWSKeyName": "",
+    "AWSInstanceType": "",
+    "AWSHostedZoneId": "",
+    "AWSSecurityGroup": ""
+}
