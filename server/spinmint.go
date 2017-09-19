@@ -18,7 +18,7 @@ import (
 	jenkins "github.com/yosida95/golang-jenkins"
 )
 
-func destroySpinmint(instanceId string) {
+func destroySpinmint(pr *model.PullRequest, instanceId string) {
 	LogInfo("Destroying spinmint %v for PR %v in %v/%v", instanceId, pr.Number, pr.RepoOwner, pr.RepoName)
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())

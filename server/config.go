@@ -45,7 +45,7 @@ type PRServerConfig struct {
 	SetupSpinmintTag           string
 	SetupSpinmintMessage       string
 	SetupSpinmintDoneMessage   string
-	SetupSpinmintFailedMesasge string
+	SetupSpinmintFailedMessage string
 	DestroyedSpinmintMessage   string
 
 	SignedCLAURL          string
@@ -104,7 +104,7 @@ func LoadConfig(fileName string) {
 
 func (config *PRServerConfig) GetRepository(owner, name string) (*Repository, bool) {
 	for _, repo := range config.Repositories {
-		if repo.Owner == owner && repo.name == name {
+		if repo.Owner == owner && repo.Name == name {
 			return repo, true
 		}
 	}
