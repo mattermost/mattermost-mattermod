@@ -19,7 +19,7 @@ import (
 )
 
 func destroySpinmint(instanceId string) {
-	LogInfo("Destroying spinmint: " + instanceId)
+	LogInfo("Destroying spinmint %v for PR %v in %v/%v", instanceId, pr.Number, pr.RepoOwner, pr.RepoName)
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
@@ -37,12 +37,26 @@ func destroySpinmint(instanceId string) {
 }
 
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
-	LogInfo("Waiting for Jenkins to build to set up spinmint")
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if !ok || repo.JenkinsServer == "" {
+		LogError("Unable to set up spintmint for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	if !ok {
+		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
 
 	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: Config.JenkinsCredentials.Username,
-		ApiToken: Config.JenkinsCredentials.ApiToken,
-	}, Config.JenkinsURL)
+		Username: credentials.Username,
+		ApiToken: credentials.ApiToken,
+	}, credentials.URL)
+
+	LogInfo("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 
 	for {
 		if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
@@ -65,18 +79,18 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 			build, err := client.GetBuild(job, int(jobNumber))
 			if err != nil {
-				LogError("Failed to get build %v: %v", jobNumber, err)
+				LogError("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
 				return
 			}
 
 			if !build.Building && build.Result == "SUCCESS" {
-				LogInfo("build %v succeeded!", jobNumber)
+				LogInfo("build %v for PR %v in %v/%v succeeded!", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName)
 				break
 			} else {
 				LogInfo("build %v has status %v %v", jobNumber, build.Result, build.Building)
 			}
 		} else {
-			LogError("Waiting for PR %v that's not being built", pr.Number)
+			LogError("Unable to find build link for PR %v", pr.Number)
 		}
 
 		time.Sleep(10 * time.Second)
@@ -84,7 +98,8 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	instance, err := setupSpinmint(pr.Number)
 	if err != nil {
-		LogError(fmt.Sprintf("Unable to set up spinmint for PR %v: %v", pr.Number, err.Error()))
+		LogError("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -94,7 +109,8 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	err2 := createRoute53Subdomain(*instance.InstanceId, publicdns)
 	if err2 != nil {
-		LogError(fmt.Sprintf("Unable to set up S3 subdomain for PR %v with instance %v: %v", pr.Number, *instance.InstanceId, err2.Error()))
+		LogError("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err2.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 	smLink := "http://" + *instance.InstanceId + ".spinmint.com:8065" + "/pr" + strconv.Itoa(pr.Number)

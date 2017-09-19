@@ -17,6 +17,19 @@ type LabelResponse struct {
 	Message string
 }
 
+type Repository struct {
+	Owner              string
+	Name               string
+	BuildStatusContext string
+	JenkinsServer      string
+}
+
+type JenkinsCredentials struct {
+	URL      string
+	Username string
+	ApiToken string
+}
+
 type PRServerConfig struct {
 	ListenAddress     string
 	GithubAccessToken string
@@ -27,15 +40,13 @@ type PRServerConfig struct {
 	DriverName string
 	DataSource string
 
-	Repositories []struct {
-		Owner string
-		Name  string
-	}
+	Repositories []*Repository
 
-	SetupSpinmintTag         string
-	SetupSpinmintMessage     string
-	SetupSpinmintDoneMessage string
-	DestroyedSpinmintMessage string
+	SetupSpinmintTag           string
+	SetupSpinmintMessage       string
+	SetupSpinmintDoneMessage   string
+	SetupSpinmintFailedMesasge string
+	DestroyedSpinmintMessage   string
 
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
@@ -43,12 +54,7 @@ type PRServerConfig struct {
 	PrLabels    []LabelResponse
 	IssueLabels []LabelResponse
 
-	JenkinsCredentials struct {
-		Username string
-		ApiToken string
-	}
-
-	JenkinsURL string
+	JenkinsCredentials map[string]*JenkinsCredentials
 
 	AWSCredentials struct {
 		Id     string
@@ -94,6 +100,16 @@ func LoadConfig(fileName string) {
 	if err != nil {
 		LogCritical("Error decoding config file=" + fileName + ", err=" + err.Error())
 	}
+}
+
+func (config *PRServerConfig) GetRepository(owner, name string) (*Repository, bool) {
+	for _, repo := range config.Repositories {
+		if repo.Owner == owner && repo.name == name {
+			return repo, true
+		}
+	}
+
+	return nil, false
 }
 
 func (config *PRServerConfig) GetAwsConfig() *aws.Config {

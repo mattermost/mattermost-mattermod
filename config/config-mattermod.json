@@ -11,13 +11,16 @@
     "Repositories": [
         {
             "Owner": "",
-            "Name": ""
+            "Name": "",
+            "BuildStatusContext": "",
+            "JenkinsServer": "jenkins"
         }
     ],
 
     "SetupSpinmintTag": "",
     "SetupSpinmintMessage": "",
     "SetupSpinmintDoneMessage": "",
+    "SetupSpinmintFailedMessage": "",
     "DestroyedSpinmintMessage": "",
 
     "SignedCLAURL": "",
@@ -33,11 +36,11 @@
     ],
 
     "JenkinsCredentials": {
-        "Username": "",
-        "ApiToken": ""
+        "jenkins": {
+            "Username": "",
+            "ApiToken": ""
+        }
     },
-
-    "JenkinsURL": "",
 
     "AWSCredentials": {
         "Id": "",

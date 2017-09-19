@@ -31,14 +31,17 @@ func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullReque
 
 	client := NewGithubClient()
 
-	if statuses, _, err := client.Repositories.ListStatuses(pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
-		return nil, err
-	} else {
-		for _, status := range statuses {
-			if *status.Context == "build.mattermost.com" {
-				pr.BuildStatus = *status.State
-				pr.BuildLink = *status.TargetURL
-				break
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if ok && repo.BuildStatusContext != "" {
+		if combined, _, err := client.Repositories.GetCombinedStatus(pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+			return nil, err
+		} else {
+			for _, status := range combined.Statuses {
+				if *status.Context == repo.BuildStatusContext {
+					pr.BuildStatus = *status.State
+					pr.BuildLink = *status.TargetURL
+					break
+				}
 			}
 		}
 	}
