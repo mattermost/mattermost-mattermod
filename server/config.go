@@ -35,7 +35,7 @@ type PRServerConfig struct {
 	GithubAccessToken string
 	Username          string
 
-	TickRate int6
+	TickRate int
 
 	DriverName string
 	DataSource string
