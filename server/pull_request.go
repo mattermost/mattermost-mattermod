@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mattermost/mattermod/model"
+	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 func handlePullRequestEvent(event *PullRequestEvent) {

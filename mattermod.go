@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mattermost/mattermod/server"
+	"github.com/mattermost/mattermost-mattermod/server"
 )
 
 func main() {
