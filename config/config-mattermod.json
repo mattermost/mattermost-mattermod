@@ -37,6 +37,7 @@
 
     "JenkinsCredentials": {
         "jenkins": {
+            "URL": "",
             "Username": "",
             "ApiToken": ""
         }
