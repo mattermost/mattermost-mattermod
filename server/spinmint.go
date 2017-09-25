@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -96,7 +97,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		time.Sleep(10 * time.Second)
 	}
 
-	instance, err := setupSpinmint(pr.Number)
+	instance, err := setupSpinmint(pr.Number, repo)
 	if err != nil {
 		LogError("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -118,12 +119,12 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(prNumber int) (*ec2.Instance, error) {
+func setupSpinmint(prNumber int, repo *Repository) (*ec2.Instance, error) {
 	LogInfo("Setting up spinmint for PR: " + strconv.Itoa(prNumber))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
-	data, err := ioutil.ReadFile("config/instance-setup.sh")
+	data, err := ioutil.ReadFile(path.Join("config", repo.InstanceSetupScript))
 	if err != nil {
 		return nil, err
 	}

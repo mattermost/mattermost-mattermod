@@ -18,10 +18,11 @@ type LabelResponse struct {
 }
 
 type Repository struct {
-	Owner              string
-	Name               string
-	BuildStatusContext string
-	JenkinsServer      string
+	Owner               string
+	Name                string
+	BuildStatusContext  string
+	JenkinsServer       string
+	InstanceSetupScript string
 }
 
 type JenkinsCredentials struct {
