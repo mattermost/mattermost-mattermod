@@ -75,13 +75,13 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 			job, err := client.GetJob(jobName)
 			if err != nil {
 				LogError("Failed to get Jenkins job %v: %v", jobName, err)
-				return
+				break
 			}
 
 			build, err := client.GetBuild(job, int(jobNumber))
 			if err != nil {
 				LogError("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
-				return
+				break
 			}
 
 			if !build.Building && build.Result == "SUCCESS" {
