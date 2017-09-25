@@ -173,7 +173,7 @@ func createRoute53Subdomain(name string, target string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
 
 	create := "CREATE"
-	var threehundred int64 = 300
+	var ttl int64 = 30
 	cname := "CNAME"
 	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
 	params := &route53.ChangeResourceRecordSetsInput{
@@ -183,7 +183,7 @@ func createRoute53Subdomain(name string, target string) error {
 					Action: &create,
 					ResourceRecordSet: &route53.ResourceRecordSet{
 						Name: &domainName,
-						TTL:  &threehundred,
+						TTL:  &ttl,
 						Type: &cname,
 						ResourceRecords: []*route53.ResourceRecord{
 							{
