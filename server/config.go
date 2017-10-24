@@ -69,6 +69,9 @@ type PRServerConfig struct {
 	AWSInstanceType  string
 	AWSHostedZoneId  string
 	AWSSecurityGroup string
+
+	MattermostWebhookURL    string
+	MattermostWebhookFooter string
 }
 
 var Config *PRServerConfig = &PRServerConfig{}

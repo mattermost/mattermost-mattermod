@@ -51,3 +51,20 @@ func Log(level string, msg string, args ...interface{}) {
 	log.SetOutput(f)
 	log.Printf("%v %v\n", level, fmt.Sprintf(msg, args...))
 }
+
+func LogErrorToMattermost(msg string, args ...interface{}) {
+	if Config.MattermostWebhookURL != "" {
+		webhookMessage := fmt.Sprintf(msg, args...)
+		if Config.MattermostWebhookFooter != "" {
+			webhookMessage += "\n---\n" + Config.MattermostWebhookFooter
+		}
+
+		webhookRequest := &WebhookRequest{Username: "Mattermod", Text: webhookMessage}
+
+		if err := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
+			LogError("Unable to post to Mattermost webhook: %v", err)
+		}
+	}
+
+	LogError(msg, args...)
+}

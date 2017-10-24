@@ -80,7 +80,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 			build, err := client.GetBuild(job, int(jobNumber))
 			if err != nil {
-				LogError("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
+				LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
 				break
 			}
 
@@ -99,7 +99,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	instance, err := setupSpinmint(pr.Number, repo)
 	if err != nil {
-		LogError("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
+		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
@@ -108,12 +108,12 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 	time.Sleep(time.Minute * 2)
 	publicdns := getPublicDnsName(*instance.InstanceId)
 
-	err2 := createRoute53Subdomain(*instance.InstanceId, publicdns)
-	if err2 != nil {
-		LogError("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err2.Error())
+	if err := createRoute53Subdomain(*instance.InstanceId, publicdns); err != nil {
+		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
+
 	smLink := "http://" + *instance.InstanceId + ".spinmint.com:8065" + "/pr" + strconv.Itoa(pr.Number)
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.SetupSpinmintDoneMessage+INSTANCE_ID_MESSAGE+*instance.InstanceId, SPINMINT_LINK, smLink, 1))
 }
@@ -146,7 +146,6 @@ func setupSpinmint(prNumber int, repo *Repository) (*ec2.Instance, error) {
 
 	resp, err := svc.RunInstances(params)
 	if err != nil {
-		LogError("Error creating instances: " + err.Error())
 		return nil, err
 	}
 
@@ -199,7 +198,6 @@ func createRoute53Subdomain(name string, target string) error {
 
 	_, err := svc.ChangeResourceRecordSets(params)
 	if err != nil {
-		LogError("Error creating instances: " + err.Error())
 		return err
 	}
 
