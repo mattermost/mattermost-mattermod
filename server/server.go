@@ -4,8 +4,10 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
@@ -118,7 +120,10 @@ func addApis(r *mux.Router) {
 }
 
 func prEvent(w http.ResponseWriter, r *http.Request) {
-	event := PullRequestEventFromJson(r.Body)
+	buf, _ := ioutil.ReadAll(r.Body)
+	LogInfo("Received PR Event: %v", string(buf))
+
+	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
 		LogInfo(fmt.Sprintf("pr event %v %v", event.PRNumber, event.Action))
