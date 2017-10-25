@@ -68,6 +68,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		}
 
 		if pr.BuildLink != "" {
+			LogInfo("BuildLink for %v in %v/%v is %v", pr.Number, pr.RepoOwner, pr.RepoName, pr.BuildLink)
 			parts := strings.Split(pr.BuildLink, "/")
 			jobNumber, _ := strconv.ParseInt(parts[len(parts)-2], 10, 32)
 			jobName := parts[len(parts)-3]
