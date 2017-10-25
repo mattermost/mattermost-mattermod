@@ -114,7 +114,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		return
 	}
 
-	smLink := "http://" + *instance.InstanceId + ".spinmint.com:8065" + "/pr" + strconv.Itoa(pr.Number)
+	smLink := "https://" + *instance.InstanceId + ".spinmint.com"
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.SetupSpinmintDoneMessage+INSTANCE_ID_MESSAGE+*instance.InstanceId, SPINMINT_LINK, smLink, 1))
 }
 
