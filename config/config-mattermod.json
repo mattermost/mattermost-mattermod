@@ -22,6 +22,7 @@
     "SetupSpinmintDoneMessage": "",
     "SetupSpinmintFailedMessage": "",
     "DestroyedSpinmintMessage": "",
+    "SpinmintsUseHttps": false,
 
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",

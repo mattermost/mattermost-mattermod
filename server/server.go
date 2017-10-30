@@ -25,9 +25,18 @@ type Server struct {
 	Router *mux.Router
 }
 
-var Srv *Server
+const (
+	INSTANCE_ID_MESSAGE = "Instance ID: "
+)
 
-var commentLock sync.Mutex
+var (
+	Srv *Server
+
+	commentLock sync.Mutex
+
+	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
+	SPINMINT_LINK = "SPINMINT_LINK"
+)
 
 func Start() {
 	LogInfo("Starting pr manager")
@@ -104,14 +113,6 @@ func Stop() {
 	LogInfo("Stopping pr manager")
 	manners.Close()
 }
-
-const (
-	INSTANCE_ID_MESSAGE = "Instance ID: "
-	MM_FILENAME         = "mattermost.tar.gz"
-	SPINMINT_LINK       = "SPINMINT_LINK"
-)
-
-var INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
 
 func addApis(r *mux.Router) {
 	r.HandleFunc("/pr_event", prEvent).Methods("POST")

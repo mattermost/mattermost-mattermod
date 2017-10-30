@@ -115,8 +115,17 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		return
 	}
 
-	smLink := "https://" + *instance.InstanceId + ".spinmint.com"
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.SetupSpinmintDoneMessage+INSTANCE_ID_MESSAGE+*instance.InstanceId, SPINMINT_LINK, smLink, 1))
+	smLink := *instance.InstanceId + ".spinmint.com"
+	if Config.SpinmintsUseHttps {
+		smLink = "https://" + smLink
+	} else {
+		smLink = "http://" + smLink
+	}
+
+	message := Config.SetupSpinmintDoneMessage
+	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
+
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
 
 // Returns instance ID of instance created
