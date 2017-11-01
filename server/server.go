@@ -35,7 +35,8 @@ var (
 	commentLock sync.Mutex
 
 	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
-	SPINMINT_LINK = "SPINMINT_LINK"
+	INSTANCE_ID         = "INSTANCE_ID"
+	SPINMINT_LINK       = "SPINMINT_LINK"
 )
 
 func Start() {
@@ -53,6 +54,7 @@ func Start() {
 		LogInfo("Listening on " + Config.ListenAddress)
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
+			LogErrorToMattermost(err.Error())
 			LogCritical(err.Error())
 		}
 	}()

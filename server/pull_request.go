@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 )
@@ -182,9 +181,6 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		for _, comment := range comments {
 			if isSpinmintDoneComment(*comment.Body) {
 				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
-				LogInfo(*comment.Body)
-				LogInfo("handlePRUnlabeled match=%v", match)
-				time.Sleep(1000 * time.Millisecond)
 				instanceId = match[1]
 				break
 			}
@@ -199,6 +195,10 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 }
 
 func isSpinmintDoneComment(message string) bool {
-	pattern := regexp.MustCompile(strings.Replace(regexp.QuoteMeta(Config.SetupSpinmintDoneMessage), SPINMINT_LINK, ".*", -1))
+	spinmintDoneMessage := regexp.QuoteMeta(Config.SetupSpinmintDoneMessage)
+	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, SPINMINT_LINK, ".*", -1)
+	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INSTANCE_ID, INSTANCE_ID_PATTERN.String(), -1)
+
+	pattern := regexp.MustCompile(spinmintDoneMessage)
 	return pattern.MatchString(message)
 }

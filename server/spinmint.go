@@ -124,6 +124,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	message := Config.SetupSpinmintDoneMessage
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
+	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
