@@ -181,8 +181,9 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		var instanceId string
 		for _, comment := range comments {
 			if isSpinmintDoneComment(*comment.Body) {
-				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
+				LogInfo(*comment.Body)
 				LogInfo("handlePRUnlabeled match=%v", match)
+				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
 				time.Sleep(1000 * time.Millisecond)
 				instanceId = match[1]
 				break
