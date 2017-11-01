@@ -130,22 +130,19 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	// Must be sure the comment is created before we let anouther request test
 	commentLock.Lock()
+	defer commentLock.Unlock()
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		commentLock.Unlock()
 		LogError(fmt.Sprintf("Unable to list comments for PR %v: %v", pr.Number, err.Error()))
 		return
 	}
 
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
-		commentLock.Unlock()
 
 		go waitForBuildAndSetupSpinmint(pr)
 	} else {
-		defer commentLock.Unlock()
-
 		LogInfo("looking for other labels")
 
 		for _, label := range Config.PrLabels {
@@ -168,10 +165,10 @@ func checkFileExists(filepath string) bool {
 
 func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	commentLock.Lock()
+	defer commentLock.Unlock()
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		commentLock.Unlock()
 		LogError(err.Error())
 		return
 	}
@@ -190,14 +187,9 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 
 		if instanceId != "" {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
-			commentLock.Unlock()
 
-			destroySpinmint(pr, instanceId)
-		} else {
-			commentLock.Unlock()
+			go destroySpinmint(pr, instanceId)
 		}
-	} else {
-		commentLock.Unlock()
 	}
 }
 
