@@ -141,7 +141,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository) (*ec2.Instance,
 	}
 	sdata := string(data)
 	sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(prNumber), -1)
-	sdata = strings.Replace(sdata, "BRANCH_NAME", strconv.Itoa(prRef), -1)
+	sdata = strings.Replace(sdata, "BRANCH_NAME", prRef, -1)
 	bsdata := []byte(sdata)
 	sdata = base64.StdEncoding.EncodeToString(bsdata)
 
