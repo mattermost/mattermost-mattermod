@@ -98,7 +98,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		time.Sleep(10 * time.Second)
 	}
 
-	instance, err := setupSpinmint(pr.Number, repo)
+	instance, err := setupSpinmint(pr.Number, pr.Ref, repo)
 	if err != nil {
 		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -130,7 +130,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(prNumber int, repo *Repository) (*ec2.Instance, error) {
+func setupSpinmint(prNumber int, prRef string, repo *Repository) (*ec2.Instance, error) {
 	LogInfo("Setting up spinmint for PR: " + strconv.Itoa(prNumber))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
@@ -141,6 +141,7 @@ func setupSpinmint(prNumber int, repo *Repository) (*ec2.Instance, error) {
 	}
 	sdata := string(data)
 	sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(prNumber), -1)
+	sdata = strings.Replace(sdata, "BRANCH_NAME", strconv.Itoa(prRef), -1)
 	bsdata := []byte(sdata)
 	sdata = base64.StdEncoding.EncodeToString(bsdata)
 
