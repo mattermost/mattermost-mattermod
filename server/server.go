@@ -124,8 +124,6 @@ func addApis(r *mux.Router) {
 
 func prEvent(w http.ResponseWriter, r *http.Request) {
 	buf, _ := ioutil.ReadAll(r.Body)
-	LogInfo("Received PR Event: %v", string(buf))
-
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
