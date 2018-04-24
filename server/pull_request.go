@@ -140,10 +140,10 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
-
 		go waitForBuildAndSetupSpinmint(pr)
 	} else if addedLabel == Config.StartLoadtestTag {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
+		go waitForBuildAndSetupLoadtest(pr)
 	} else {
 		LogInfo("looking for other labels")
 

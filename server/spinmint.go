@@ -46,14 +46,14 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
 		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 		return
 	}
 
 	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
 	if !ok {
 		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 		return
 	}
 
@@ -62,7 +62,7 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 		ApiToken: credentials.ApiToken,
 	}, credentials.URL)
 
-	LogInfo("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+	LogInfo("Waiting for Jenkins to build to set up loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 
 	pr = waitForBuild(client, pr)
 
@@ -76,17 +76,38 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	}
 	config.WorkingDirectory = filepath.Join("./clusters/", config.Name)
 
+	LogInfo("Creating terraform cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 	cluster, err := terraform.CreateCluster(config)
 	if err != nil {
-		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+		LogError("Unable to setup cluster: " + err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 	}
 
 	results := bytes.NewBuffer(nil)
 
-	cluster.DeployMattermost("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license")
-	cluster.DeployLoadtests("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz")
-	cluster.Loadtest(results)
+	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+	if err := cluster.DeployMattermost("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
+		LogError("Unable to deploy cluster: " + err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+		return
+	}
+	if err := cluster.DeployLoadtests("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
+		LogError("Unable to deploy loadtests to cluster: " + err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+		return
+	}
+	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+	if err := cluster.Loadtest(results); err != nil {
+		LogError("Unable to loadtest cluster: " + err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+		return
+	}
+	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+	if err := cluster.Destroy(); err != nil {
+		LogError("Unable to destroy cluster: " + err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+		return
+	}
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, results.String())
 }

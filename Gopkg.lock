@@ -110,7 +110,7 @@
     "sshtools",
     "terraform"
   ]
-  revision = "4580b9b21834964700a8fe9314f501103249c198"
+  revision = "7f4dd30bc0928d3be2ac6c23f693aa7de179fef3"
 
 [[projects]]
   name = "github.com/pkg/errors"
