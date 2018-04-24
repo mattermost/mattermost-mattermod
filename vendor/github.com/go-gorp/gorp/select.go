@@ -162,13 +162,16 @@ func selectVal(e SqlExecutor, holder interface{}, query string, args ...interfac
 			query, args = maybeExpandNamedQuery(m.dbmap, query, args)
 		}
 	}
-	rows, err := e.query(query, args...)
+	rows, err := e.Query(query, args...)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
+		if err := rows.Err(); err != nil {
+			return err
+		}
 		return sql.ErrNoRows
 	}
 
@@ -222,6 +225,13 @@ func rawselect(m *DbMap, exec SqlExecutor, i interface{}, query string,
 
 	var nonFatalErr error
 
+	tableName := ""
+	var dynObj DynamicTable
+	isDynamic := false
+	if dynObj, isDynamic = i.(DynamicTable); isDynamic {
+		tableName = dynObj.TableName()
+	}
+
 	// get type for i, verifying it's a supported destination
 	t, err := toType(i)
 	if err != nil {
@@ -248,7 +258,7 @@ func rawselect(m *DbMap, exec SqlExecutor, i interface{}, query string,
 	}
 
 	// Run the query
-	rows, err := exec.query(query, args...)
+	rows, err := exec.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +276,7 @@ func rawselect(m *DbMap, exec SqlExecutor, i interface{}, query string,
 
 	var colToFieldIndex [][]int
 	if intoStruct {
-		colToFieldIndex, err = columnToFieldIndex(m, t, cols)
+		colToFieldIndex, err = columnToFieldIndex(m, t, tableName, cols)
 		if err != nil {
 			if !NonFatalError(err) {
 				return nil, err
@@ -293,6 +303,11 @@ func rawselect(m *DbMap, exec SqlExecutor, i interface{}, query string,
 			break
 		}
 		v := reflect.New(t)
+
+		if isDynamic {
+			v.Interface().(DynamicTable).SetTableName(tableName)
+		}
+
 		dest := make([]interface{}, len(cols))
 
 		custScan := make([]CustomScanner, 0)
