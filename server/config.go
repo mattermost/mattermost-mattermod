@@ -50,6 +50,9 @@ type PRServerConfig struct {
 	DestroyedSpinmintMessage   string
 	SpinmintsUseHttps          bool
 
+	StartLoadtestTag     string
+	StartLoadtestMessage string
+
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
 

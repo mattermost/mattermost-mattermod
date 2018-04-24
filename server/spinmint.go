@@ -4,10 +4,12 @@
 package server
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/mattermost/mattermost-mattermod/model"
 	jenkins "github.com/yosida95/golang-jenkins"
+
+	ltops "github.com/mattermost/mattermost-load-test-ops"
+	"github.com/mattermost/mattermost-load-test-ops/terraform"
 )
 
 func destroySpinmint(pr *model.PullRequest, instanceId string) {
@@ -35,6 +40,55 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 		LogError("Error terminating instances: " + err.Error())
 		return
 	}
+}
+
+func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if !ok || repo.JenkinsServer == "" {
+		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	if !ok {
+		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	client := jenkins.NewJenkins(&jenkins.Auth{
+		Username: credentials.Username,
+		ApiToken: credentials.ApiToken,
+	}, credentials.URL)
+
+	LogInfo("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+
+	pr = waitForBuild(client, pr)
+
+	config := &ltops.ClusterConfig{
+		Name:                  fmt.Sprintf("pr-%v", pr.Number),
+		AppInstanceType:       "m4.xlarge",
+		AppInstanceCount:      4,
+		DBInstanceType:        "db.r4.xlarge",
+		DBInstanceCount:       4,
+		LoadtestInstanceCount: 1,
+	}
+	config.WorkingDirectory = filepath.Join("./clusters/", config.Name)
+
+	cluster, err := terraform.CreateCluster(config)
+	if err != nil {
+		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+	}
+
+	results := bytes.NewBuffer(nil)
+
+	cluster.DeployMattermost("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license")
+	cluster.DeployLoadtests("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz")
+	cluster.Loadtest(results)
+
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, results.String())
 }
 
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
@@ -59,6 +113,40 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	LogInfo("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 
+	pr = waitForBuild(client, pr)
+
+	instance, err := setupSpinmint(pr.Number, pr.Ref, repo)
+	if err != nil {
+		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	LogInfo("Waiting for instance to come up.")
+	time.Sleep(time.Minute * 2)
+	publicdns := getPublicDnsName(*instance.InstanceId)
+
+	if err := createRoute53Subdomain(*instance.InstanceId, publicdns); err != nil {
+		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	smLink := *instance.InstanceId + ".spinmint.com"
+	if Config.SpinmintsUseHttps {
+		smLink = "https://" + smLink
+	} else {
+		smLink = "http://" + smLink
+	}
+
+	message := Config.SetupSpinmintDoneMessage
+	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
+	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
+
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+}
+
+func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullRequest {
 	for {
 		if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
 			LogError("Unable to get updated PR while waiting for spinmint: %v", result.Err.Error())
@@ -97,36 +185,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 		time.Sleep(10 * time.Second)
 	}
-
-	instance, err := setupSpinmint(pr.Number, pr.Ref, repo)
-	if err != nil {
-		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	LogInfo("Waiting for instance to come up.")
-	time.Sleep(time.Minute * 2)
-	publicdns := getPublicDnsName(*instance.InstanceId)
-
-	if err := createRoute53Subdomain(*instance.InstanceId, publicdns); err != nil {
-		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	smLink := *instance.InstanceId + ".spinmint.com"
-	if Config.SpinmintsUseHttps {
-		smLink = "https://" + smLink
-	} else {
-		smLink = "http://" + smLink
-	}
-
-	message := Config.SetupSpinmintDoneMessage
-	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
-	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
-
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+	return pr
 }
 
 // Returns instance ID of instance created
