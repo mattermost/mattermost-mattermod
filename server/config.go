@@ -18,11 +18,12 @@ type LabelResponse struct {
 }
 
 type Repository struct {
-	Owner               string
-	Name                string
-	BuildStatusContext  string
-	JenkinsServer       string
-	InstanceSetupScript string
+	Owner                      string
+	Name                       string
+	BuildStatusContext         string
+	JenkinsServer              string
+	InstanceSetupScript        string
+	InstanceSetupUpgradeScript string
 }
 
 type JenkinsCredentials struct {
@@ -49,6 +50,10 @@ type PRServerConfig struct {
 	SetupSpinmintFailedMessage string
 	DestroyedSpinmintMessage   string
 	SpinmintsUseHttps          bool
+
+	SetupSpinmintUpgradeTag         string
+	SetupSpinmintUpgradeMessage     string
+	SetupSpinmintUpgradeDoneMessage string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
