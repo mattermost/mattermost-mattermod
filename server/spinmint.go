@@ -166,7 +166,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 		smLink = "http://" + smLink
 	}
 
-	var message String
+	var message string
 	if upgradeServer {
 		message = Config.SetupSpinmintUpgradeDoneMessage
 	} else {
@@ -227,7 +227,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
-	var setupScript String
+	var setupScript string
 	if upgrade {
 		setupScript = repo.InstanceSetupUpgradeScript
 	} else {
