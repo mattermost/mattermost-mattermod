@@ -182,9 +182,14 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		(messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) || messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, Config.Username, Config.DestroyedSpinmintMessage) {
 
+		upgrade := false
+		if removedLabel == Config.SetupSpinmintUpgradeTag {
+			upgrade = true
+		}
+
 		var instanceId string
 		for _, comment := range comments {
-			if isSpinmintDoneComment(*comment.Body) {
+			if isSpinmintDoneComment(*comment.Body, upgrade) {
 				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
 				instanceId = match[1]
 				break
@@ -199,8 +204,13 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	}
 }
 
-func isSpinmintDoneComment(message string) bool {
-	spinmintDoneMessage := regexp.QuoteMeta(Config.SetupSpinmintDoneMessage)
+func isSpinmintDoneComment(message string, upgrade bool) bool {
+	var spinmintDoneMessage string
+	if upgrade {
+		spinmintDoneMessage = regexp.QuoteMeta(Config.SetupSpinmintUpgradeDoneMessage)
+	} else {
+		spinmintDoneMessage = regexp.QuoteMeta(Config.SetupSpinmintDoneMessage)
+	}
 	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, SPINMINT_LINK, ".*", -1)
 	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INSTANCE_ID, INSTANCE_ID_PATTERN.String(), -1)
 
