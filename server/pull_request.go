@@ -178,8 +178,8 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		return
 	}
 
-	if removedLabel == Config.SetupSpinmintTag &&
-		messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) &&
+	if (removedLabel == Config.SetupSpinmintTag || removedLabel == Config.SetupSpinmintUpgradeTag) &&
+		(messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) || messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, Config.Username, Config.DestroyedSpinmintMessage) {
 
 		var instanceId string
