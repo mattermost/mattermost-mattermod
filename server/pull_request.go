@@ -140,7 +140,10 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
-		go waitForBuildAndSetupSpinmint(pr)
+		go waitForBuildAndSetupSpinmint(pr, false)
+	} else if addedLabel == Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage) {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintUpgradeMessage)
+		go waitForBuildAndSetupSpinmint(pr, true)
 	} else if addedLabel == Config.StartLoadtestTag {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)

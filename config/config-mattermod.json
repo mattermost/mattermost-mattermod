@@ -24,6 +24,10 @@
     "DestroyedSpinmintMessage": "",
     "SpinmintsUseHttps": false,
 
+    "SetupSpinmintUpgradeTag": "",
+    "SetupSpinmintUpgradeMessage": "",
+    "SetupSpinmintUpgradeDoneMessage": "",
+
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
 

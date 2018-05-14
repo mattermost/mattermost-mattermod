@@ -118,7 +118,7 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, results.String())
 }
 
-func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
+func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
 		LogError("Unable to set up spintmint for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
@@ -142,7 +142,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 
 	pr = waitForBuild(client, pr)
 
-	instance, err := setupSpinmint(pr.Number, pr.Ref, repo)
+	instance, err := setupSpinmint(pr.Number, pr.Ref, repo, upgradeServer)
 	if err != nil {
 		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -166,7 +166,13 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest) {
 		smLink = "http://" + smLink
 	}
 
-	message := Config.SetupSpinmintDoneMessage
+	var message String
+	if upgradeServer {
+		message = Config.SetupSpinmintUpgradeDoneMessage
+	} else {
+		message = Config.SetupSpinmintDoneMessage
+	}
+
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
 
@@ -216,12 +222,19 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(prNumber int, prRef string, repo *Repository) (*ec2.Instance, error) {
+func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	LogInfo("Setting up spinmint for PR: " + strconv.Itoa(prNumber))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
-	data, err := ioutil.ReadFile(path.Join("config", repo.InstanceSetupScript))
+	var setupScript String
+	if upgrade {
+		setupScript = repo.InstanceSetupUpgradeScript
+	} else {
+		setupScript = repo.InstanceSetupScript
+	}
+
+	data, err := ioutil.ReadFile(path.Join("config", setupScript))
 	if err != nil {
 		return nil, err
 	}
