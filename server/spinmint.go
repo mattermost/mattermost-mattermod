@@ -227,7 +227,8 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 			LogError("Unable to find build link for PR %v", pr.Number)
 		}
 
-		time.Sleep(10 * time.Second)
+		LogInfo("Sleeping a bit....Will re-check the Jenkins Build...")
+		time.Sleep(30 * time.Second)
 	}
 	return pr
 }
