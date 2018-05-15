@@ -194,10 +194,21 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 			jobNumber, _ := strconv.ParseInt(parts[len(parts)-2], 10, 32)
 			jobName := parts[len(parts)-3]
 
+			// Doing this because the lib we are using does not support folders :(
+			if pr.RepoName == "mattermost-server" {
+				jobName = "mp/job/" + jobName
+			}
+
 			job, err := client.GetJob(jobName)
 			if err != nil {
 				LogError("Failed to get Jenkins job %v: %v", jobName, err)
 				break
+			}
+
+			// Doing this because the lib we are using does not support folders :(
+			// This time is in the Jenkins job Name because it returns just the name
+			if pr.RepoName == "mattermost-server" {
+				job.Name = "mp/job/" + job.Name
 			}
 
 			build, err := client.GetBuild(job, int(jobNumber))
