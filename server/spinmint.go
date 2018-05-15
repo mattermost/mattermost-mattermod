@@ -190,13 +190,25 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 
 		if pr.BuildLink != "" {
 			LogInfo("BuildLink for %v in %v/%v is %v", pr.Number, pr.RepoOwner, pr.RepoName, pr.BuildLink)
-			parts := strings.Split(pr.BuildLink, "/")
-			jobNumber, _ := strconv.ParseInt(parts[len(parts)-2], 10, 32)
-			jobName := parts[len(parts)-3]
+			// Doing this because the lib we are using does not support folders :(
+			var jobNumber int64
+			var jobName string
 
+			parts := strings.Split(pr.BuildLink, "/")
 			// Doing this because the lib we are using does not support folders :(
 			if pr.RepoName == "mattermost-server" {
+				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
+				jobName = parts[len(parts)-3] //mattermost-server
 				jobName = "mp/job/" + jobName
+			} else if pr.RepoName == "mattermost-webapp" {
+				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
+				jobName = parts[len(parts)-6]     //mattermost-webapp
+				subJobName := parts[len(parts)-4] //PR-XXXX
+
+				jobName = jobName + "/job/" + subJobName
+			} else {
+				LogError("Did not know this repository: %v. Aborting.", pr.RepoName)
+				break
 			}
 
 			job, err := client.GetJob(jobName)
@@ -207,9 +219,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 
 			// Doing this because the lib we are using does not support folders :(
 			// This time is in the Jenkins job Name because it returns just the name
-			if pr.RepoName == "mattermost-server" {
-				job.Name = "mp/job/" + job.Name
-			}
+			job.Name = jobName
 
 			build, err := client.GetBuild(job, int(jobNumber))
 			if err != nil {
