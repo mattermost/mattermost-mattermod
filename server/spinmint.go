@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
@@ -280,6 +281,24 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 	resp, err := svc.RunInstances(params)
 	if err != nil {
 		return nil, err
+	}
+
+	// Add tags to the created instance
+	_, errtag := svc.CreateTags(&ec2.CreateTagsInput{
+		Resources: []*string{resp.Instances[0].InstanceId},
+		Tags: []*ec2.Tag{
+			{
+				Key:   aws.String("Name"),
+				Value: aws.String("Spinmint-" + prRef),
+			},
+			{
+				Key:   aws.String("Created"),
+				Value: aws.String(time.Now().Format("2006-01-02/15:04:05")),
+			},
+		},
+	})
+	if errtag != nil {
+		LogError("Could not create tags for instance: " + *resp.Instances[0].InstanceId + " Error: " + errtag.Error())
 	}
 
 	return resp.Instances[0], nil
