@@ -292,6 +292,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 	}
 
 	// Add tags to the created instance
+	time.Sleep(time.Second * 10)
 	_, errtag := svc.CreateTags(&ec2.CreateTagsInput{
 		Resources: []*string{resp.Instances[0].InstanceId},
 		Tags: []*ec2.Tag{
@@ -331,22 +332,19 @@ func getPublicDnsName(instance string) string {
 func createRoute53Subdomain(name string, target string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
 
-	create := "CREATE"
-	var ttl int64 = 30
-	cname := "CNAME"
 	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
 	params := &route53.ChangeResourceRecordSetsInput{
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: []*route53.Change{
 				{
-					Action: &create,
+					Action: aws.String("CREATE"),
 					ResourceRecordSet: &route53.ResourceRecordSet{
-						Name: &domainName,
-						TTL:  &ttl,
-						Type: &cname,
+						Name: aws.String(domainName),
+						TTL:  aws.Int64(30),
+						Type: aws.String("CNAME"),
 						ResourceRecords: []*route53.ResourceRecord{
 							{
-								Value: &target,
+								Value: aws.String(target),
 							},
 						},
 					},
@@ -368,6 +366,8 @@ func removeRoute53SubDomain(name string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
 
+	publicdns := getPublicDnsName(name)
+
 	params := &route53.ChangeResourceRecordSetsInput{
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: []*route53.Change{
@@ -376,6 +376,12 @@ func removeRoute53SubDomain(name string) error {
 					ResourceRecordSet: &route53.ResourceRecordSet{
 						Name: aws.String(domainName),
 						Type: aws.String("CNAME"),
+						ResourceRecords: []*route53.ResourceRecord{
+							{
+								Value: aws.String(publicdns),
+							},
+						},
+						TTL: aws.Int64(30),
 					},
 				},
 			},
