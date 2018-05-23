@@ -41,6 +41,14 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 		LogError("Error terminating instances: " + err.Error())
 		return
 	}
+
+	// Remove route53 entry
+	err = removeRoute53SubDomain(instanceId)
+	if err != nil {
+		LogError("Error removing the Route53 entry: " + err.Error())
+		return
+	}
+
 }
 
 func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
@@ -346,6 +354,32 @@ func createRoute53Subdomain(name string, target string) error {
 			},
 		},
 		HostedZoneId: &Config.AWSHostedZoneId,
+	}
+
+	_, err := svc.ChangeResourceRecordSets(params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeRoute53SubDomain(name string) error {
+	svc := route53.New(session.New(), Config.GetAwsConfig())
+	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
+
+	params := &route53.ChangeResourceRecordSetsInput{
+		ChangeBatch: &route53.ChangeBatch{
+			Changes: []*route53.Change{
+				{
+					Action: aws.String("DELETE"),
+					ResourceRecordSet: &route53.ResourceRecordSet{
+						Name: aws.String(domainName),
+						Type: aws.String("CNAME"),
+					},
+				},
+			},
+		},
 	}
 
 	_, err := svc.ChangeResourceRecordSets(params)
