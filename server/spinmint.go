@@ -380,6 +380,7 @@ func removeRoute53SubDomain(name string) error {
 				},
 			},
 		},
+		HostedZoneId: &Config.AWSHostedZoneId,
 	}
 
 	_, err := svc.ChangeResourceRecordSets(params)
