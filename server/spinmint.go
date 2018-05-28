@@ -168,7 +168,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 		return
 	}
 
-	smLink := *instance.InstanceId + Config.AWSDnsSuffix
+	smLink := fmt.Sprintf("%v.%v", *instance.InstanceId, Config.AWSDnsSuffix)
 	if Config.SpinmintsUseHttps {
 		smLink = "https://" + smLink
 	} else {
