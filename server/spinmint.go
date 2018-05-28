@@ -332,7 +332,7 @@ func getPublicDnsName(instance string) string {
 func createRoute53Subdomain(name string, target string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
 
-	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
+	domainName := fmt.Sprintf("%v.%v", name, "test.spinmint.com")
 	params := &route53.ChangeResourceRecordSetsInput{
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: []*route53.Change{
@@ -364,7 +364,7 @@ func createRoute53Subdomain(name string, target string) error {
 
 func removeRoute53SubDomain(name string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
-	domainName := fmt.Sprintf("%v.%v", name, "spinmint.com")
+	domainName := fmt.Sprintf("%v.%v", name, "test.spinmint.com")
 
 	publicdns := getPublicDnsName(name)
 
