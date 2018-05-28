@@ -43,7 +43,7 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 	}
 
 	// Remove route53 entry
-	err = removeRoute53SubDomain(instanceId)
+	err = updateRoute53Subdomain(instanceId, "", "DELETE")
 	if err != nil {
 		LogError("Error removing the Route53 entry: " + err.Error())
 		return
@@ -162,13 +162,13 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	time.Sleep(time.Minute * 2)
 	publicdns := getPublicDnsName(*instance.InstanceId)
 
-	if err := createRoute53Subdomain(*instance.InstanceId, publicdns); err != nil {
+	if err := updateRoute53Subdomain(*instance.InstanceId, publicdns, "CREATE"); err != nil {
 		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 
-	smLink := *instance.InstanceId + ".spinmint.com"
+	smLink := *instance.InstanceId + Config.AWSDnsSuffix
 	if Config.SpinmintsUseHttps {
 		smLink = "https://" + smLink
 	} else {
@@ -280,7 +280,6 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 		ImageId:          &Config.AWSImageId,
 		MaxCount:         &one,
 		MinCount:         &one,
-		KeyName:          &Config.AWSKeyName,
 		InstanceType:     &Config.AWSInstanceType,
 		UserData:         &sdata,
 		SecurityGroupIds: []*string{&Config.AWSSecurityGroup},
@@ -329,59 +328,29 @@ func getPublicDnsName(instance string) string {
 	return *resp.Reservations[0].Instances[0].PublicDnsName
 }
 
-func createRoute53Subdomain(name string, target string) error {
+func updateRoute53Subdomain(name, target, action string) error {
 	svc := route53.New(session.New(), Config.GetAwsConfig())
+	domainName := fmt.Sprintf("%v.%v", name, Config.AWSDnsSuffix)
 
-	domainName := fmt.Sprintf("%v.%v", name, "test.spinmint.com")
+	targetServer := target
+	if target == "" && action == "DELETE" {
+		targetServer = getPublicDnsName(name)
+	}
+
 	params := &route53.ChangeResourceRecordSetsInput{
 		ChangeBatch: &route53.ChangeBatch{
 			Changes: []*route53.Change{
 				{
-					Action: aws.String("CREATE"),
+					Action: aws.String(action),
 					ResourceRecordSet: &route53.ResourceRecordSet{
 						Name: aws.String(domainName),
 						TTL:  aws.Int64(30),
 						Type: aws.String("CNAME"),
 						ResourceRecords: []*route53.ResourceRecord{
 							{
-								Value: aws.String(target),
+								Value: aws.String(targetServer),
 							},
 						},
-					},
-				},
-			},
-		},
-		HostedZoneId: &Config.AWSHostedZoneId,
-	}
-
-	_, err := svc.ChangeResourceRecordSets(params)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func removeRoute53SubDomain(name string) error {
-	svc := route53.New(session.New(), Config.GetAwsConfig())
-	domainName := fmt.Sprintf("%v.%v", name, "test.spinmint.com")
-
-	publicdns := getPublicDnsName(name)
-
-	params := &route53.ChangeResourceRecordSetsInput{
-		ChangeBatch: &route53.ChangeBatch{
-			Changes: []*route53.Change{
-				{
-					Action: aws.String("DELETE"),
-					ResourceRecordSet: &route53.ResourceRecordSet{
-						Name: aws.String(domainName),
-						Type: aws.String("CNAME"),
-						ResourceRecords: []*route53.ResourceRecord{
-							{
-								Value: aws.String(publicdns),
-							},
-						},
-						TTL: aws.Int64(30),
 					},
 				},
 			},

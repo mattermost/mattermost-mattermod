@@ -78,6 +78,7 @@ type PRServerConfig struct {
 	AWSInstanceType  string
 	AWSHostedZoneId  string
 	AWSSecurityGroup string
+	AWSDnsSuffix     string
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
