@@ -86,6 +86,9 @@ func LabelsToStringArray(labels []*github.Label) []string {
 func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	LogInfo("Commenting on issue " + strconv.Itoa(number) + " Comment: " + comment)
 	client := NewGithubClient()
-	client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	if err != nil {
+		LogError("Error: ", err)
+	}
 	LogInfo("Finished commenting")
 }

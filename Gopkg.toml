@@ -26,44 +26,12 @@
 
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/alecthomas/log4go"
-
-[[constraint]]
   name = "github.com/aws/aws-sdk-go"
   version = "1.13.36"
 
 [[constraint]]
-  name = "github.com/braintree/manners"
-  version = "0.4.0"
-
-[[constraint]]
-  name = "github.com/go-gorp/gorp"
-  version = "2.1.0"
-
-[[constraint]]
-  name = "github.com/go-sql-driver/mysql"
-  version = "1.3.0"
-
-[[constraint]]
   name = "github.com/google/go-github"
   version = "3.0.0"
-
-[[constraint]]
-  name = "github.com/gorilla/mux"
-  version = "1.6.1"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/mattermost/mattermost-load-test-ops"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/yosida95/golang-jenkins"
-
-[[constraint]]
-  branch = "master"
-  name = "golang.org/x/oauth2"
 
 [prune]
   go-tests = true

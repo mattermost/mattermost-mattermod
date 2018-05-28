@@ -21,8 +21,9 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	jenkins "github.com/yosida95/golang-jenkins"
 
-	ltops "github.com/mattermost/mattermost-load-test-ops"
-	"github.com/mattermost/mattermost-load-test-ops/terraform"
+	"github.com/mattermost/mattermost-load-test/ltops"
+	"github.com/mattermost/mattermost-load-test/ltparse"
+	"github.com/mattermost/mattermost-load-test/terraform"
 )
 
 func destroySpinmint(pr *model.PullRequest, instanceId string) {
@@ -124,7 +125,16 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 		return
 	}
 
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, results.String())
+	githubOutput := bytes.NewBuffer(nil)
+	cfg := ltparse.ResultsConfig{
+		Input:     results,
+		Output:    githubOutput,
+		Display:   "markdown",
+		Aggregate: false,
+	}
+
+	ltparse.ParseResults(&cfg)
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
 }
 
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
