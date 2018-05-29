@@ -7,6 +7,7 @@
     "DataSource": "",
 
     "TickRate": 300,
+    "SpinmintExpirationHour": 72,
 
     "Repositories": [
         {
@@ -22,6 +23,7 @@
     "SetupSpinmintDoneMessage": "",
     "SetupSpinmintFailedMessage": "",
     "DestroyedSpinmintMessage": "",
+    "DestroyedExpirationSpinmintMessage": "",
     "SpinmintsUseHttps": false,
 
     "SetupSpinmintUpgradeTag": "",
