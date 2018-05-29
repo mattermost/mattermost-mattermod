@@ -25,32 +25,6 @@ import (
 	"github.com/mattermost/mattermost-load-test-ops/terraform"
 )
 
-func destroySpinmint(pr *model.PullRequest, instanceId string) {
-	LogInfo("Destroying spinmint %v for PR %v in %v/%v", instanceId, pr.Number, pr.RepoOwner, pr.RepoName)
-
-	svc := ec2.New(session.New(), Config.GetAwsConfig())
-
-	params := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{
-			&instanceId,
-		},
-	}
-
-	_, err := svc.TerminateInstances(params)
-	if err != nil {
-		LogError("Error terminating instances: " + err.Error())
-		return
-	}
-
-	// Remove route53 entry
-	err = updateRoute53Subdomain(instanceId, "", "DELETE")
-	if err != nil {
-		LogError("Error removing the Route53 entry: " + err.Error())
-		return
-	}
-
-}
-
 func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
@@ -186,6 +160,15 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+
+	spinmint := &model.Spinmint{
+		InstanceId: *instance.InstanceId,
+		RepoOwner:  pr.RepoOwner,
+		RepoName:   pr.RepoName,
+		Number:     pr.Number,
+		CreatedAt:  time.Now().UTC().Unix(),
+	}
+	storeSpinmintInfo(spinmint)
 }
 
 func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullRequest {
@@ -312,6 +295,31 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 	return resp.Instances[0], nil
 }
 
+func destroySpinmint(pr *model.PullRequest, instanceId string) {
+	LogInfo("Destroying spinmint %v for PR %v in %v/%v", instanceId, pr.Number, pr.RepoOwner, pr.RepoName)
+
+	svc := ec2.New(session.New(), Config.GetAwsConfig())
+
+	params := &ec2.TerminateInstancesInput{
+		InstanceIds: []*string{
+			&instanceId,
+		},
+	}
+
+	_, err := svc.TerminateInstances(params)
+	if err != nil {
+		LogError("Error terminating instances: " + err.Error())
+		return
+	}
+
+	// Remove route53 entry
+	err = updateRoute53Subdomain(instanceId, "", "DELETE")
+	if err != nil {
+		LogError("Error removing the Route53 entry: " + err.Error())
+		return
+	}
+}
+
 func getPublicDnsName(instance string) string {
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
@@ -364,4 +372,45 @@ func updateRoute53Subdomain(name, target, action string) error {
 	}
 
 	return nil
+}
+
+func checkSpinmintLifeTime() error {
+	spinmints := []*model.Spinmint{}
+	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
+		LogError("Unable to get updated PR while waiting for spinmint: %v", result.Err.Error())
+		return result.Err
+	} else {
+		spinmints = result.Data.([]*model.Spinmint)
+	}
+
+	for _, spinmint := range spinmints {
+		LogInfo("Check if need destroy spinmint %v for PR %v in %v/%v", spinmint.InstanceId, spinmint.Number, spinmint.RepoOwner, spinmint.RepoName)
+		spinmintCreated := time.Unix(spinmint.CreatedAt, 0)
+		duration := time.Since(spinmintCreated)
+		if int(duration.Hours()) > Config.SpinmintExpirationHour {
+			LogInfo("Will destroy spinmint %v for PR %v in %v/%v", spinmint.InstanceId, spinmint.Number, spinmint.RepoOwner, spinmint.RepoName)
+			pr := &model.PullRequest{
+				RepoOwner: spinmint.RepoOwner,
+				RepoName:  spinmint.RepoName,
+				Number:    spinmint.Number,
+			}
+			go destroySpinmint(pr, spinmint.InstanceId)
+			removeSpinmintInfo(spinmint.InstanceId)
+			commentOnIssue(spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, Config.DestroyedExpirationSpinmintMessage)
+		}
+	}
+
+	return nil
+}
+
+func storeSpinmintInfo(spinmint *model.Spinmint) {
+	if result := <-Srv.Store.Spinmint().Save(spinmint); result.Err != nil {
+		LogError(result.Err.Error())
+	}
+}
+
+func removeSpinmintInfo(instanceId string) {
+	if result := <-Srv.Store.Spinmint().Delete(instanceId); result.Err != nil {
+		LogError(result.Err.Error())
+	}
 }

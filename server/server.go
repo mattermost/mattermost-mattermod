@@ -109,6 +109,8 @@ func Tick() {
 			checkIssueForChanges(issue)
 		}
 	}
+
+	checkSpinmintLifeTime()
 }
 
 func Stop() {

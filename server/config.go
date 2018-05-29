@@ -37,19 +37,21 @@ type PRServerConfig struct {
 	GithubAccessToken string
 	Username          string
 
-	TickRate int
+	TickRate               int
+	SpinmintExpirationHour int
 
 	DriverName string
 	DataSource string
 
 	Repositories []*Repository
 
-	SetupSpinmintTag           string
-	SetupSpinmintMessage       string
-	SetupSpinmintDoneMessage   string
-	SetupSpinmintFailedMessage string
-	DestroyedSpinmintMessage   string
-	SpinmintsUseHttps          bool
+	SetupSpinmintTag                   string
+	SetupSpinmintMessage               string
+	SetupSpinmintDoneMessage           string
+	SetupSpinmintFailedMessage         string
+	DestroyedSpinmintMessage           string
+	DestroyedExpirationSpinmintMessage string
+	SpinmintsUseHttps                  bool
 
 	SetupSpinmintUpgradeTag         string
 	SetupSpinmintUpgradeMessage     string
