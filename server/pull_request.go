@@ -200,6 +200,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 
 			go destroySpinmint(pr, instanceId)
+			removeSpinmintInfo(instanceId)
 		}
 	}
 }
