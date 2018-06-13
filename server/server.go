@@ -122,6 +122,7 @@ func addApis(r *mux.Router) {
 	r.HandleFunc("/pr_event", prEvent).Methods("POST")
 	r.HandleFunc("/list_prs", listPrs).Methods("GET")
 	r.HandleFunc("/list_issues", listIssues).Methods("GET")
+	r.HandleFunc("/list_spinmints", listSpinmints).Methods("GET")
 }
 
 func prEvent(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +176,24 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(issues); err != nil {
+		LogError(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Write(b)
+	}
+}
+
+func listSpinmints(w http.ResponseWriter, r *http.Request) {
+	var spinmints []*model.Spinmint
+	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
+		LogError(result.Err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		spinmints = result.Data.([]*model.Spinmint)
+	}
+
+	if b, err := json.Marshal(spinmints); err != nil {
 		LogError(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {

@@ -328,6 +328,9 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 		LogError("Error removing the Route53 entry: " + err.Error())
 		return
 	}
+
+	// Remove from the local db
+	removeSpinmintInfo(instanceId)
 }
 
 func getPublicDnsName(instance string) string {
