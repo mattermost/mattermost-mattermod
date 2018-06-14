@@ -108,6 +108,7 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	}
 
 	ltparse.ParseResults(&cfg)
+	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
 }
 
