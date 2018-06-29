@@ -5,17 +5,22 @@ package loadtest
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	sqlx "github.com/jmoiron/sqlx"
 
-	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 
 	"github.com/icrowley/fake"
@@ -24,10 +29,19 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
+const (
+	DEFAULT_PERMISSIONS_TEAM_ADMIN    = "edit_others_posts remove_user_from_team manage_team import_team manage_team_roles manage_channel_roles manage_others_webhooks manage_slash_commands manage_others_slash_commands manage_webhooks delete_post delete_others_posts"
+	DEFAULT_PERMISSIONS_TEAM_USER     = "list_team_channels join_public_channels read_public_channel view_team create_public_channel manage_public_channel_properties delete_public_channel create_private_channel manage_private_channel_properties delete_private_channel invite_user add_user_to_team"
+	DEFAULT_PERMISSIONS_CHANNEL_ADMIN = "manage_channel_roles"
+	DEFAULT_PERMISSIONS_CHANNEL_USER  = "read_channel add_reaction remove_reaction manage_public_channel_members upload_file get_public_link create_post use_slash_commands manage_private_channel_members delete_post edit_post"
+)
+
 type LoadtestEnviromentConfig struct {
 	NumTeams           int
 	NumChannelsPerTeam int
 	NumUsers           int
+	NumTeamSchemes     int
+	NumChannelSchemes  int
 
 	PercentHighVolumeChannels float64
 	PercentMidVolumeChannels  float64
@@ -56,10 +70,14 @@ type LoadtestEnviromentConfig struct {
 	NumPosts      int
 	PostTimeRange int64
 	ReplyChance   float64
+
+	PercentCustomSchemeTeams    float64
+	PercentCustomSchemeChannels float64
 }
 
 type LineImportData struct {
 	Type    string             `json:"type"`
+	Scheme  *SchemeImportData  `json:"scheme,omitempty"`
 	Team    *TeamImportData    `json:"team,omitempty"`
 	Channel *ChannelImportData `json:"channel,omitempty"`
 	User    *UserImportData    `json:"user,omitempty"`
@@ -73,6 +91,7 @@ type TeamImportData struct {
 	Type            string `json:"type"`
 	Description     string `json:"description,omitempty"`
 	AllowOpenInvite bool   `json:"allow_open_invite,omitempty"`
+	Scheme          string `json:"scheme,omitempty"`
 }
 
 type ChannelImportData struct {
@@ -82,6 +101,7 @@ type ChannelImportData struct {
 	Type        string `json:"type"`
 	Header      string `json:"header,omitempty"`
 	Purpose     string `json:"purpose,omitempty"`
+	Scheme      string `json:"scheme,omitempty"`
 }
 
 type UserImportData struct {
@@ -116,20 +136,6 @@ type UserTeamImportData struct {
 	ChannelChoice []randutil.Choice       `json:"-"`
 }
 
-func (team *UserTeamImportData) PickChannel() *UserChannelImportData {
-	if len(team.ChannelChoice) == 0 {
-		return nil
-	}
-	item2, err2 := randutil.WeightedChoice(team.ChannelChoice)
-	if err2 != nil {
-		panic(err2)
-	}
-	channelIndex := item2.Item.(int)
-	channel := &team.Channels[channelIndex]
-
-	return channel
-}
-
 type UserChannelImportData struct {
 	Name  string `json:"name"`
 	Roles string `json:"roles"`
@@ -151,11 +157,30 @@ type PostImportData struct {
 	FlaggedBy *[]string `json:"flagged_by"`
 }
 
+type SchemeImportData struct {
+	Name                    string          `json:"name"`
+	DisplayName             string          `json:"display_name"`
+	Description             string          `json:"description"`
+	Scope                   string          `json:"scope"`
+	DefaultTeamAdminRole    *RoleImportData `json:"default_team_admin_role,omitempty"`
+	DefaultTeamUserRole     *RoleImportData `json:"default_team_user_role,omitempty"`
+	DefaultChannelAdminRole *RoleImportData `json:"default_channel_admin_role,omitempty"`
+	DefaultChannelUserRole  *RoleImportData `json:"default_channel_user_role,omitempty"`
+}
+
+type RoleImportData struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"display_name"`
+	Description string   `json:"description"`
+	Permissions []string `json:"permissions"`
+}
+
 type GenerateBulkloadFileResult struct {
 	File     bytes.Buffer
 	Users    []UserImportData
 	Teams    []TeamImportData
 	Channels []ChannelImportData
+	Schemes  []SchemeImportData
 }
 
 func (s *UserImportData) PickTeam() *UserTeamImportData {
@@ -181,8 +206,27 @@ func (s *UserImportData) PickTeamChannel() (*UserTeamImportData, *UserChannelImp
 	return team, team.PickChannel()
 }
 
-func generateTeams(numTeams int) []TeamImportData {
+func (team *UserTeamImportData) PickChannel() *UserChannelImportData {
+	if len(team.ChannelChoice) == 0 {
+		return nil
+	}
+	item2, err2 := randutil.WeightedChoice(team.ChannelChoice)
+	if err2 != nil {
+		panic(err2)
+	}
+	channelIndex := item2.Item.(int)
+	channel := &team.Channels[channelIndex]
+
+	return channel
+}
+
+func generateTeams(numTeams int, percentCustomSchemeTeams float64, teamSchemes *[]SchemeImportData) []TeamImportData {
 	teams := make([]TeamImportData, 0, numTeams)
+
+	scheme := ""
+	if len(*teamSchemes) > 0 && rand.Float64() < percentCustomSchemeTeams {
+		scheme = (*teamSchemes)[rand.Intn(len(*teamSchemes))].Name
+	}
 
 	for teamNum := 0; teamNum < numTeams; teamNum++ {
 		teams = append(teams, TeamImportData{
@@ -191,23 +235,90 @@ func generateTeams(numTeams int) []TeamImportData {
 			Type:            "O",
 			Description:     "This is loadtest team " + strconv.Itoa(teamNum),
 			AllowOpenInvite: true,
+			Scheme:          scheme,
 		})
 	}
 
 	return teams
 }
 
+func generateTeamSchemes(numSchemes int) *[]SchemeImportData {
+	teamSchemes := make([]SchemeImportData, 0, numSchemes)
+
+	for schemeNum := 0; schemeNum < numSchemes; schemeNum++ {
+		teamSchemes = append(teamSchemes, SchemeImportData{
+			Name:        "loadtestteamscheme" + strconv.Itoa(schemeNum),
+			DisplayName: "Loadtest Team Scheme " + strconv.Itoa(schemeNum),
+			Scope:       "team", // model.SCHEME_SCOPE_TEAM
+			DefaultTeamAdminRole: &RoleImportData{
+				Name:        "loadtest_tsta_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Team Scheme DTA Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_TEAM_ADMIN),
+			},
+			DefaultTeamUserRole: &RoleImportData{
+				Name:        "loadtest_tstu_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Team Scheme DTU Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_TEAM_USER),
+			},
+			DefaultChannelAdminRole: &RoleImportData{
+				Name:        "loadtest_tsca_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Team Scheme DCA Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_CHANNEL_ADMIN),
+			},
+			DefaultChannelUserRole: &RoleImportData{
+				Name:        "loadtest_tscu_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Team Scheme DCU Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_CHANNEL_USER),
+			},
+		})
+	}
+
+	return &teamSchemes
+}
+
+func generateChannelSchemes(numSchemes int) *[]SchemeImportData {
+	channelSchemes := make([]SchemeImportData, 0, numSchemes)
+
+	for schemeNum := 0; schemeNum < numSchemes; schemeNum++ {
+		channelSchemes = append(channelSchemes, SchemeImportData{
+			Name:        "loadtestchannelscheme" + strconv.Itoa(schemeNum),
+			DisplayName: "Loadtest Channel Scheme " + strconv.Itoa(schemeNum),
+			Scope:       "channel", // model.SCHEME_SCOPE_CHANNEL
+			DefaultChannelAdminRole: &RoleImportData{
+				Name:        "loadtest_csca_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Channel Scheme DCA Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_CHANNEL_ADMIN),
+			},
+			DefaultChannelUserRole: &RoleImportData{
+				Name:        "loadtest_cscu_role_" + strconv.Itoa(schemeNum),
+				DisplayName: "Loadtest Channel Scheme DCU Role " + strconv.Itoa(schemeNum),
+				Permissions: strings.Fields(DEFAULT_PERMISSIONS_CHANNEL_USER),
+			},
+		})
+	}
+
+	return &channelSchemes
+}
+
 func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFileResult {
 	users := make([]UserImportData, 0, config.NumUsers)
 	channels := make([]ChannelImportData, 0, config.NumChannelsPerTeam*config.NumTeams)
 
-	teams := generateTeams(config.NumTeams)
+	teamSchemes := generateTeamSchemes(config.NumTeamSchemes)
+	teams := generateTeams(config.NumTeams, config.PercentCustomSchemeTeams, teamSchemes)
+
+	channelSchemes := generateChannelSchemes(config.NumChannelSchemes)
 
 	channelsByTeam := make([][]int, 0, config.NumChannelsPerTeam*config.NumTeams)
 
 	for teamNum := 0; teamNum < config.NumTeams; teamNum++ {
 		channelsByTeam = append(channelsByTeam, make([]int, 0, config.NumChannelsPerTeam))
 		for channelNum := 0; channelNum < config.NumChannelsPerTeam; channelNum++ {
+			scheme := ""
+			if len(*channelSchemes) > 0 && rand.Float64() < config.PercentCustomSchemeChannels {
+				scheme = (*channelSchemes)[rand.Intn(len(*channelSchemes))].Name
+			}
+
 			channels = append(channels, ChannelImportData{
 				Team:        "loadtestteam" + strconv.Itoa(teamNum),
 				Name:        "loadtestchannel" + strconv.Itoa(channelNum),
@@ -215,6 +326,7 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 				Type:        "O",
 				Header:      "Hea: This is loadtest channel " + strconv.Itoa(teamNum) + " on team " + strconv.Itoa(teamNum),
 				Purpose:     "Pur: This is loadtest channel " + strconv.Itoa(teamNum) + " on team " + strconv.Itoa(teamNum),
+				Scheme:      scheme,
 			})
 			channelsByTeam[teamNum] = append(channelsByTeam[teamNum], len(channels)-1)
 		}
@@ -258,8 +370,7 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 		usersInTeam := make([]int, 0, numUsersToAdd)
 		for userNum := 0; userNum < numUsersToAdd; userNum++ {
 			userTeamImportData := &UserTeamImportData{
-				Name:  currentTeam.Name,
-				Roles: "team_user",
+				Name: currentTeam.Name,
 			}
 			users[userPermutation[userNum]].Teams = append(users[userPermutation[userNum]].Teams, *userTeamImportData)
 			users[userPermutation[userNum]].TeamChoice = append(users[userPermutation[userNum]].TeamChoice, randutil.Choice{
@@ -267,14 +378,6 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 				Weight: selectWeight,
 			})
 			usersInTeam = append(usersInTeam, userPermutation[userNum])
-
-			userTownSquareImportData := &UserChannelImportData{
-				Name:  "town-square",
-				Roles: "channel_user",
-			}
-
-			permutation := userPermutation[userNum]
-			users[permutation].Teams[len(users[permutation].Teams)-1].Channels = append(users[permutation].Teams[len(users[permutation].Teams)-1].Channels, *userTownSquareImportData)
 		}
 
 		numHighVolumeChannels := int(math.Floor(float64(len(channelsInTeam)) * config.PercentHighVolumeChannels))
@@ -304,8 +407,7 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 			for userInTeamNum := 0; userInTeamNum < numUsersToAddChannel; userInTeamNum++ {
 				userNum := usersInTeam[usersInTeamPermutation[userInTeamNum]]
 				userChannelImportData := &UserChannelImportData{
-					Name:  channel.Name,
-					Roles: "channel_user",
+					Name: channel.Name,
 				}
 				users[userNum].Teams[len(users[userNum].Teams)-1].Channels = append(users[userNum].Teams[len(users[userNum].Teams)-1].Channels, *userChannelImportData)
 				users[userNum].Teams[len(users[userNum].Teams)-1].ChannelChoice = append(users[userNum].Teams[len(users[userNum].Teams)-1].ChannelChoice, randutil.Choice{
@@ -343,6 +445,22 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 	lineObjectsChan <- &version
 
 	// Convert all the objects to line objects
+	for i := range *teamSchemes {
+		lineObjectsChan <- &LineImportData{
+			Type:    "scheme",
+			Scheme:  &(*teamSchemes)[i],
+			Version: 1,
+		}
+	}
+
+	for i := range *channelSchemes {
+		lineObjectsChan <- &LineImportData{
+			Type:    "scheme",
+			Scheme:  &(*channelSchemes)[i],
+			Version: 1,
+		}
+	}
+
 	for i := range teams {
 		lineObjectsChan <- &LineImportData{
 			Type:    "team",
@@ -379,7 +497,13 @@ func GenerateBulkloadFile(config *LoadtestEnviromentConfig) GenerateBulkloadFile
 }
 
 func ConnectToDB(driverName, dataSource string) *sqlx.DB {
-	db, err := sqlx.Open(driverName, dataSource)
+	url, err := url.Parse(dataSource)
+	if err != nil {
+		fmt.Println("Unable to parse datasource: " + err.Error())
+		return nil
+	}
+	url.RawQuery = "charset=utf8mb4,utf8"
+	db, err := sqlx.Open(driverName, url.String())
 	if err != nil {
 		fmt.Println("Unable to open database: " + err.Error())
 		return nil
@@ -411,17 +535,6 @@ func LoadPosts(cfg *LoadTestConfig, driverName, dataSource string) {
 	}
 
 	numPostsPerChannel := int(math.Floor(float64(cfg.LoadtestEnviromentConfig.NumPosts) / float64(cfg.LoadtestEnviromentConfig.NumTeams*cfg.LoadtestEnviromentConfig.NumChannelsPerTeam)))
-
-	statementStr := "INSERT INTO Posts (Id, CreateAt, UpdateAt, EditAt, DeleteAt, IsPinned, UserId, ChannelId, RootId, ParentId, OriginalId, Message, Type, Props, Hashtags, Filenames, FileIds, HasReactions) VALUES "
-	for i := 0; i < 100; i++ {
-		statementStr += "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?),"
-	}
-	statementStr = statementStr[0 : len(statementStr)-1]
-	statement, err := db.Prepare(db.Rebind(statementStr))
-	if err != nil {
-		mlog.Error("Unable to prepare statment", mlog.String("statement", statementStr), mlog.Err(err))
-		return
-	}
 
 	// Generate a random time before now, either within the configured post time range or after the given time.
 	randomTime := func(after *time.Time) time.Time {
@@ -472,8 +585,29 @@ func LoadPosts(cfg *LoadTestConfig, driverName, dataSource string) {
 			}
 		}
 
+		if _, err := db.Exec("SET autocommit=0,unique_checks=0,foreign_key_checks=0"); err != nil {
+			mlog.Error("Couldn't temporarily set values for performance.", mlog.Err(err))
+			return
+		}
+		defer func() {
+			if _, err := db.Exec("SET autocommit=1,unique_checks=1,foreign_key_checks=1"); err != nil {
+				mlog.Critical("Couldn't set temporarily values back to defaults.", mlog.Err(err))
+				return
+			}
+		}()
+
+		csvLines := make(chan []string)
+		var wg sync.WaitGroup
+		for i := 0; i < 4; i++ {
+			wg.Add(1)
+			go func() {
+				importCSVToSQL(csvLines, db)
+				wg.Done()
+			}()
+		}
+
 		mlog.Info("Thread splitting", mlog.String("team", team.Name))
-		ThreadSplit(len(channels), 16, PrintCounter, func(channelNum int) {
+		ThreadSplit(len(channels), 4, PrintCounter, func(channelNum int) {
 			mlog.Info("Thread", mlog.Int("channel_num", channelNum))
 			// Only recognizes multiples of 100
 			type rootPost struct {
@@ -482,13 +616,11 @@ func LoadPosts(cfg *LoadTestConfig, driverName, dataSource string) {
 			}
 			rootPosts := make([]rootPost, 0)
 			for i := 0; i < numPostsPerChannel; i += 100 {
-				vals := []interface{}{}
-
 				for j := 0; j < 100; j++ {
 					message := "PL" + fake.SentencesN(1)
 					now := randomTime(nil)
 					id := model.NewId()
-					zero := 0
+					zero := "0"
 					emptyobject := "{}"
 					emptyarray := "[]"
 
@@ -503,14 +635,51 @@ func LoadPosts(cfg *LoadTestConfig, driverName, dataSource string) {
 						}
 					}
 
-					vals = append(vals, id, now.Unix()*1000, now.Unix()*1000, zero, zero, zero, users[(j+i+channelNum)%len(users)].Id, channels[channelNum].Id, parentRoot, parentRoot, "", message, "", emptyobject, "", emptyarray, emptyarray, zero)
-				}
-
-				if _, err := statement.Exec(vals...); err != nil {
-					mlog.Error("Error running statement", mlog.Err(err))
+					results := make([]string, 0, 19)
+					results = append(results, id, fmt.Sprint(now.Unix()*1000), fmt.Sprint(now.Unix()*1000), zero, zero, zero, users[(j+i+channelNum)%len(users)].Id, channels[channelNum].Id, parentRoot, parentRoot, "", message, "", emptyobject, "", emptyarray, emptyarray, zero)
+					csvLines <- results
 				}
 			}
 		})
+
+		wg.Wait()
 	}
-	statement.Close()
+}
+
+func importCSVToSQL(csvLines chan []string, db *sqlx.DB) {
+	done := false
+	for !done {
+		tmpfile, err := ioutil.TempFile("", "loadtestload")
+		if err != nil {
+			mlog.Error("Can't create a temporary file for loading posts.", mlog.Err(err))
+			return
+		}
+		csvWriter := csv.NewWriter(tmpfile)
+
+		numLines := 0
+		for {
+			line, ok := <-csvLines
+			if !ok {
+				done = true
+				break
+			}
+			if err := csvWriter.Write(line); err != nil {
+				mlog.Error("Failed to write csv line.", mlog.Err(err))
+			}
+			numLines += 1
+			if numLines >= 1000 {
+				break
+			}
+		}
+
+		csvWriter.Flush()
+		tmpfile.Close()
+
+		mysql.RegisterLocalFile(tmpfile.Name())
+		_, err = db.Exec("LOAD DATA LOCAL INFILE '" + tmpfile.Name() + "' INTO TABLE Posts")
+		if err != nil {
+			mlog.Error("Couldn't load csv data", mlog.Err(err))
+		}
+		os.Remove(tmpfile.Name())
+	}
 }

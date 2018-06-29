@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -50,6 +49,7 @@ const (
 	POST_CUSTOM_TYPE_PREFIX     = "custom_"
 	PROPS_ADD_CHANNEL_MEMBER    = "add_channel_member"
 	POST_PROPS_ADDED_USER_ID    = "addedUserId"
+	POST_PROPS_DELETE_BY        = "deleteBy"
 )
 
 type Post struct {
@@ -342,20 +342,8 @@ func PostPatchFromJson(data io.Reader) *PostPatch {
 	return &post
 }
 
-var channelMentionRegexp = regexp.MustCompile(`\B~[a-zA-Z0-9\-_]+`)
-
-func (o *Post) ChannelMentions() (names []string) {
-	if strings.Contains(o.Message, "~") {
-		alreadyMentioned := make(map[string]bool)
-		for _, match := range channelMentionRegexp.FindAllString(o.Message, -1) {
-			name := match[1:]
-			if !alreadyMentioned[name] {
-				names = append(names, name)
-				alreadyMentioned[name] = true
-			}
-		}
-	}
-	return
+func (o *Post) ChannelMentions() []string {
+	return ChannelMentions(o.Message)
 }
 
 func (r *PostActionIntegrationRequest) ToJson() string {

@@ -79,7 +79,7 @@ func actionGetStatuses(c *EntityConfig) {
 		if team == nil || channel == nil {
 			return
 		}
-		channelId := c.ChannelMap[team.Name+channel.Name]
+		channelId := c.ChannelMap[team.Name][channel.Name]
 
 		if channelId == "" {
 			mlog.Error("Unable to get channel from map")
@@ -171,7 +171,7 @@ func actionPost(c *EntityConfig) {
 	if team == nil || channel == nil {
 		return
 	}
-	channelId := c.ChannelMap[team.Name+channel.Name]
+	channelId := c.ChannelMap[team.Name][channel.Name]
 
 	if channelId == "" {
 		mlog.Error("Unable to get channel from map")
@@ -222,7 +222,7 @@ func actionGetChannel(c *EntityConfig) {
 	if team == nil || channel == nil {
 		return
 	}
-	channelId := c.ChannelMap[team.Name+channel.Name]
+	channelId := c.ChannelMap[team.Name][channel.Name]
 
 	if _, resp := c.Client.ViewChannel("me", &model.ChannelView{
 		ChannelId:     channelId,
@@ -286,6 +286,48 @@ func actionPerformSearch(c *EntityConfig) {
 	}
 }
 
+func actionAutocompleteChannel(c *EntityConfig) {
+	team, channel := c.UserData.PickTeamChannel()
+	if team == nil || channel == nil {
+		return
+	}
+	teamId := c.TeamMap[team.Name]
+
+	// Select a random fraction of the channel name to actually type
+	typedName := channel.Name[:rand.Intn(len(channel.Name))]
+
+	for i := 1; i <= len(typedName); i++ {
+		currentSubstring := typedName[:i]
+		go func() {
+			if _, resp := c.Client.AutocompleteChannelsForTeam(teamId, currentSubstring); resp.Error != nil {
+				mlog.Error("Unable to autocomplete channel", mlog.String("team_name", team.Name), mlog.String("channel_name", channel.Name), mlog.String("fragment", currentSubstring))
+			}
+		}()
+		time.Sleep(time.Millisecond * 150)
+	}
+}
+
+func actionSearchChannel(c *EntityConfig) {
+	team, channel := c.UserData.PickTeamChannel()
+	if team == nil || channel == nil {
+		return
+	}
+	teamId := c.TeamMap[team.Name]
+
+	// Select a random fraction of the channel name to actually type
+	typedName := channel.Name[:rand.Intn(len(channel.Name))]
+
+	for i := 1; i <= len(typedName); i++ {
+		currentSubstring := typedName[:i]
+		go func() {
+			if _, resp := c.Client.SearchChannels(teamId, &model.ChannelSearch{Term: currentSubstring}); resp.Error != nil {
+				mlog.Error("Unable to search channel", mlog.String("team_name", team.Name), mlog.String("channel_name", channel.Name), mlog.String("fragment", currentSubstring))
+			}
+		}()
+		time.Sleep(time.Millisecond * 150)
+	}
+}
+
 func actionDisconnectWebsocket(c *EntityConfig) {
 	c.WebSocketClient.Close()
 }
@@ -299,7 +341,7 @@ func actionPostWebhook(c *EntityConfig) {
 		if team == nil || channel == nil {
 			return
 		}
-		channelId := c.ChannelMap[team.Name+channel.Name]
+		channelId := c.ChannelMap[team.Name][channel.Name]
 
 		webhook, resp := c.Client.CreateIncomingWebhook(&model.IncomingWebhook{
 			ChannelId:   channelId,
@@ -419,12 +461,20 @@ var standardUserEntity UserEntity = UserEntity{
 			Weight: 56,
 		},
 		{
+			Item:   actionAutocompleteChannel,
+			Weight: 1,
+		},
+		{
+			Item:   actionSearchChannel,
+			Weight: 10,
+		},
+		{
 			Item:   actionDisconnectWebsocket,
 			Weight: 4,
 		},
 		{
-			Item:   actionDeactivateReactivate,
-			Weight: 1,
+			Item:   actionMoreChannels,
+			Weight: 4,
 		},
 	},
 }
@@ -570,6 +620,102 @@ var TestDeactivation TestRun = TestRun{
 				RateMultiplier: 1.0,
 			},
 			Weight: 30,
+		},
+	},
+}
+
+const CHANNELS_CHUNK_SIZE = 50
+const CHANNELS_FETCH_SIZE = CHANNELS_CHUNK_SIZE * 2
+
+func actionMoreChannels(c *EntityConfig) {
+	team := c.UserData.PickTeam()
+	if team == nil {
+		return
+	}
+
+	teamId := c.TeamMap[team.Name]
+	if teamId == "" {
+		mlog.Error("Unable to get team from map")
+		return
+	}
+
+	numChannels := len(c.ChannelMap[team.Name])
+
+	for i := 0; i < numChannels; i += CHANNELS_FETCH_SIZE {
+		page := i * numChannels / CHANNELS_FETCH_SIZE
+		if _, resp := c.Client.GetPublicChannelsForTeam(teamId, page, CHANNELS_FETCH_SIZE, ""); resp.Error != nil {
+			mlog.Error("Failed to get public channels for team", mlog.String("team_id", teamId), mlog.Int("page", page), mlog.Err(resp.Error))
+			return
+		}
+
+		// 30% chance of continuing to scroll to next page.
+		if rand.Float64() > 0.30 {
+			return
+		}
+
+		time.Sleep(time.Millisecond * 1000)
+	}
+}
+
+var moreChannelsEntity UserEntity = UserEntity{
+	Name: "MoreChannelsEntity",
+	Actions: []randutil.Choice{
+		{
+			Item:   actionMoreChannels,
+			Weight: 1,
+		},
+	},
+}
+
+var TestMoreChannelsBrowser TestRun = TestRun{
+	UserEntities: []randutil.Choice{
+		{
+			Item: UserEntityWithRateMultiplier{
+				Entity:         standardUserEntity,
+				RateMultiplier: 1.0,
+			},
+			Weight: 70,
+		},
+		{
+			Item: UserEntityWithRateMultiplier{
+				Entity:         moreChannelsEntity,
+				RateMultiplier: 1.0,
+			},
+			Weight: 30,
+		},
+	},
+}
+
+var autocompleterUserEntity UserEntity = UserEntity{
+	Name: "AutocompleterUserEntity",
+	Actions: []randutil.Choice{
+		{
+			Item:   actionSearchChannel,
+			Weight: 5,
+		},
+		{
+			Item:   actionAutocompleteChannel,
+			Weight: 1,
+		},
+	},
+}
+
+var TestAutocomplete TestRun = TestRun{
+	UserEntities: []randutil.Choice{
+		{
+			Item: UserEntityWithRateMultiplier{
+				RateMultiplier: 1.0,
+				Entity:         standardUserEntity,
+			},
+			Weight: 10.0,
+		},
+		{
+			Item: UserEntityWithRateMultiplier{
+				RateMultiplier: 1.0,
+				Entity:         autocompleterUserEntity,
+			},
+
+			Weight: 90.0,
 		},
 	},
 }

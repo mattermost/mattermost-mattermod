@@ -1,21 +1,26 @@
 package ltops
 
-import "io"
-
 type ClusterConfig struct {
 	Name                  string
+	Type                  string
 	AppInstanceType       string
 	AppInstanceCount      int
 	DBInstanceType        string
 	DBInstanceCount       int
 	LoadtestInstanceCount int
 	WorkingDirectory      string
+	Profile               string
+	Users                 int
+	BulkLoadComplete      bool
 }
 
-// Represents an active cluster
+// Cluster represents an active cluster
 type Cluster interface {
 	// Returns the name of the cluster
 	Name() string
+
+	// Returns the type of the cluster
+	Type() string
 
 	// Returns the current configuration of the cluster
 	Configuration() *ClusterConfig
@@ -44,14 +49,14 @@ type Cluster interface {
 	// Returns a list of all the read-replica database connection strings
 	DBReaderConnectionStrings() []string
 
-	// Deploys a mattermost package to the cluster. mattermostFile can be disk file or URL.
-	DeployMattermost(mattermostFile string, licenceFile string) error
+	// Returns a count of DB instances
+	DBInstanceCount() int
 
-	// Deploys a loadtest package to the cluster. loadtestsFile can be disk file or URL.
-	DeployLoadtests(loadtestsFile string) error
+	// Deploys a load test cluster
+	Deploy(options *DeployOptions) error
 
 	// Runs a loadtest
-	Loadtest(resultsOutput io.Writer) error
+	Loadtest(options *LoadTestOptions) error
 
 	// Destroys the cluster
 	Destroy() error

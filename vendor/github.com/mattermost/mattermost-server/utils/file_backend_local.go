@@ -26,11 +26,19 @@ type LocalFileBackend struct {
 func (b *LocalFileBackend) TestConnection() *model.AppError {
 	f := bytes.NewReader([]byte("testingwrite"))
 	if _, err := writeFileLocally(f, filepath.Join(b.directory, TEST_FILE_PATH)); err != nil {
-		return model.NewAppError("TestFileConnection", "Don't have permissions to write to local path specified or other error.", nil, err.Error(), http.StatusInternalServerError)
+		return model.NewAppError("TestFileConnection", "api.file.test_connection.local.connection.app_error", nil, err.Error(), http.StatusInternalServerError)
 	}
 	os.Remove(filepath.Join(b.directory, TEST_FILE_PATH))
 	mlog.Info("Able to write files to local storage.")
 	return nil
+}
+
+func (b *LocalFileBackend) Reader(path string) (io.ReadCloser, *model.AppError) {
+	if f, err := os.Open(filepath.Join(b.directory, path)); err != nil {
+		return nil, model.NewAppError("Reader", "api.file.reader.reading_local.app_error", nil, err.Error(), http.StatusInternalServerError)
+	} else {
+		return f, nil
+	}
 }
 
 func (b *LocalFileBackend) ReadFile(path string) ([]byte, *model.AppError) {
@@ -39,6 +47,18 @@ func (b *LocalFileBackend) ReadFile(path string) ([]byte, *model.AppError) {
 	} else {
 		return f, nil
 	}
+}
+
+func (b *LocalFileBackend) FileExists(path string) (bool, *model.AppError) {
+	_, err := os.Stat(filepath.Join(b.directory, path))
+
+	if os.IsNotExist(err) {
+		return false, nil
+	} else if err == nil {
+		return true, nil
+	}
+
+	return false, model.NewAppError("ReadFile", "api.file.file_exists.exists_local.app_error", nil, err.Error(), http.StatusInternalServerError)
 }
 
 func (b *LocalFileBackend) CopyFile(oldPath, newPath string) *model.AppError {

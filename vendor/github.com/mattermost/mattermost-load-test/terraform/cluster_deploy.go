@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,29 +19,12 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func getFileOrURL(fileOrUrl string) ([]byte, error) {
-	buffer := bytes.NewBuffer(nil)
-	if strings.HasPrefix(fileOrUrl, "http") {
-		response, err := http.Get(fileOrUrl)
-		if err != nil {
-			return nil, errors.Wrap(err, "Can't get file at URL: "+fileOrUrl)
-		}
-		defer response.Body.Close()
-
-		io.Copy(buffer, response.Body)
-
-		return buffer.Bytes(), nil
-	} else {
-		f, err := os.Open(fileOrUrl)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to open file "+fileOrUrl)
-		}
-		defer f.Close()
-
-		io.Copy(buffer, f)
-
-		return buffer.Bytes(), nil
+func (c *Cluster) Deploy(options *ltops.DeployOptions) error {
+	if err := c.DeployMattermost(options.MattermostBinaryFile, options.LicenseFile); err != nil {
+		return err
 	}
+
+	return c.DeployLoadtests(options.LoadTestBinaryFile)
 }
 
 func (c *Cluster) DeployMattermost(mattermostDistLocation string, licenceFileLocation string) error {
@@ -57,12 +38,12 @@ func (c *Cluster) DeployMattermost(mattermostDistLocation string, licenceFileLoc
 		return errors.Wrap(err, "Unable to get app instance addresses")
 	}
 
-	mattermostDist, err := getFileOrURL(mattermostDistLocation)
+	mattermostDist, err := ltops.GetFileOrURL(mattermostDistLocation)
 	if err != nil {
 		return err
 	}
 
-	licenseFile, err := getFileOrURL(licenceFileLocation)
+	licenseFile, err := ltops.GetFileOrURL(licenceFileLocation)
 	if err != nil {
 		return err
 	}
@@ -90,7 +71,7 @@ func (c *Cluster) DeployMattermost(mattermostDistLocation string, licenceFileLoc
 		// This is here because the commands above do not wait for the servers to come back up after they restart them.
 		//TODO: Actually wait for them instead of just sleeping
 		logrus.Info("Deploy successful. Restarting servers...")
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 60)
 		logrus.Info("Done")
 	}
 	return nil
@@ -102,7 +83,7 @@ func (c *Cluster) DeployLoadtests(loadtestsDistLocation string) error {
 		return errors.Wrap(err, "Unable to get loadtest instance addresses")
 	}
 
-	loadtestsDist, err := getFileOrURL(loadtestsDistLocation)
+	loadtestsDist, err := ltops.GetFileOrURL(loadtestsDistLocation)
 	if err != nil {
 		return err
 	}
@@ -167,6 +148,9 @@ func deployToLoadtestInstance(instanceNum int, instanceAddr string, loadtestDist
 	for _, cmd := range []string{
 		"sudo apt-get update",
 		"sudo apt-get install -y jq",
+		"wget https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz",
+		"sudo tar -C /usr/local -xzf go1.10.3.linux-amd64.tar.gz",
+		"sudo ln -sf /usr/local/go/bin/go /usr/bin/go",
 		"sudo rm -rf /home/ubuntu/mattermost-load-test",
 		"tar -xvzf /home/ubuntu/mattermost-load-test.tar.gz",
 		"sudo chmod 600 /home/ubuntu/key.pem",
@@ -192,10 +176,7 @@ func deployToLoadtestInstance(instanceNum int, instanceAddr string, loadtestDist
 		return errors.Wrap(err, "Couldn't get app instance addresses.")
 	}
 
-	appURL, err := url.Parse(appURLs[0])
-	if err != nil {
-		return errors.Wrap(err, "Couldn't parse app url.")
-	}
+	appURL := appURLs[0]
 
 	siteURL, err := url.Parse(proxyURLs[instanceNum])
 	if err != nil {
@@ -208,23 +189,19 @@ func deployToLoadtestInstance(instanceNum int, instanceAddr string, loadtestDist
 	websocketURL := *siteURL
 	websocketURL.Scheme = "ws"
 
-	pprofURL := *appURL
-	pprofURL.Host = pprofURL.Host + ":8067"
-	pprofURL.Path = "/debug/pprof"
-
 	for k, v := range map[string]interface{}{
 		".ConnectionConfiguration.ServerURL":            serverURL.String(),
 		".ConnectionConfiguration.WebsocketURL":         websocketURL.String(),
-		".ConnectionConfiguration.PProfURL":             pprofURL.String(),
+		".ConnectionConfiguration.PProfURL":             "http://" + appURL + ":8067/debug/pprof",
 		".ConnectionConfiguration.DataSource":           cluster.DBConnectionString(),
 		".ConnectionConfiguration.LocalCommands":        false,
-		".ConnectionConfiguration.SSHHostnamePort":      appURL.String() + ":22",
+		".ConnectionConfiguration.SSHHostnamePort":      appURL + ":22",
 		".ConnectionConfiguration.SSHUsername":          "ubuntu",
 		".ConnectionConfiguration.SSHKey":               remoteSSHKeyPath,
 		".ConnectionConfiguration.MattermostInstallDir": "/opt/mattermost",
 		".ConnectionConfiguration.WaitForServerStart":   false,
 	} {
-		logger.Debug("updating config: " + k)
+		logger.Debugf("updating config %s=%v", k, v)
 		jsonValue, err := json.Marshal(v)
 		if err != nil {
 			return errors.Wrap(err, "invalid config value for key: "+k)
@@ -385,6 +362,7 @@ func deployToAppInstance(mattermostDistribution, license io.Reader, instanceAddr
 
 	for _, cmd := range []string{
 		"sudo setcap cap_net_bind_service=+ep /opt/mattermost/bin/platform",
+		"[[ -f /opt/mattermost/bin/mattermost ]] && sudo setcap cap_net_bind_service=+ep /opt/mattermost/bin/mattermost",
 		"sudo systemctl daemon-reload",
 		"sudo systemctl restart mattermost.service",
 		"sudo systemctl enable mattermost.service",

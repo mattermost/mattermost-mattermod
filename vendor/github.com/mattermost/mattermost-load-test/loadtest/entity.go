@@ -19,7 +19,7 @@ type EntityConfig struct {
 	EntityName          string
 	EntityActions       []randutil.Choice
 	UserData            UserImportData
-	ChannelMap          map[string]string
+	ChannelMap          map[string]map[string]string
 	TeamMap             map[string]string
 	TownSquareMap       map[string]string
 	Client              *model.Client4
@@ -83,7 +83,7 @@ func doStatusPolling(ec *EntityConfig) {
 	}()
 	defer ec.StopWaitGroup.Done()
 
-	ticker := time.NewTicker(60 * time.Second)
+	ticker := time.NewTicker(45 * time.Second)
 	for {
 		select {
 		case <-ec.StopChannel:

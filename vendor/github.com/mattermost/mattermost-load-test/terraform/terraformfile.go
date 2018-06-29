@@ -64,7 +64,7 @@ variable "ssh_private_key" {}
 
 provider "aws" {
     region = "us-east-1"
-    profile = "dev"
+    profile = "ltops"
 }
 
 resource "aws_instance" "app_server" {
@@ -93,8 +93,8 @@ output "instanceIP" {
 }
 
 resource "aws_security_group" "app" {
-    name = "${var.cluster_name}-app-secuirty-group"
-    description = "App secuirty group for loadtest cluster ${var.cluster_name}"
+    name = "${var.cluster_name}-app-security-group"
+    description = "App security group for loadtest cluster ${var.cluster_name}"
 
     ingress {
         from_port = 22
@@ -123,8 +123,8 @@ resource "aws_security_group" "app" {
 }
 
 resource "aws_security_group" "app_gossip" {
-    name = "${var.cluster_name}-app-secuirty-group-gossip"
-    description = "App secuirty group for gossip loadtest cluster ${var.cluster_name}"
+    name = "${var.cluster_name}-app-security-group-gossip"
+    description = "App security group for gossip loadtest cluster ${var.cluster_name}"
     ingress {
         from_port = 8074
         to_port = 8074
@@ -177,8 +177,8 @@ output "loadtestInstanceIP" {
 }
 
 resource "aws_security_group" "loadtest" {
-    name = "${var.cluster_name}-loadtest-secuirty-group"
-    description = "Loadtest secuirty group for loadtest cluster ${var.cluster_name}"
+    name = "${var.cluster_name}-loadtest-security-group"
+    description = "Loadtest security group for loadtest cluster ${var.cluster_name}"
 
     ingress {
         from_port = 22
@@ -225,13 +225,13 @@ output "dbReaderEndpoint" {
 }
 
 resource "aws_security_group" "db" {
-    name = "${var.cluster_name}-db-secuirty-group"
+    name = "${var.cluster_name}-db-security-group"
 
     ingress {
         from_port = 3306
         to_port = 3306
         protocol = "tcp"
-        security_groups = ["${aws_security_group.app.id}"]
+        cidr_blocks = ["0.0.0.0/0"]
     }
 }
 
@@ -281,7 +281,7 @@ output "proxyIP" {
 }
 
 resource "aws_security_group" "proxy" {
-    name = "${var.cluster_name}-proxy-secuirty-group"
+    name = "${var.cluster_name}-proxy-security-group"
     description = "Proxy security group for loadtest cluster ${var.cluster_name}"
 
     ingress {
@@ -467,7 +467,7 @@ output "metricsIP" {
 }
 
 resource "aws_security_group" "metrics" {
-    name = "${var.cluster_name}-metrics-secuirty-group"
+    name = "${var.cluster_name}-metrics-security-group"
     description = "Metrics security group for loadtest cluster ${var.cluster_name}"
 
     ingress {
@@ -522,7 +522,7 @@ func clusterTf() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "cluster.tf", size: 11698, mode: os.FileMode(420), modTime: time.Unix(1524441465, 0)}
+	info := bindataFileInfo{name: "cluster.tf", size: 11677, mode: os.FileMode(420), modTime: time.Unix(1530046468, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
