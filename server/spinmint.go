@@ -72,13 +72,12 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	results := bytes.NewBuffer(nil)
 
 	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.DeployMattermost("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
-		LogError("Unable to deploy cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-	if err := cluster.DeployLoadtests("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
-		LogError("Unable to deploy loadtests to cluster: " + err.Error())
+	if err := cluster.Deploy(&ltops.DeployOptions{
+		MattermostBinaryFile: "https://releases.mattermost.com/mattermost-platform-pr/" + strconv.Itoa(pr.Number) + "/mattermost-enterprise-linux-amd64.tar.gz",
+		LicenseFile:          "mattermod.mattermost-license",
+		LoadTestBinaryFile:   "https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz",
+	}); err != nil {
+		LogError("Unable to deploy: " + err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 		return
 	}
@@ -86,12 +85,15 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	// Wait for the cluster restart after deploy
 	time.Sleep(time.Minute)
 
-	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.Loadtest(results); err != nil {
+	LogInfo("Running loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+	if err := cluster.Loadtest(&ltops.LoadTestOptions{
+		ResultsWriter: results,
+	}); err != nil {
 		LogError("Unable to loadtest cluster: " + err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 		return
 	}
+
 	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 	if err := cluster.Destroy(); err != nil {
 		LogError("Unable to destroy cluster: " + err.Error())
@@ -107,7 +109,12 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 		Aggregate: false,
 	}
 
-	ltparse.ParseResults(&cfg)
+	if err := ltparse.ParseResults(&cfg); err != nil {
+		LogError("Unable to parse results: " + err.Error())
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to report on loadtest")
+		return
+	}
+
 	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
 }
