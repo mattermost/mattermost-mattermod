@@ -65,9 +65,20 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	if err != nil {
 		LogError("Unable to setup cluster: " + err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+		return
 	}
+
+	defer func() {
+		LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+		if err := cluster.Destroy(); err != nil {
+			LogError("Unable to destroy cluster: " + err.Error())
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to teardown loadtest")
+			return
+		}
+	}()
+
 	// Wait for the cluster to init
-	time.Sleep(time.Minute)
+	time.Sleep(5 * time.Minute)
 
 	results := bytes.NewBuffer(nil)
 
@@ -83,20 +94,13 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	}
 
 	// Wait for the cluster restart after deploy
-	time.Sleep(time.Minute)
+	time.Sleep(5 * time.Minute)
 
 	LogInfo("Running loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 	if err := cluster.Loadtest(&ltops.LoadTestOptions{
 		ResultsWriter: results,
 	}); err != nil {
 		LogError("Unable to loadtest cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-
-	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.Destroy(); err != nil {
-		LogError("Unable to destroy cluster: " + err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 		return
 	}
