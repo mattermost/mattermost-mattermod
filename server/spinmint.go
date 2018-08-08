@@ -203,12 +203,14 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
 				jobName = parts[len(parts)-3] //mattermost-server
 				jobName = "mp/job/" + jobName
+				LogInfo("Job name for server: %v", jobName)
 			} else if pr.RepoName == "mattermost-webapp" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 				jobName = parts[len(parts)-6]     //mattermost-webapp
 				subJobName := parts[len(parts)-4] //PR-XXXX
 
-				jobName = jobName + "/job/" + subJobName
+				jobName = "mw/job/" + jobName + "/job/" + subJobName
+				LogInfo("Job name for webapp: %v", jobName)
 			} else {
 				LogError("Did not know this repository: %v. Aborting.", pr.RepoName)
 				break
