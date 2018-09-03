@@ -22,8 +22,9 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 		return
 	}
 
-	LogInfo("Event Action %v", event.Action)
 	if event.Action == "closed" {
+		LogInfo("Event Action %v", event.Action)
+		LogInfo("PR Number %v", pr.Number)
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
 			LogInfo("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error())
 		} else {
