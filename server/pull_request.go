@@ -22,6 +22,17 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 		return
 	}
 
+	if event.Action == "closed" {
+		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+			LogInfo("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error())
+		} else {
+			spinmint := result.Data.(*model.Spinmint)
+			LogInfo("Will destroy the spinmint for a merged/closed PR.")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
+			go destroySpinmint(pr, spinmint.InstanceId)
+		}
+	}
+
 	checkPullRequestForChanges(pr)
 }
 

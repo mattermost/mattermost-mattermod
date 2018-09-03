@@ -76,6 +76,29 @@ func (s SqlSpinmintStore) List() StoreChannel {
 	return storeChannel
 }
 
+func (s SqlSpinmintStore) Get(prNumber int) StoreChannel {
+	storeChannel := make(StoreChannel)
+	go func() {
+		result := StoreResult{}
+
+		var spinmint []*model.Spinmint
+		if _, err := s.GetReplica().Select(&spinmint,
+			`SELECT * FROM
+        Spinmint
+      WHERE
+        Number = :prNumber`, map[string]interface{}{"prNumber": prNumber}); err != nil {
+			result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get spinmint", nil, err.Error())
+		} else {
+			result.Data = spinmint
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
 func (s SqlSpinmintStore) Delete(instanceid string) StoreChannel {
 	storeChannel := make(StoreChannel)
 	go func() {
