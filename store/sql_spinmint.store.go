@@ -4,6 +4,7 @@
 package store
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -78,18 +79,24 @@ func (s SqlSpinmintStore) List() StoreChannel {
 
 func (s SqlSpinmintStore) Get(prNumber int) StoreChannel {
 	storeChannel := make(StoreChannel)
+
 	go func() {
 		result := StoreResult{}
 
-		var spinmint []*model.Spinmint
-		if _, err := s.GetReplica().Select(&spinmint,
+		var spinmint model.Spinmint
+		if err := s.GetReplica().SelectOne(&spinmint,
 			`SELECT * FROM
         Spinmint
       WHERE
         Number = :prNumber`, map[string]interface{}{"prNumber": prNumber}); err != nil {
-			result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get spinmint", nil, err.Error())
+			if err != sql.ErrNoRows {
+				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
+					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
+			} else {
+				result.Data = nil
+			}
 		} else {
-			result.Data = spinmint
+			result.Data = &spinmint
 		}
 
 		storeChannel <- result

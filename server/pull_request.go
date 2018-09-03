@@ -29,7 +29,9 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 			LogInfo("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error())
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
+			LogInfo("Spinmint instance %v", spinmint.InstanceId)
 			LogInfo("Will destroy the spinmint for a merged/closed PR.")
+
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
 		}
