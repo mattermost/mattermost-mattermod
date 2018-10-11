@@ -154,15 +154,19 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	}
 
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
+		LogInfo("Label to spin a test server")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
 		go waitForBuildAndSetupSpinmint(pr, false)
 	} else if addedLabel == Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage) {
+		LogInfo("Label to spin a test server for upgrade")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintUpgradeMessage)
 		go waitForBuildAndSetupSpinmint(pr, true)
 	} else if addedLabel == Config.BuildMobileAppTag && !messageByUserContains(comments, Config.Username, Config.BuildMobileAppInitMessage) {
+		LogInfo("Label to build the mobile app")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppInitMessage)
 		go waitForMobileAppsBuild(pr)
 	} else if addedLabel == Config.StartLoadtestTag {
+		LogInfo("Label to spin a load test")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
 	} else {
