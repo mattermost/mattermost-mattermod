@@ -14,7 +14,10 @@
             "Owner": "",
             "Name": "",
             "BuildStatusContext": "",
-            "JenkinsServer": "jenkins"
+            "JenkinsServer": "jenkins",
+            "JobName": "",
+            "InstanceSetupUpgradeScript": "",
+            "InstanceSetupScript": ""
         }
     ],
 
@@ -24,6 +27,12 @@
     "SetupSpinmintFailedMessage": "",
     "DestroyedSpinmintMessage": "",
     "DestroyedExpirationSpinmintMessage": "",
+
+    "BuildMobileAppTag": "",
+    "BuildMobileAppInitMessage": "",
+    "BuildMobileAppDoneMessage": "",
+    "BuildMobileAppFailedMessage": "",
+
     "SpinmintsUseHttps": false,
 
     "SetupSpinmintUpgradeTag": "",

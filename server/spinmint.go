@@ -4,12 +4,13 @@
 package server
 
 import (
-	"bytes"
+	// "bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path"
-	"path/filepath"
+	// "path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -18,98 +19,101 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
+	jenkins "github.com/cpanato/golang-jenkins"
 	"github.com/mattermost/mattermost-mattermod/model"
-	jenkins "github.com/yosida95/golang-jenkins"
-
-	"github.com/mattermost/mattermost-load-test/ltops"
-	"github.com/mattermost/mattermost-load-test/ltparse"
-	"github.com/mattermost/mattermost-load-test/terraform"
+	// "github.com/mattermost/mattermost-load-test/ltops"
+	// "github.com/mattermost/mattermost-load-test/ltparse"
+	// "github.com/mattermost/mattermost-load-test/terraform"
 )
 
+// TODO FIXME
+// func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
+// 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+// 	if !ok || repo.JenkinsServer == "" {
+// 		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+
+// 	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+// 	if !ok {
+// 		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+
+// 	client := jenkins.NewJenkins(&jenkins.Auth{
+// 		Username: credentials.Username,
+// 		ApiToken: credentials.ApiToken,
+// 	}, credentials.URL)
+
+// 	LogInfo("Waiting for Jenkins to build to set up loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+
+// 	pr = waitForBuild(client, pr)
+
+// 	config := &ltops.ClusterConfig{
+// 		Name:                  fmt.Sprintf("pr-%v", pr.Number),
+// 		AppInstanceType:       "m4.xlarge",
+// 		AppInstanceCount:      4,
+// 		DBInstanceType:        "db.r4.xlarge",
+// 		DBInstanceCount:       4,
+// 		LoadtestInstanceCount: 1,
+// 	}
+// 	config.WorkingDirectory = filepath.Join("./clusters/", config.Name)
+
+// 	LogInfo("Creating terraform cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+// 	cluster, err := terraform.CreateCluster(config)
+// 	if err != nil {
+// 		LogError("Unable to setup cluster: " + err.Error())
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 	}
+// 	// Wait for the cluster to init
+// 	time.Sleep(time.Minute)
+
+// 	results := bytes.NewBuffer(nil)
+
+// 	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+// 	if err := cluster.Deploy("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
+// 		LogError("Unable to deploy cluster: " + err.Error())
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+// 	if err := cluster.Loadtest("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
+// 		LogError("Unable to deploy loadtests to cluster: " + err.Error())
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+
+// 	// Wait for the cluster restart after deploy
+// 	time.Sleep(time.Minute)
+
+// 	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+// 	if err := cluster.Loadtest(results); err != nil {
+// 		LogError("Unable to loadtest cluster: " + err.Error())
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+// 	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+// 	if err := cluster.Destroy(); err != nil {
+// 		LogError("Unable to destroy cluster: " + err.Error())
+// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		return
+// 	}
+
+// 	githubOutput := bytes.NewBuffer(nil)
+// 	cfg := ltparse.ResultsConfig{
+// 		Input:     results,
+// 		Output:    githubOutput,
+// 		Display:   "markdown",
+// 		Aggregate: false,
+// 	}
+
+// 	ltparse.ParseResults(&cfg)
+// 	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
+// 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
+// }
 func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
-
-	LogInfo("Waiting for Jenkins to build to set up loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-
-	pr = waitForBuild(client, pr)
-
-	config := &ltops.ClusterConfig{
-		Name:                  fmt.Sprintf("pr-%v", pr.Number),
-		AppInstanceType:       "m4.xlarge",
-		AppInstanceCount:      4,
-		DBInstanceType:        "db.r4.xlarge",
-		DBInstanceCount:       4,
-		LoadtestInstanceCount: 1,
-	}
-	config.WorkingDirectory = filepath.Join("./clusters/", config.Name)
-
-	LogInfo("Creating terraform cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	cluster, err := terraform.CreateCluster(config)
-	if err != nil {
-		LogError("Unable to setup cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-	}
-	// Wait for the cluster to init
-	time.Sleep(time.Minute)
-
-	results := bytes.NewBuffer(nil)
-
-	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.DeployMattermost("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
-		LogError("Unable to deploy cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-	if err := cluster.DeployLoadtests("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
-		LogError("Unable to deploy loadtests to cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-
-	// Wait for the cluster restart after deploy
-	time.Sleep(time.Minute)
-
-	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.Loadtest(results); err != nil {
-		LogError("Unable to loadtest cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-	if err := cluster.Destroy(); err != nil {
-		LogError("Unable to destroy cluster: " + err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-		return
-	}
-
-	githubOutput := bytes.NewBuffer(nil)
-	cfg := ltparse.ResultsConfig{
-		Input:     results,
-		Output:    githubOutput,
-		Display:   "markdown",
-		Aggregate: false,
-	}
-
-	ltparse.ParseResults(&cfg)
-	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
+	return
 }
 
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
@@ -134,7 +138,11 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	LogInfo("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 
-	pr = waitForBuild(client, pr)
+	pr, errr := waitForBuild(client, pr)
+	if errr == false || pr == nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
 
 	instance, err := setupSpinmint(pr.Number, pr.Ref, repo, upgradeServer)
 	if err != nil {
@@ -182,10 +190,85 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	storeSpinmintInfo(spinmint)
 }
 
-func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullRequest {
+func waitForMobileAppsBuild(pr *model.PullRequest) {
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if !ok || repo.JenkinsServer == "" {
+		LogError("Unable to build the mobile app for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+		return
+	}
+
+	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	if !ok {
+		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+		return
+	}
+
+	client := jenkins.NewJenkins(&jenkins.Auth{
+		Username: credentials.Username,
+		ApiToken: credentials.ApiToken,
+	}, credentials.URL)
+
+	LogInfo("Waiting for Jenkins to build to start build the mobile app for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+
+	pr, errr := waitForBuild(client, pr)
+	if errr == false || pr == nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+		return
+	}
+
+	//Job that will build the apps for a PR
+	jobName := fmt.Sprintf("mm/job/%s", repo.JobName)
+	job, err := client.GetJob(jobName)
+	if err != nil {
+		LogError("Failed to get Jenkins job %v: %v", jobName, err)
+		return
+	}
+
+	LogInfo("Will start the job %v", jobName)
+	parameters := url.Values{}
+	parameters.Add("PR_NUMBER", strconv.Itoa(pr.Number))
+	err = client.Build(jobName, parameters)
+	if err != nil {
+		LogError("Failed to build Jenkins job %v: %v", jobName, err)
+		return
+	}
+
+	job.Name = jobName
+	for {
+		build, err := client.GetLastBuild(job)
+		if err != nil {
+			LogError("Failed to get the build Jenkins job %v: %v", jobName, err)
+			return
+		}
+		if !build.Building && build.Result == "SUCCESS" {
+			LogInfo("build mobile app %v for PR %v in %v/%v succeeded!", build.Number, pr.Number, pr.RepoOwner, pr.RepoName)
+			break
+		} else if build.Result == "FAILURE" {
+			LogError("build %v has status %v aborting.", build.Number, build.Result)
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+			return
+		} else {
+			LogInfo("build %v is running: %v", build.Number, build.Building)
+		}
+		time.Sleep(60 * time.Second)
+	}
+
+	prNumberStr := fmt.Sprintf("PR-%d", pr.Number)
+	msgMobile := Config.BuildMobileAppDoneMessage
+	msgMobile = strings.Replace(msgMobile, "PR_NUMBER", prNumberStr, 2)
+	msgMobile = strings.Replace(msgMobile, "ANDROID_APP", prNumberStr, 1)
+	msgMobile = strings.Replace(msgMobile, "IOS_APP", prNumberStr, 1)
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
+	return
+}
+
+func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, bool) {
 	for {
 		if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
 			LogError("Unable to get updated PR while waiting for spinmint: %v", result.Err.Error())
+			return nil, false
 		} else {
 			// Update the PR in case the build link has changed because of a new commit
 			pr = result.Data.(*model.PullRequest)
@@ -204,6 +287,11 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 				jobName = parts[len(parts)-3] //mattermost-server
 				jobName = "mp/job/" + jobName
 				LogInfo("Job name for server: %v", jobName)
+			} else if pr.RepoName == "mattermost-mobile" {
+				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
+				jobName = parts[len(parts)-3] //mattermost-mobile
+				jobName = "mm/job/" + jobName
+				LogInfo("Job name for mobile: %v", jobName)
 			} else if pr.RepoName == "mattermost-webapp" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 				jobName = parts[len(parts)-6]     //mattermost-webapp
@@ -213,13 +301,13 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 				LogInfo("Job name for webapp: %v", jobName)
 			} else {
 				LogError("Did not know this repository: %v. Aborting.", pr.RepoName)
-				break
+				return pr, false
 			}
 
 			job, err := client.GetJob(jobName)
 			if err != nil {
 				LogError("Failed to get Jenkins job %v: %v", jobName, err)
-				break
+				return pr, false
 			}
 
 			// Doing this because the lib we are using does not support folders :(
@@ -229,14 +317,17 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 			build, err := client.GetBuild(job, int(jobNumber))
 			if err != nil {
 				LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
-				break
+				return pr, false
 			}
 
 			if !build.Building && build.Result == "SUCCESS" {
 				LogInfo("build %v for PR %v in %v/%v succeeded!", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName)
-				break
+				return pr, true
+			} else if build.Result == "FAILURE" {
+				LogError("build %v has status %v aborting.", build.Number, build.Result)
+				return pr, false
 			} else {
-				LogInfo("build %v has status %v %v", jobNumber, build.Result, build.Building)
+				LogInfo("build %v is running: %v", build.Number, build.Building)
 			}
 		} else {
 			LogError("Unable to find build link for PR %v", pr.Number)
@@ -245,7 +336,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) *model.PullReq
 		LogInfo("Sleeping a bit....Will re-check the Jenkins Build...")
 		time.Sleep(30 * time.Second)
 	}
-	return pr
+	return pr, true
 }
 
 // Returns instance ID of instance created

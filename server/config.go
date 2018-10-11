@@ -24,6 +24,7 @@ type Repository struct {
 	JenkinsServer              string
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
+	JobName                    string
 }
 
 type JenkinsCredentials struct {
@@ -56,6 +57,11 @@ type PRServerConfig struct {
 	SetupSpinmintUpgradeTag         string
 	SetupSpinmintUpgradeMessage     string
 	SetupSpinmintUpgradeDoneMessage string
+
+	BuildMobileAppTag           string
+	BuildMobileAppInitMessage   string
+	BuildMobileAppDoneMessage   string
+	BuildMobileAppFailedMessage string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
