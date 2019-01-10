@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path"
+
 	// "path/filepath"
 	"strconv"
 	"strings"
@@ -283,9 +284,11 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 			parts := strings.Split(pr.BuildLink, "/")
 			// Doing this because the lib we are using does not support folders :(
 			if pr.RepoName == "mattermost-server" {
-				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
-				jobName = parts[len(parts)-3] //mattermost-server
-				jobName = "mp/job/" + jobName
+				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
+				jobName = parts[len(parts)-6]     //mattermost-server
+				subJobName := parts[len(parts)-4] //PR-XXXX
+
+				jobName = "mp/job/" + jobName + "/job/" + subJobName
 				LogInfo("Job name for server: %v", jobName)
 			} else if pr.RepoName == "mattermost-mobile" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
