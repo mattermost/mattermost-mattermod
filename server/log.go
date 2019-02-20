@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	l4g "github.com/alecthomas/log4go"
 	"github.com/google/go-github/github"
+	"github.com/mattermost/mattermost-server/mlog"
 )
 
 func LogLabels(prNumber int, labels []github.Label) {
@@ -20,21 +20,21 @@ func LogLabels(prNumber int, labels []github.Label) {
 		labelStrings[i] = "`" + *label.Name + "`"
 	}
 
-	l4g.Debug("PR %d has labels: %v", prNumber, strings.Join(labelStrings, ", "))
+	mlog.Debug("PR %d has labels: %v", prNumber, strings.Join(labelStrings, ", "))
 }
 
 func LogInfo(msg string, args ...interface{}) {
-	l4g.Info(msg, args...)
+	mlog.Info(msg, args...)
 	Log("INFO", msg, args...)
 }
 
 func LogError(msg string, args ...interface{}) {
-	l4g.Error(msg, args...)
+	mlog.Error(msg, args...)
 	Log("ERROR", msg, args...)
 }
 
 func LogCritical(msg string, args ...interface{}) {
-	l4g.Critical(msg, args...)
+	mlog.Critical(msg, args...)
 	Log("CRIT", msg, args...)
 	panic(fmt.Sprintf(msg, args...))
 }
