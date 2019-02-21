@@ -20,7 +20,7 @@ func LogLabels(prNumber int, labels []github.Label) {
 		labelStrings[i] = "`" + *label.Name + "`"
 	}
 
-	mlog.Debug("PR %d has labels: %v", prNumber, strings.Join(labelStrings, ", "))
+	mlog.Debug(fmt.Sprintf("PR %d has labels: %v", prNumber, strings.Join(labelStrings, ", ")))
 }
 
 func LogInfo(msg string, args ...interface{}) {

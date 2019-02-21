@@ -90,6 +90,16 @@ type PRServerConfig struct {
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
+
+	LoggerConfiguration struct {
+		EnableConsole bool
+		ConsoleJson   bool
+		ConsoleLevel  string
+		EnableFile    bool
+		FileJson      bool
+		FileLevel     string
+		FileLocation  string
+	}
 }
 
 var Config *PRServerConfig = &PRServerConfig{}

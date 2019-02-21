@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -18,15 +19,19 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/store"
+	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/utils/fileutils"
 )
 
 type Server struct {
 	Store  store.Store
 	Router *mux.Router
+	Log    *mlog.Logger
 }
 
 const (
 	INSTANCE_ID_MESSAGE = "Instance ID: "
+	LOG_FILENAME        = "mattermod.log"
 )
 
 var (
@@ -48,6 +53,17 @@ func Start() {
 	}
 
 	addApis(Srv.Router)
+
+	logConfig := &mlog.LoggerConfiguration{
+		EnableConsole: Config.LoggerConfiguration.EnableConsole,
+		ConsoleJson:   Config.LoggerConfiguration.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(Config.LoggerConfiguration.ConsoleLevel),
+		EnableFile:    Config.LoggerConfiguration.EnableFile,
+		FileJson:      Config.LoggerConfiguration.FileJson,
+		FileLevel:     strings.ToLower(Config.LoggerConfiguration.FileLevel),
+		FileLocation:  GetLogFileLocation(Config.LoggerConfiguration.FileLocation),
+	}
+	Srv.Log = mlog.NewLogger(logConfig)
 
 	var handler http.Handler = Srv.Router
 	go func() {
@@ -199,4 +215,13 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write(b)
 	}
+}
+
+// GetLogFileLocation was borrowed from Mattermost server
+func GetLogFileLocation(fileLocation string) string {
+	if fileLocation == "" {
+		fileLocation, _ = fileutils.FindDir("logs")
+	}
+
+	return filepath.Join(fileLocation, LOG_FILENAME)
 }
