@@ -27,10 +27,10 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
 			LogError(fmt.Sprintf("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error()), mlog.String("err", result.Err.Error()))
 		} else if result.Data == nil {
-			LogInfo("Nothing to do. There is not Spinmint for this PR %v", pr.Number)
+			LogInfo(fmt.Sprintf("Nothing to do. There is not Spinmint for this PR %v", pr.Number), mlog.Int("pr", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			LogInfo("Spinmint instance %v", spinmint.InstanceId)
+			LogInfo(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId), mlog.String("err", result.Err.Error()))
 			LogInfo("Will destroy the spinmint for a merged/closed PR.")
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
