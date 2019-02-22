@@ -45,7 +45,7 @@ var (
 )
 
 func Start() {
-	LogInfo("Starting pr manager")
+	mlog.Info("Starting pr manager")
 
 	Srv = &Server{
 		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),
@@ -70,17 +70,17 @@ func Start() {
 
 	var handler http.Handler = Srv.Router
 	go func() {
-		LogInfo("Listening on " + Config.ListenAddress)
+		mlog.Info("Listening on " + Config.ListenAddress)
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
 			LogErrorToMattermost(err.Error())
-			LogCritical(err.Error())
+			mlog.Critical(err.Error())
 		}
 	}()
 }
 
 func Tick() {
-	LogInfo("tick")
+	mlog.Info("tick")
 
 	client := NewGithubClient()
 
@@ -89,15 +89,15 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			LogError("failed to get prs " + repository.Owner + "/" + repository.Name)
-			LogError(err.Error())
+			mlog.Error(fmt.Sprintf("failed to get prs %v/%v", repository.Owner, repository.Name))
+			mlog.Error(err.Error())
 			continue
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
 			pullRequest, err := GetPullRequestFromGithub(ghPullRequest)
 			if err != nil {
-				LogError("failed to convert PR for %v: %v", ghPullRequest.Number, err)
+				mlog.Error(fmt.Sprintf("failed to convert PR for %v: %v", ghPullRequest.Number, err.Error()))
 				continue
 			}
 
@@ -108,8 +108,8 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			LogError("failed to get issues " + repository.Owner + "/" + repository.Name)
-			LogError(err.Error())
+			mlog.Error(fmt.Sprintf("failed to get issues %v/%v", repository.Owner, repository.Name))
+			mlog.Error(err.Error())
 			continue
 		}
 
@@ -121,7 +121,7 @@ func Tick() {
 
 			issue, err := GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
 			if err != nil {
-				LogError("failed to convert issue for %v: %v", ghIssue.Number, err)
+				mlog.Error(fmt.Sprintf("failed to convert issue for %v: %v", ghIssue.Number, err.Error()))
 				continue
 			}
 
@@ -133,7 +133,7 @@ func Tick() {
 }
 
 func Stop() {
-	LogInfo("Stopping pr manager")
+	mlog.Info("Stopping pr manager")
 	manners.Close()
 }
 
@@ -149,7 +149,7 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
-		LogInfo(fmt.Sprintf("pr event %v %v", event.PRNumber, event.Action))
+		mlog.Info(fmt.Sprintf("pr event %v %v", event.PRNumber, event.Action))
 		handlePullRequestEvent(event)
 	} else {
 		handleIssueEvent(event)
@@ -169,7 +169,7 @@ func messageByUserContains(comments []*github.IssueComment, username string, tex
 func listPrs(w http.ResponseWriter, r *http.Request) {
 	var prs []*model.PullRequest
 	if result := <-Srv.Store.PullRequest().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -177,7 +177,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(prs); err != nil {
-		LogError(err.Error())
+		mlog.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -187,7 +187,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 func listIssues(w http.ResponseWriter, r *http.Request) {
 	var issues []*model.Issue
 	if result := <-Srv.Store.Issue().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -195,7 +195,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(issues); err != nil {
-		LogError(err.Error())
+		mlog.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -205,7 +205,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	var spinmints []*model.Spinmint
 	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -213,7 +213,7 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(spinmints); err != nil {
-		LogError(err.Error())
+		mlog.Error(err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
