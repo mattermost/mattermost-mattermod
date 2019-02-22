@@ -4,6 +4,7 @@
 package server
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/go-github/github"
@@ -85,11 +86,11 @@ func LabelsToStringArray(labels []*github.Label) []string {
 }
 
 func commentOnIssue(repoOwner, repoName string, number int, comment string) {
-	LogInfo("Commenting on issue " + strconv.Itoa(number) + " Comment: " + comment)
+	mlog.Info(fmt.Sprintf("Commenting on issue %v Comment: %v", strconv.Itoa(number), comment))
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		LogError("Error: ", mlog.String("err", err.Error()))
+		mlog.Error(fmt.Sprintf("Error: %v", err.Error()))
 	}
-	LogInfo("Finished commenting")
+	mlog.Info("Finished commenting")
 }

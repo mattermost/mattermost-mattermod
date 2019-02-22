@@ -19,19 +19,19 @@ import (
 func handlePullRequestEvent(event *PullRequestEvent) {
 	pr, err := GetPullRequestFromGithub(event.PullRequest)
 	if err != nil {
-		LogError(err.Error())
+		mlog.Error(err.Error())
 		return
 	}
 
 	if event.Action == "closed" {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			LogError(fmt.Sprintf("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error()), mlog.String("err", result.Err.Error()))
+			mlog.Error(fmt.Sprintf("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error()))
 		} else if result.Data == nil {
-			LogInfo(fmt.Sprintf("Nothing to do. There is not Spinmint for this PR %v", pr.Number), mlog.Int("pr", pr.Number))
+			mlog.Info(fmt.Sprintf("Nothing to do. There is not Spinmint for this PR %v", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			LogInfo(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId), mlog.String("err", result.Err.Error()))
-			LogInfo("Will destroy the spinmint for a merged/closed PR.")
+			mlog.Info(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId), mlog.String("err", result.Err.Error()))
+			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
@@ -44,11 +44,11 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 func checkPullRequestForChanges(pr *model.PullRequest) {
 	var oldPr *model.PullRequest
 	if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		return
 	} else if result.Data == nil {
 		if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
-			LogError(result.Err.Error())
+			mlog.Error(result.Err.Error())
 		}
 
 		handlePROpened(pr)
@@ -112,9 +112,9 @@ func checkPullRequestForChanges(pr *model.PullRequest) {
 	}
 
 	if prHasChanges {
-		LogInfo(fmt.Sprintf("pr %v has changes", pr.Number))
+		mlog.Info(fmt.Sprintf("pr %v has changes", pr.Number))
 		if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
-			LogError(result.Err.Error())
+			mlog.Error(result.Err.Error())
 			return
 		}
 	}
@@ -125,14 +125,14 @@ func handlePROpened(pr *model.PullRequest) {
 
 	resp, err := http.Get(Config.SignedCLAURL)
 	if err != nil {
-		LogError("Unable to get CLA list: " + err.Error())
+		mlog.Error("Unable to get CLA list: " + err.Error())
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		LogError("Unable to read response body: " + err.Error())
+		mlog.Error("Unable to read response body: " + err.Error())
 		return
 	}
 
@@ -142,7 +142,7 @@ func handlePROpened(pr *model.PullRequest) {
 }
 
 func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
-	LogInfo(fmt.Sprintf("labeled pr %v with %v", pr.Number, addedLabel))
+	mlog.Info(fmt.Sprintf("labeled pr %v with %v", pr.Number, addedLabel))
 
 	// Must be sure the comment is created before we let anouther request test
 	commentLock.Lock()
@@ -150,34 +150,34 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		LogError(fmt.Sprintf("Unable to list comments for PR %v: %v", pr.Number, err.Error()))
+		mlog.Error(fmt.Sprintf("Unable to list comments for PR %v: %v", pr.Number, err.Error()))
 		return
 	}
 
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
-		LogInfo("Label to spin a test server")
+		mlog.Info("Label to spin a test server")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
 		go waitForBuildAndSetupSpinmint(pr, false)
 	} else if addedLabel == Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage) {
-		LogInfo("Label to spin a test server for upgrade")
+		mlog.Info("Label to spin a test server for upgrade")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintUpgradeMessage)
 		go waitForBuildAndSetupSpinmint(pr, true)
 	} else if addedLabel == Config.BuildMobileAppTag && !messageByUserContains(comments, Config.Username, Config.BuildMobileAppInitMessage) {
-		LogInfo("Label to build the mobile app")
+		mlog.Info("Label to build the mobile app")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppInitMessage)
 		go waitForMobileAppsBuild(pr)
 	} else if addedLabel == Config.StartLoadtestTag {
-		LogInfo("Label to spin a load test")
+		mlog.Info("Label to spin a load test")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
 	} else {
-		LogInfo("looking for other labels")
+		mlog.Info("looking for other labels")
 
 		for _, label := range Config.PrLabels {
-			LogInfo("looking for " + label.Label)
+			mlog.Info("looking for " + label.Label)
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, Config.Username, finalMessage) {
-				LogInfo("Posted message for label: " + label.Label + " on PR: " + strconv.Itoa(pr.Number))
+				mlog.Info("Posted message for label: " + label.Label + " on PR: " + strconv.Itoa(pr.Number))
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
 			}
 		}
@@ -197,7 +197,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		LogError(err.Error())
+		mlog.Error(err.Error())
 		return
 	}
 

@@ -5,11 +5,13 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/mattermost/mattermost-server/mlog"
 )
 
 type LabelResponse struct {
@@ -120,17 +122,17 @@ func FindConfigFile(fileName string) string {
 
 func LoadConfig(fileName string) {
 	fileName = FindConfigFile(fileName)
-	LogInfo("Loading " + fileName)
+	mlog.Info(fmt.Sprintf("Loading %v", fileName))
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		LogCritical("Error opening config file=" + fileName + ", err=" + err.Error())
+		mlog.Critical(fmt.Sprintf("Error opening config file=%v, err=%v", fileName, err.Error()))
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(Config)
 	if err != nil {
-		LogCritical("Error decoding config file=" + fileName + ", err=" + err.Error())
+		mlog.Critical(fmt.Sprintf("Error decoding config file=%v, err=", fileName, err.Error()))
 	}
 }
 
