@@ -5,24 +5,9 @@ package server
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	"github.com/mattermost/mattermost-server/mlog"
 )
-
-func Log(level string, msg string, args ...interface{}) {
-	log.Printf("%v %v\n", level, fmt.Sprintf(msg, args...))
-	f, err := os.OpenFile("mattermod.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Printf("Failed to write to file")
-		return
-	}
-	defer f.Close()
-
-	log.SetOutput(f)
-	log.Printf("%v %v\n", level, fmt.Sprintf(msg, args...))
-}
 
 func LogErrorToMattermost(msg string, args ...interface{}) {
 	if Config.MattermostWebhookURL != "" {
@@ -38,5 +23,5 @@ func LogErrorToMattermost(msg string, args ...interface{}) {
 		}
 	}
 
-	mlog.Error(msg, args...)
+	//mlog.Error(msg, args...)
 }

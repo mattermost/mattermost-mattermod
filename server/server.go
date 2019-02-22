@@ -70,7 +70,7 @@ func Start() {
 
 	var handler http.Handler = Srv.Router
 	go func() {
-		mlog.Info("Listening on " + Config.ListenAddress)
+		mlog.Info(fmt.Sprintf("Listening on %v", Config.ListenAddress))
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
 			LogErrorToMattermost(err.Error())
