@@ -5,6 +5,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
 )
@@ -23,5 +24,10 @@ func LogErrorToMattermost(msg string, args ...interface{}) {
 		}
 	}
 
-	//mlog.Error(msg, args...)
+	// Safely convert args into serializable fields
+	var builder strings.Builder
+	for _, arg := range args {
+		builder.WriteString(fmt.Sprintf("%v", arg))
+	}
+	mlog.Error(fmt.Sprintf("%v %v", msg, builder.String()))
 }

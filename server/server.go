@@ -26,7 +26,6 @@ import (
 type Server struct {
 	Store  store.Store
 	Router *mux.Router
-	Log    *mlog.Logger
 }
 
 const (
@@ -45,30 +44,13 @@ var (
 )
 
 func Start() {
-	// Setup logging before creating the server and the server creation can
-	// and will generate errors if something bad happens.
-	loggingConfig := &mlog.LoggerConfiguration{
-		EnableConsole: Config.LogSettings.EnableConsole,
-		ConsoleJson:   Config.LogSettings.ConsoleJson,
-		ConsoleLevel:  strings.ToLower(Config.LogSettings.ConsoleLevel),
-		EnableFile:    Config.LogSettings.EnableFile,
-		FileJson:      Config.LogSettings.FileJson,
-		FileLevel:     strings.ToLower(Config.LogSettings.FileLevel),
-		FileLocation:  GetLogFileLocation(Config.LogSettings.FileLocation),
-	}
-
-	logger := mlog.NewLogger(loggingConfig)
-	mlog.RedirectStdLog(logger)
-	mlog.InitGlobalLogger(logger)
-
+	SetupLogging()
 	mlog.Info("Starting pr manager")
 
 	Srv = &Server{
 		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),
 		Router: mux.NewRouter(),
 	}
-
-	Srv.Log = logger
 
 	addApis(Srv.Router)
 
@@ -231,4 +213,21 @@ func GetLogFileLocation(fileLocation string) string {
 	}
 
 	return filepath.Join(fileLocation, LOG_FILENAME)
+}
+
+func SetupLogging() {
+	// and will generate errors if something bad happens.
+	loggingConfig := &mlog.LoggerConfiguration{
+		EnableConsole: Config.LogSettings.EnableConsole,
+		ConsoleJson:   Config.LogSettings.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(Config.LogSettings.ConsoleLevel),
+		EnableFile:    Config.LogSettings.EnableFile,
+		FileJson:      Config.LogSettings.FileJson,
+		FileLevel:     strings.ToLower(Config.LogSettings.FileLevel),
+		FileLocation:  GetLogFileLocation(Config.LogSettings.FileLocation),
+	}
+
+	logger := mlog.NewLogger(loggingConfig)
+	mlog.RedirectStdLog(logger)
+	mlog.InitGlobalLogger(logger)
 }
