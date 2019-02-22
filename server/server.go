@@ -75,6 +75,7 @@ func Start() {
 		if err != nil {
 			LogErrorToMattermost(err.Error())
 			mlog.Critical(err.Error())
+			panic(err.Error())
 		}
 	}()
 }

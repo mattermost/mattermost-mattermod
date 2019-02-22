@@ -127,12 +127,14 @@ func LoadConfig(fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		mlog.Critical(fmt.Sprintf("Error opening config file=%v, err=%v", fileName, err.Error()))
+		panic(err.Error())
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(Config)
 	if err != nil {
 		mlog.Critical(fmt.Sprintf("Error decoding config file=%v, err=", fileName, err.Error()))
+		panic(err.Error())
 	}
 }
 
