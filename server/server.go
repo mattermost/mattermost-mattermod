@@ -45,6 +45,22 @@ var (
 )
 
 func Start() {
+	// Setup logging before creating the server and the server creation can
+	// and will generate errors if something bad happens.
+	loggingConfig := &mlog.LoggerConfiguration{
+		EnableConsole: Config.LogSettings.EnableConsole,
+		ConsoleJson:   Config.LogSettings.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(Config.LogSettings.ConsoleLevel),
+		EnableFile:    Config.LogSettings.EnableFile,
+		FileJson:      Config.LogSettings.FileJson,
+		FileLevel:     strings.ToLower(Config.LogSettings.FileLevel),
+		FileLocation:  GetLogFileLocation(Config.LogSettings.FileLocation),
+	}
+
+	logger := mlog.NewLogger(loggingConfig)
+	mlog.RedirectStdLog(logger)
+	mlog.InitGlobalLogger(logger)
+
 	mlog.Info("Starting pr manager")
 
 	Srv = &Server{
@@ -52,21 +68,9 @@ func Start() {
 		Router: mux.NewRouter(),
 	}
 
+	Srv.Log = logger
+
 	addApis(Srv.Router)
-
-	logConfig := &mlog.LoggerConfiguration{
-		EnableConsole: Config.LoggerConfiguration.EnableConsole,
-		ConsoleJson:   Config.LoggerConfiguration.ConsoleJson,
-		ConsoleLevel:  strings.ToLower(Config.LoggerConfiguration.ConsoleLevel),
-		EnableFile:    Config.LoggerConfiguration.EnableFile,
-		FileJson:      Config.LoggerConfiguration.FileJson,
-		FileLevel:     strings.ToLower(Config.LoggerConfiguration.FileLevel),
-		FileLocation:  GetLogFileLocation(Config.LoggerConfiguration.FileLocation),
-	}
-	Srv.Log = mlog.NewLogger(logConfig)
-
-	mlog.RedirectStdLog(Srv.Log)
-	mlog.InitGlobalLogger(Srv.Log)
 
 	var handler http.Handler = Srv.Router
 	go func() {

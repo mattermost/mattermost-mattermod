@@ -84,8 +84,6 @@
         "FileLevel": "INFO",
         "FileJson": true,
         "FileFormat": "",
-        "FileLocation": "",
-        "EnableWebhookDebugging": true,
-        "EnableDiagnostics": true
+        "FileLocation": ""
     }
 }

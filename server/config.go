@@ -93,7 +93,7 @@ type PRServerConfig struct {
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
 
-	LoggerConfiguration struct {
+	LogSettings struct {
 		EnableConsole bool
 		ConsoleJson   bool
 		ConsoleLevel  string
