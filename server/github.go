@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/mlog"
 	"golang.org/x/oauth2"
 )
 
@@ -88,7 +89,7 @@ func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		LogError("Error: ", err)
+		LogError("Error: ", mlog.String("err", err.Error()))
 	}
 	LogInfo("Finished commenting")
 }

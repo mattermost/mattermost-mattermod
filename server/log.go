@@ -23,19 +23,16 @@ func LogLabels(prNumber int, labels []github.Label) {
 	mlog.Debug(fmt.Sprintf("PR %d has labels: %v", prNumber, strings.Join(labelStrings, ", ")))
 }
 
-func LogInfo(msg string, args ...interface{}) {
+func LogInfo(msg string, args ...mlog.Field) {
 	mlog.Info(msg, args...)
-	Log("INFO", msg, args...)
 }
 
-func LogError(msg string, args ...interface{}) {
+func LogError(msg string, args ...mlog.Field) {
 	mlog.Error(msg, args...)
-	Log("ERROR", msg, args...)
 }
 
-func LogCritical(msg string, args ...interface{}) {
+func LogCritical(msg string, args ...mlog.Field) {
 	mlog.Critical(msg, args...)
-	Log("CRIT", msg, args...)
 	panic(fmt.Sprintf(msg, args...))
 }
 
@@ -62,7 +59,7 @@ func LogErrorToMattermost(msg string, args ...interface{}) {
 		webhookRequest := &WebhookRequest{Username: "Mattermod", Text: webhookMessage}
 
 		if err := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
-			LogError("Unable to post to Mattermost webhook: %v", err)
+			LogError(fmt.Sprintf("Unable to post to Mattermost webhook: %v", err), mlog.String("err", err.Error()))
 		}
 	}
 

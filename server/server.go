@@ -65,6 +65,9 @@ func Start() {
 	}
 	Srv.Log = mlog.NewLogger(logConfig)
 
+	mlog.RedirectStdLog(Srv.Log)
+	mlog.InitGlobalLogger(Srv.Log)
+
 	var handler http.Handler = Srv.Router
 	go func() {
 		LogInfo("Listening on " + Config.ListenAddress)
@@ -217,7 +220,6 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetLogFileLocation was borrowed from Mattermost server
 func GetLogFileLocation(fileLocation string) string {
 	if fileLocation == "" {
 		fileLocation, _ = fileutils.FindDir("logs")
