@@ -216,7 +216,6 @@ func GetLogFileLocation(fileLocation string) string {
 }
 
 func SetupLogging() {
-	// and will generate errors if something bad happens.
 	loggingConfig := &mlog.LoggerConfiguration{
 		EnableConsole: Config.LogSettings.EnableConsole,
 		ConsoleJson:   Config.LogSettings.ConsoleJson,
