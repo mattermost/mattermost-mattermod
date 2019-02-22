@@ -30,7 +30,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info(fmt.Sprintf("Nothing to do. There is not Spinmint for this PR %v", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId), mlog.String("err", result.Err.Error()))
+			mlog.Info(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId))
 			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
@@ -125,14 +125,14 @@ func handlePROpened(pr *model.PullRequest) {
 
 	resp, err := http.Get(Config.SignedCLAURL)
 	if err != nil {
-		mlog.Error("Unable to get CLA list: " + err.Error())
+		mlog.Error(fmt.Sprintf("Unable to get CLA list: %v", err.Error()))
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		mlog.Error("Unable to read response body: " + err.Error())
+		mlog.Error(fmt.Sprintf("Unable to read response body: %v", err.Error()))
 		return
 	}
 
@@ -174,10 +174,10 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		mlog.Info("looking for other labels")
 
 		for _, label := range Config.PrLabels {
-			mlog.Info("looking for " + label.Label)
+			mlog.Info(fmt.Sprintf("looking for %v", label.Label))
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, Config.Username, finalMessage) {
-				mlog.Info("Posted message for label: " + label.Label + " on PR: " + strconv.Itoa(pr.Number))
+				mlog.Info(fmt.Sprintf("Posted message for label: %v on PR: ", label.Label, strconv.Itoa(pr.Number)))
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
 			}
 		}
