@@ -19,7 +19,7 @@ func LogErrorToMattermost(msg string, args ...interface{}) {
 		webhookRequest := &WebhookRequest{Username: "Mattermod", Text: webhookMessage}
 
 		if err := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
-			mlog.Error(fmt.Sprintf("Unable to post to Mattermost webhook: %v", err.Error()))
+			mlog.Error("Unable to post to Mattermost webhook", mlog.String("webhookerror", err.Error()))
 		}
 	}
 

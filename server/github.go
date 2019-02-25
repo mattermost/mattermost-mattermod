@@ -4,8 +4,6 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
@@ -89,7 +87,7 @@ func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Error: %v", err.Error()))
+		mlog.Error("Error", mlog.String("issueerror", err.Error()))
 	}
 	mlog.Info("Finished commenting")
 }

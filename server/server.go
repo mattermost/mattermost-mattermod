@@ -6,7 +6,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -76,7 +75,7 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			mlog.Error(fmt.Sprintf("failed to get prs %v/%v", repository.Owner, repository.Name))
+			mlog.Error("failed to get PRs", mlog.String("repoowner", repository.Owner), mlog.String("reponame", repository.Name))
 			mlog.Error(err.Error())
 			continue
 		}
@@ -84,7 +83,7 @@ func Tick() {
 		for _, ghPullRequest := range ghPullRequests {
 			pullRequest, err := GetPullRequestFromGithub(ghPullRequest)
 			if err != nil {
-				mlog.Error(fmt.Sprintf("failed to convert PR for %v: %v", ghPullRequest.Number, err.Error()))
+				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.String("prerror", err.Error()))
 				continue
 			}
 
@@ -95,7 +94,7 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			mlog.Error(fmt.Sprintf("failed to get issues %v/%v", repository.Owner, repository.Name))
+			mlog.Error("failed to get issues", mlog.String("repoowner", repository.Owner), mlog.String("reponame", repository.Name))
 			mlog.Error(err.Error())
 			continue
 		}
@@ -108,7 +107,7 @@ func Tick() {
 
 			issue, err := GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
 			if err != nil {
-				mlog.Error(fmt.Sprintf("failed to convert issue for %v: %v", ghIssue.Number, err.Error()))
+				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.String("issueerror", err.Error()))
 				continue
 			}
 

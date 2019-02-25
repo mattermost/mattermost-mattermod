@@ -121,14 +121,14 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
-		mlog.Error(fmt.Sprintf("Unable to set up spintmint for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName))
+		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 
 	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
 	if !ok {
-		mlog.Error(fmt.Sprintf("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName))
+		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
@@ -195,14 +195,14 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 func waitForMobileAppsBuild(pr *model.PullRequest) {
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
-		mlog.Error(fmt.Sprintf("Unable to build the mobile app for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName))
+		mlog.Error("Unable to build the mobile app for PR %v in %v/%v without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
 		return
 	}
 
 	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
 	if !ok {
-		mlog.Error(fmt.Sprintf("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName))
+		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
 		return
 	}
@@ -224,7 +224,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	jobName := fmt.Sprintf("mm/job/%s", repo.JobName)
 	job, err := client.GetJob(jobName)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Failed to get Jenkins job %v: %v", jobName, err))
+		mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.String("jenkinserror", err.Error()))
 		return
 	}
 
@@ -233,7 +233,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	parameters.Add("PR_NUMBER", strconv.Itoa(pr.Number))
 	err = client.Build(jobName, parameters)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Failed to build Jenkins job %v: %v", jobName, err))
+		mlog.Error("Failed to build Jenkins job", mlog.String("job", jobName), mlog.String("jenkinserror", err.Error()))
 		return
 	}
 
@@ -241,7 +241,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	for {
 		build, err := client.GetLastBuild(job)
 		if err != nil {
-			mlog.Error(fmt.Sprintf("Failed to get the build Jenkins job %v: %v", jobName, err))
+			mlog.Error("Failed to get the build Jenkins job", mlog.String("job", jobName), mlog.String("jenkinserror", err.Error()))
 			return
 		}
 		if !build.Building && build.Result == "SUCCESS" {
@@ -269,7 +269,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, bool) {
 	for {
 		if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
-			mlog.Error(fmt.Sprintf("Unable to get updated PR while waiting for spinmint: %v", result.Err.Error()))
+			mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("builderror", result.Err.Error()))
 			return nil, false
 		} else {
 			// Update the PR in case the build link has changed because of a new commit
@@ -304,13 +304,13 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				jobName = "mw/job/" + jobName + "/job/" + subJobName
 				mlog.Info("Job name for webapp", mlog.String("job", jobName))
 			} else {
-				mlog.Error(fmt.Sprintf("Did not know this repository: %v. Aborting.", pr.RepoName))
+				mlog.Error("Did not know this repository. Aborting.", mlog.String("reponame", pr.RepoName))
 				return pr, false
 			}
 
 			job, err := client.GetJob(jobName)
 			if err != nil {
-				mlog.Error(fmt.Sprintf("Failed to get Jenkins job %v: %v", jobName, err))
+				mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.String("jenkinserror", err.Error()))
 				return pr, false
 			}
 
@@ -328,13 +328,13 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				mlog.Info("build for PR succeeded!", mlog.Int64("jobnumber", jobNumber), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 				return pr, true
 			} else if build.Result == "FAILURE" {
-				mlog.Error(fmt.Sprintf("build %v has status %v aborting.", build.Number, build.Result))
+				mlog.Error("build has status FAILURE. Aborting.", mlog.Int("build", build.Number), mlog.String("builderror", build.Result))
 				return pr, false
 			} else {
 				mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 			}
 		} else {
-			mlog.Error(fmt.Sprintf("Unable to find build link for PR %v", pr.Number))
+			mlog.Error("Unable to find build link for PR", mlog.Int("pr", pr.Number))
 		}
 
 		mlog.Info("Sleeping a bit....Will re-check the Jenkins Build...")
@@ -397,7 +397,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 		},
 	})
 	if errtag != nil {
-		mlog.Error(fmt.Sprintf("Could not create tags for instance: %v Error: %v", *resp.Instances[0].InstanceId, errtag.Error()))
+		mlog.Error("Could not create tags for instance", mlog.String("instance", *resp.Instances[0].InstanceId), mlog.String("tagerror", errtag.Error()))
 	}
 
 	return resp.Instances[0], nil
@@ -416,14 +416,14 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 
 	_, err := svc.TerminateInstances(params)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Error terminating instances: %v", err.Error()))
+		mlog.Error("Error terminating instances", mlog.String("instanceerror", err.Error()))
 		return
 	}
 
 	// Remove route53 entry
 	err = updateRoute53Subdomain(instanceId, "", "DELETE")
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Error removing the Route53 entry: %v", err.Error()))
+		mlog.Error("Error removing the Route53 entry", mlog.String("route53error", err.Error()))
 		return
 	}
 
@@ -440,7 +440,7 @@ func getPublicDnsName(instance string) string {
 	}
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Problem getting instance ip: %v", err.Error()))
+		mlog.Error("Problem getting instance ip", mlog.String("instanceerror", err.Error()))
 		return ""
 	}
 
@@ -488,7 +488,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 func checkSpinmintLifeTime() error {
 	spinmints := []*model.Spinmint{}
 	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
-		mlog.Error(fmt.Sprintf("Unable to get updated PR while waiting for spinmint: %v", result.Err.Error()))
+		mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("spinminterror", result.Err.Error()))
 		return result.Err
 	} else {
 		spinmints = result.Data.([]*model.Spinmint)

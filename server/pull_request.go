@@ -4,7 +4,6 @@
 package server
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -24,7 +23,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 	if event.Action == "closed" {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			mlog.Error(fmt.Sprintf("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error()))
+			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("prerror", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
 		} else {
@@ -124,14 +123,14 @@ func handlePROpened(pr *model.PullRequest) {
 
 	resp, err := http.Get(Config.SignedCLAURL)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Unable to get CLA list: %v", err.Error()))
+		mlog.Error("Unable to get CLA list", mlog.String("claerror", err.Error()))
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Unable to read response body: %v", err.Error()))
+		mlog.Error("Unable to read response body", mlog.String("responseerror", err.Error()))
 		return
 	}
 
@@ -149,7 +148,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Unable to list comments for PR %v: %v", pr.Number, err.Error()))
+		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.String("prerror", err.Error()))
 		return
 	}
 
