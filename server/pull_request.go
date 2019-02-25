@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -27,10 +26,10 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
 			mlog.Error(fmt.Sprintf("Unable to get the spinmint information: %v. Maybe does not exist.", result.Err.Error()))
 		} else if result.Data == nil {
-			mlog.Info(fmt.Sprintf("Nothing to do. There is not Spinmint for this PR %v", pr.Number))
+			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info(fmt.Sprintf("Spinmint instance %v", spinmint.InstanceId))
+			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
 			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
@@ -112,7 +111,7 @@ func checkPullRequestForChanges(pr *model.PullRequest) {
 	}
 
 	if prHasChanges {
-		mlog.Info(fmt.Sprintf("pr %v has changes", pr.Number))
+		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
 		if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
 			mlog.Error(result.Err.Error())
 			return
@@ -142,7 +141,7 @@ func handlePROpened(pr *model.PullRequest) {
 }
 
 func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
-	mlog.Info(fmt.Sprintf("labeled pr %v with %v", pr.Number, addedLabel))
+	mlog.Info("labeled PR with label", mlog.Int("pr", pr.Number), mlog.String("label", addedLabel))
 
 	// Must be sure the comment is created before we let anouther request test
 	commentLock.Lock()
@@ -174,10 +173,10 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		mlog.Info("looking for other labels")
 
 		for _, label := range Config.PrLabels {
-			mlog.Info(fmt.Sprintf("looking for %v", label.Label))
+			mlog.Info("looking for label", mlog.String("label", label.Label))
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, Config.Username, finalMessage) {
-				mlog.Info(fmt.Sprintf("Posted message for label: %v on PR: ", label.Label, strconv.Itoa(pr.Number)))
+				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
 			}
 		}

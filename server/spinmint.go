@@ -138,7 +138,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 		ApiToken: credentials.ApiToken,
 	}, credentials.URL)
 
-	mlog.Info(fmt.Sprintf("Waiting for Jenkins to build to set up spinmint for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName))
+	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 
 	pr, errr := waitForBuild(client, pr)
 	if errr == false || pr == nil {
@@ -212,7 +212,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 		ApiToken: credentials.ApiToken,
 	}, credentials.URL)
 
-	mlog.Info(fmt.Sprintf("Waiting for Jenkins to build to start build the mobile app for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName))
+	mlog.Info("Waiting for Jenkins to build to start build the mobile app for PR", mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 
 	pr, errr := waitForBuild(client, pr)
 	if errr == false || pr == nil {
@@ -228,7 +228,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 		return
 	}
 
-	mlog.Info(fmt.Sprintf("Will start the job %v", jobName))
+	mlog.Info("Will start the job", mlog.String("job", jobName))
 	parameters := url.Values{}
 	parameters.Add("PR_NUMBER", strconv.Itoa(pr.Number))
 	err = client.Build(jobName, parameters)
@@ -245,14 +245,14 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 			return
 		}
 		if !build.Building && build.Result == "SUCCESS" {
-			mlog.Info(fmt.Sprintf("build mobile app %v for PR %v in %v/%v succeeded!", build.Number, pr.Number, pr.RepoOwner, pr.RepoName))
+			mlog.Info("build mobile app for PR succeeded!", mlog.Int("build", build.Number), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 			break
 		} else if build.Result == "FAILURE" {
-			mlog.Error(fmt.Sprintf("build %v has status %v aborting.", build.Number, build.Result))
+			mlog.Error("build has status FAILURE aborting.", mlog.Int("build", build.Number), mlog.String("result", build.Result))
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
 			return
 		} else {
-			mlog.Info(fmt.Sprintf("build %v is running: %v", build.Number, build.Building))
+			mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 		}
 		time.Sleep(60 * time.Second)
 	}
@@ -277,7 +277,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 		}
 
 		if pr.BuildLink != "" {
-			mlog.Info(fmt.Sprintf("BuildLink for %v in %v/%v is %v", pr.Number, pr.RepoOwner, pr.RepoName, pr.BuildLink))
+			mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
 			// Doing this because the lib we are using does not support folders :(
 			var jobNumber int64
 			var jobName string
@@ -290,19 +290,19 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				subJobName := parts[len(parts)-4] //PR-XXXX
 
 				jobName = "mp/job/" + jobName + "/job/" + subJobName
-				mlog.Info(fmt.Sprintf("Job name for server: %v", jobName))
+				mlog.Info("Job name for server", mlog.String("job", jobName))
 			} else if pr.RepoName == "mattermost-mobile" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
 				jobName = parts[len(parts)-3] //mattermost-mobile
 				jobName = "mm/job/" + jobName
-				mlog.Info(fmt.Sprintf("Job name for mobile: %v", jobName))
+				mlog.Info("Job name for mobile", mlog.String("job", jobName))
 			} else if pr.RepoName == "mattermost-webapp" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 				jobName = parts[len(parts)-6]     //mattermost-webapp
 				subJobName := parts[len(parts)-4] //PR-XXXX
 
 				jobName = "mw/job/" + jobName + "/job/" + subJobName
-				mlog.Info(fmt.Sprintf("Job name for webapp: %v", jobName))
+				mlog.Info("Job name for webapp", mlog.String("job", jobName))
 			} else {
 				mlog.Error(fmt.Sprintf("Did not know this repository: %v. Aborting.", pr.RepoName))
 				return pr, false
@@ -325,13 +325,13 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 			}
 
 			if !build.Building && build.Result == "SUCCESS" {
-				mlog.Info(fmt.Sprintf("build %v for PR %v in %v/%v succeeded!", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName))
+				mlog.Info("build for PR succeeded!", mlog.Int64("jobnumber", jobNumber), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 				return pr, true
 			} else if build.Result == "FAILURE" {
 				mlog.Error(fmt.Sprintf("build %v has status %v aborting.", build.Number, build.Result))
 				return pr, false
 			} else {
-				mlog.Info(fmt.Sprintf("build %v is running: %v", build.Number, build.Building))
+				mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 			}
 		} else {
 			mlog.Error(fmt.Sprintf("Unable to find build link for PR %v", pr.Number))
@@ -345,7 +345,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 
 // Returns instance ID of instance created
 func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (*ec2.Instance, error) {
-	mlog.Info("Setting up spinmint for PR: " + strconv.Itoa(prNumber))
+	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", prNumber))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
@@ -404,7 +404,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 }
 
 func destroySpinmint(pr *model.PullRequest, instanceId string) {
-	mlog.Info(fmt.Sprintf("Destroying spinmint %v for PR %v in %v/%v", instanceId, pr.Number, pr.RepoOwner, pr.RepoName))
+	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceId), mlog.Int("pr", pr.Number), mlog.String("repoowner", pr.RepoOwner), mlog.String("reponame", pr.RepoName))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
@@ -495,11 +495,11 @@ func checkSpinmintLifeTime() error {
 	}
 
 	for _, spinmint := range spinmints {
-		mlog.Info(fmt.Sprintf("Check if need destroy spinmint %v for PR %v in %v/%v", spinmint.InstanceId, spinmint.Number, spinmint.RepoOwner, spinmint.RepoName))
+		mlog.Info("Check if need destroy spinmint for PR", mlog.String("instance", spinmint.InstanceId), mlog.Int("spinmint", spinmint.Number), mlog.String("repoowner", spinmint.RepoOwner), mlog.String("reponame", spinmint.RepoName))
 		spinmintCreated := time.Unix(spinmint.CreatedAt, 0)
 		duration := time.Since(spinmintCreated)
 		if int(duration.Hours()) > Config.SpinmintExpirationHour {
-			mlog.Info(fmt.Sprintf("Will destroy spinmint %v for PR %v in %v/%v", spinmint.InstanceId, spinmint.Number, spinmint.RepoOwner, spinmint.RepoName))
+			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", spinmint.InstanceId), mlog.Int("spinmint", spinmint.Number), mlog.String("repoowner", spinmint.RepoOwner), mlog.String("reponame", spinmint.RepoName))
 			pr := &model.PullRequest{
 				RepoOwner: spinmint.RepoOwner,
 				RepoName:  spinmint.RepoName,

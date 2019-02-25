@@ -122,7 +122,7 @@ func FindConfigFile(fileName string) string {
 
 func LoadConfig(fileName string) {
 	fileName = FindConfigFile(fileName)
-	mlog.Info(fmt.Sprintf("Loading %v", fileName))
+	mlog.Info("Loading config", mlog.String("filename", fileName))
 
 	file, err := os.Open(fileName)
 	if err != nil {

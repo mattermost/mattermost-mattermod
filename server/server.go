@@ -56,7 +56,7 @@ func Start() {
 
 	var handler http.Handler = Srv.Router
 	go func() {
-		mlog.Info(fmt.Sprintf("Listening on %v", Config.ListenAddress))
+		mlog.Info("Listening on", mlog.String("address", Config.ListenAddress))
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
 			LogErrorToMattermost(err.Error())
@@ -136,7 +136,7 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
-		mlog.Info(fmt.Sprintf("pr event %v %v", event.PRNumber, event.Action))
+		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		handlePullRequestEvent(event)
 	} else {
 		handleIssueEvent(event)

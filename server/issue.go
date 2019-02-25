@@ -4,8 +4,6 @@
 package server
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -51,14 +49,14 @@ func checkIssueForChanges(issue *model.Issue) {
 		}
 
 		if !hadLabel {
-			mlog.Info(fmt.Sprintf("issue %v added label %v", issue.Number, label))
+			mlog.Info("issue added label", mlog.Int("issue", issue.Number), mlog.String("label", label))
 			handleIssueLabeled(issue, label)
 			hasChanges = true
 		}
 	}
 
 	if hasChanges {
-		mlog.Info(fmt.Sprintf("issue %v has changes", issue.Number))
+		mlog.Info("issue has changes", mlog.Int("issue", issue.Number))
 
 		if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
 			mlog.Error(result.Err.Error())
@@ -83,7 +81,7 @@ func handleIssueLabeled(issue *model.Issue, addedLabel string) {
 	for _, label := range Config.IssueLabels {
 		finalMessage := strings.Replace(label.Message, "USERNAME", issue.Username, -1)
 		if label.Label == addedLabel && !messageByUserContains(comments, Config.Username, finalMessage) {
-			mlog.Info(fmt.Sprintf("Posted message for label: %v on PR: %v", label.Label, strconv.Itoa(issue.Number)))
+			mlog.Info("Posted message for label on PR", mlog.String("label", label.Label), mlog.Int("issue", issue.Number))
 			commentOnIssue(issue.RepoOwner, issue.RepoName, issue.Number, finalMessage)
 		}
 	}

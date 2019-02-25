@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -86,7 +85,7 @@ func LabelsToStringArray(labels []*github.Label) []string {
 }
 
 func commentOnIssue(repoOwner, repoName string, number int, comment string) {
-	mlog.Info(fmt.Sprintf("Commenting on issue %v Comment: %v", strconv.Itoa(number), comment))
+	mlog.Info("Commenting on issue", mlog.Int("issue", number), mlog.String("comment", comment))
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
