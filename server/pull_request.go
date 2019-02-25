@@ -23,7 +23,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 	if event.Action == "closed" {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("prerror", result.Err.Error()))
+			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
 		} else {
@@ -123,7 +123,7 @@ func handlePROpened(pr *model.PullRequest) {
 
 	resp, err := http.Get(Config.SignedCLAURL)
 	if err != nil {
-		mlog.Error("Unable to get CLA list", mlog.String("claerror", err.Error()))
+		mlog.Error("Unable to get CLA list", mlog.String("cla_error", err.Error()))
 		return
 	}
 
@@ -148,7 +148,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.String("prerror", err.Error()))
+		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.String("pr_error", err.Error()))
 		return
 	}
 
