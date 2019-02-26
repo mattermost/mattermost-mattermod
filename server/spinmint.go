@@ -224,7 +224,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	jobName := fmt.Sprintf("mm/job/%s", repo.JobName)
 	job, err := client.GetJob(jobName)
 	if err != nil {
-		mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.String("jenkins_error", err.Error()))
+		mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
 		return
 	}
 
@@ -233,7 +233,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	parameters.Add("PR_NUMBER", strconv.Itoa(pr.Number))
 	err = client.Build(jobName, parameters)
 	if err != nil {
-		mlog.Error("Failed to build Jenkins job", mlog.String("job", jobName), mlog.String("jenkins_error", err.Error()))
+		mlog.Error("Failed to build Jenkins job", mlog.String("job", jobName), mlog.Err(err))
 		return
 	}
 
@@ -241,7 +241,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	for {
 		build, err := client.GetLastBuild(job)
 		if err != nil {
-			mlog.Error("Failed to get the build Jenkins job", mlog.String("job", jobName), mlog.String("jenkins_error", err.Error()))
+			mlog.Error("Failed to get the build Jenkins job", mlog.String("job", jobName), mlog.Err(err))
 			return
 		}
 		if !build.Building && build.Result == "SUCCESS" {
@@ -310,7 +310,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 
 			job, err := client.GetJob(jobName)
 			if err != nil {
-				mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.String("jenkins_error", err.Error()))
+				mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
 				return pr, false
 			}
 
@@ -416,14 +416,14 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 
 	_, err := svc.TerminateInstances(params)
 	if err != nil {
-		mlog.Error("Error terminating instances", mlog.String("instanceerror", err.Error()))
+		mlog.Error("Error terminating instances", mlog.Err(err))
 		return
 	}
 
 	// Remove route53 entry
 	err = updateRoute53Subdomain(instanceId, "", "DELETE")
 	if err != nil {
-		mlog.Error("Error removing the Route53 entry", mlog.String("route53error", err.Error()))
+		mlog.Error("Error removing the Route53 entry", mlog.Err(err))
 		return
 	}
 
@@ -440,7 +440,7 @@ func getPublicDnsName(instance string) string {
 	}
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
-		mlog.Error("Problem getting instance ip", mlog.String("instanceerror", err.Error()))
+		mlog.Error("Problem getting instance ip", mlog.Err(err))
 		return ""
 	}
 

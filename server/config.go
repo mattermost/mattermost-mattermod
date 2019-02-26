@@ -125,14 +125,14 @@ func LoadConfig(fileName string) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		mlog.Critical("Error opening config file", mlog.String("filename", fileName), mlog.String("config", err.Error()))
+		mlog.Critical("Error opening config file", mlog.String("filename", fileName), mlog.Err(err))
 		panic(err.Error())
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(Config)
 	if err != nil {
-		mlog.Critical("Error decoding config file", mlog.String("filename", fileName), mlog.String("config", err.Error()))
+		mlog.Critical("Error decoding config file", mlog.String("filename", fileName), mlog.Err(err))
 		panic(err.Error())
 	}
 }

@@ -17,7 +17,7 @@ import (
 func handlePullRequestEvent(event *PullRequestEvent) {
 	pr, err := GetPullRequestFromGithub(event.PullRequest)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("pr_error", mlog.Err(err))
 		return
 	}
 
@@ -123,14 +123,14 @@ func handlePROpened(pr *model.PullRequest) {
 
 	resp, err := http.Get(Config.SignedCLAURL)
 	if err != nil {
-		mlog.Error("Unable to get CLA list", mlog.String("cla_error", err.Error()))
+		mlog.Error("Unable to get CLA list", mlog.Err(err))
 		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		mlog.Error("Unable to read response body", mlog.String("responseerror", err.Error()))
+		mlog.Error("Unable to read response body", mlog.Err(err))
 		return
 	}
 
@@ -148,7 +148,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.String("pr_error", err.Error()))
+		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
 	}
 
@@ -195,7 +195,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 
 	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("pr_error", mlog.Err(err))
 		return
 	}
 

@@ -87,7 +87,7 @@ func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		mlog.Error("Error", mlog.String("issue_error", err.Error()))
+		mlog.Error("Error", mlog.Err(err))
 	}
 	mlog.Info("Finished commenting")
 }

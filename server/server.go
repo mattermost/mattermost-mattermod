@@ -59,7 +59,7 @@ func Start() {
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
 			LogErrorToMattermost(err.Error())
-			mlog.Critical(err.Error())
+			mlog.Critical("server_error", mlog.Err(err))
 			panic(err.Error())
 		}
 	}()
@@ -76,14 +76,14 @@ func Tick() {
 		})
 		if err != nil {
 			mlog.Error("failed to get PRs", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			mlog.Error(err.Error())
+			mlog.Error("pr_error", mlog.Err(err))
 			continue
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
 			pullRequest, err := GetPullRequestFromGithub(ghPullRequest)
 			if err != nil {
-				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.String("pr_error", err.Error()))
+				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(err))
 				continue
 			}
 
@@ -95,7 +95,7 @@ func Tick() {
 		})
 		if err != nil {
 			mlog.Error("failed to get issues", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			mlog.Error(err.Error())
+			mlog.Error("issue_error", mlog.Err(err))
 			continue
 		}
 
@@ -107,7 +107,7 @@ func Tick() {
 
 			issue, err := GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
 			if err != nil {
-				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.String("issue_error", err.Error()))
+				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 				continue
 			}
 
@@ -163,7 +163,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(prs); err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("pr_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -181,7 +181,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(issues); err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -199,7 +199,7 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(spinmints); err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("spinmint_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)

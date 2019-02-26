@@ -63,7 +63,7 @@ func initConnection(driverName, dataSource string) *SqlStore {
 
 	db, err := dbsql.Open(driverName, dataSource)
 	if err != nil {
-		mlog.Critical("failed to open db connection", mlog.String("dbconnection", err.Error()))
+		mlog.Critical("failed to open db connection", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_DB_OPEN)
 	}
@@ -71,7 +71,7 @@ func initConnection(driverName, dataSource string) *SqlStore {
 	mlog.Info("pinging db")
 	err = db.Ping()
 	if err != nil {
-		mlog.Critical("could not ping db", mlog.String("dbping", err.Error()))
+		mlog.Critical("could not ping db", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_PING)
 	}
@@ -89,7 +89,7 @@ func NewSqlStore(driverName, dataSource string) Store {
 	sqlStore.spinmint = NewSqlSpinmintStore(sqlStore)
 
 	if err := sqlStore.master.CreateTablesIfNotExists(); err != nil {
-		mlog.Critical("error creating tables", mlog.String("dbtables", err.Error()))
+		mlog.Critical("error creating tables", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_CREATE_TABLE)
 	}
@@ -117,7 +117,7 @@ func (ss *SqlStore) DoesTableExist(tableName string) bool {
 	)
 
 	if err != nil {
-		mlog.Critical("failed to check if table exists", mlog.String("dbtable", err.Error()))
+		mlog.Critical("failed to check if table exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_TABLE_EXISTS_MYSQL)
 	}
@@ -140,7 +140,7 @@ func (ss *SqlStore) DoesColumnExist(tableName string, columnName string) bool {
 	)
 
 	if err != nil {
-		mlog.Critical("failed to check if column exists", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to check if column exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_DOES_COLUMN_EXISTS_MYSQL)
 	}
@@ -155,7 +155,7 @@ func (ss *SqlStore) CreateColumnIfNotExists(tableName string, columnName string,
 
 	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " ADD " + columnName + " " + mySqlColType + " DEFAULT '" + defaultValue + "'")
 	if err != nil {
-		mlog.Critical("failed to create column if not exists: %v", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to create column if not exists: %v", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_CREATE_COLUMN_MYSQL)
 	}
@@ -171,7 +171,7 @@ func (ss *SqlStore) RemoveColumnIfExists(tableName string, columnName string) bo
 
 	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " DROP COLUMN " + columnName)
 	if err != nil {
-		mlog.Critical("failed to remove column if exists", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to remove column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_REMOVE_COLUMN)
 	}
@@ -187,7 +187,7 @@ func (ss *SqlStore) RenameColumnIfExists(tableName string, oldColumnName string,
 	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " CHANGE " + oldColumnName + " " + newColumnName + " " + colType)
 
 	if err != nil {
-		mlog.Critical("failed to rename column if exists", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to rename column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_RENAME_COLUMN)
 	}
@@ -203,7 +203,7 @@ func (ss *SqlStore) GetMaxLengthOfColumnIfExists(tableName string, columnName st
 	result, err := ss.GetMaster().SelectStr("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_name = '" + tableName + "' AND COLUMN_NAME = '" + columnName + "'")
 
 	if err != nil {
-		mlog.Critical("failed to get max length of column if exists", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to get max length of column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_MAX_COLUMN)
 	}
@@ -219,7 +219,7 @@ func (ss *SqlStore) AlterColumnTypeIfExists(tableName string, columnName string,
 	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " MODIFY " + columnName + " " + mySqlColType)
 
 	if err != nil {
-		mlog.Critical("failed to alter column type if exists", mlog.String("dbcolumn", err.Error()))
+		mlog.Critical("failed to alter column type if exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_ALTER_COLUMN)
 	}
@@ -248,7 +248,7 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 
 	count, err := ss.GetMaster().SelectInt("SELECT COUNT(0) AS index_exists FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() and table_name = ? AND index_name = ?", tableName, indexName)
 	if err != nil {
-		mlog.Critical("can't check for index", mlog.String("dbindex", err.Error()))
+		mlog.Critical("can't check for index", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_CREATE_INDEX_MYSQL)
 	}
@@ -264,7 +264,7 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 
 	_, err = ss.GetMaster().Exec("CREATE  " + uniqueStr + fullTextIndex + " INDEX " + indexName + " ON " + tableName + " (" + columnName + ")")
 	if err != nil {
-		mlog.Critical("failed to create index if not exists", mlog.String("dbindex", err.Error()))
+		mlog.Critical("failed to create index if not exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_CREATE_INDEX_FULL_MYSQL)
 	}
@@ -275,7 +275,7 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 func (ss *SqlStore) RemoveIndexIfExists(indexName string, tableName string) bool {
 	count, err := ss.GetMaster().SelectInt("SELECT COUNT(0) AS index_exists FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() and table_name = ? AND index_name = ?", tableName, indexName)
 	if err != nil {
-		mlog.Critical("can't check index to remove", mlog.String("dbindex", err.Error()))
+		mlog.Critical("can't check index to remove", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_REMOVE_INDEX_MYSQL)
 	}
@@ -286,7 +286,7 @@ func (ss *SqlStore) RemoveIndexIfExists(indexName string, tableName string) bool
 
 	_, err = ss.GetMaster().Exec("DROP INDEX " + indexName + " ON " + tableName)
 	if err != nil {
-		mlog.Critical("failed to remove index if exists", mlog.String("dbindex", err.Error()))
+		mlog.Critical("failed to remove index if exists", mlog.Err(err))
 		time.Sleep(time.Second)
 		os.Exit(EXIT_REMOVE_INDEX_MYSQL)
 	}

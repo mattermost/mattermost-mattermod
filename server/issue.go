@@ -15,7 +15,7 @@ func handleIssueEvent(event *PullRequestEvent) {
 
 	issue, err := GetIssueFromGithub(parts[len(parts)-2], parts[len(parts)-1], event.Issue)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		return
 	}
 
@@ -74,7 +74,7 @@ func handleIssueLabeled(issue *model.Issue, addedLabel string) {
 
 	comments, _, err := client.Issues.ListComments(issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		return
 	}
 
