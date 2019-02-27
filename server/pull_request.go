@@ -152,7 +152,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		return
 	}
 
-	// Old comment created by Mattermod user for test server deletion will be cleaned here
+	// Old comment created by Mattermod user for test server deletion will be deleted here
 	for _, comment := range comments {
 		if *comment.User.Login == Config.Username && *comment.Body == Config.DestroyedSpinmintMessage {
 			LogInfo("Removing old server deletion comment with ID %v", strconv.Itoa(*comment.ID))
