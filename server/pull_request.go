@@ -152,6 +152,17 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		return
 	}
 
+	// Old comment created by Mattermod user for test server deletion will be cleaned here
+	for _, comment := range comments {
+		if *comment.User.Login == Config.Username && *comment.Body == Config.DestroyedSpinmintMessage {
+			LogInfo("Removing old server deletion comment with ID %v", strconv.Itoa(*comment.ID))
+			_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
+			if err != nil {
+				LogError("Error: ", err)
+			}
+		}
+	}
+
 	if addedLabel == Config.SetupSpinmintTag && !messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) {
 		mlog.Info("Label to spin a test server")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintMessage)
@@ -214,6 +225,18 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
 				instanceId = match[1]
 				break
+			}
+		}
+
+		// Old comments created by Mattermod user will be deleted here.
+		LogInfo("Removing old Mattermod comments")
+		for _, comment := range comments {
+			if *comment.User.Login == Config.Username {
+				LogInfo("Removing old comment with ID %v", strconv.Itoa(*comment.ID))
+				_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
+				if err != nil {
+					LogError("Error: ", err)
+				}
 			}
 		}
 
