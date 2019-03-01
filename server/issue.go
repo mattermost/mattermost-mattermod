@@ -4,11 +4,10 @@
 package server
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/mlog"
 )
 
 func handleIssueEvent(event *PullRequestEvent) {
@@ -16,7 +15,7 @@ func handleIssueEvent(event *PullRequestEvent) {
 
 	issue, err := GetIssueFromGithub(parts[len(parts)-2], parts[len(parts)-1], event.Issue)
 	if err != nil {
-		LogError(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		return
 	}
 
@@ -26,11 +25,11 @@ func handleIssueEvent(event *PullRequestEvent) {
 func checkIssueForChanges(issue *model.Issue) {
 	var oldIssue *model.Issue
 	if result := <-Srv.Store.Issue().Get(issue.RepoOwner, issue.RepoName, issue.Number); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		return
 	} else if result.Data == nil {
 		if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
-			LogError(result.Err.Error())
+			mlog.Error(result.Err.Error())
 		}
 		return
 	} else {
@@ -50,17 +49,17 @@ func checkIssueForChanges(issue *model.Issue) {
 		}
 
 		if !hadLabel {
-			LogInfo(fmt.Sprintf("issue %v added label %v", issue.Number, label))
+			mlog.Info("issue added label", mlog.Int("issue", issue.Number), mlog.String("label", label))
 			handleIssueLabeled(issue, label)
 			hasChanges = true
 		}
 	}
 
 	if hasChanges {
-		LogInfo(fmt.Sprintf("issue %v has changes", issue.Number))
+		mlog.Info("issue has changes", mlog.Int("issue", issue.Number))
 
 		if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
-			LogError(result.Err.Error())
+			mlog.Error(result.Err.Error())
 			return
 		}
 	}
@@ -75,14 +74,14 @@ func handleIssueLabeled(issue *model.Issue, addedLabel string) {
 
 	comments, _, err := client.Issues.ListComments(issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
-		LogError(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		return
 	}
 
 	for _, label := range Config.IssueLabels {
 		finalMessage := strings.Replace(label.Message, "USERNAME", issue.Username, -1)
 		if label.Label == addedLabel && !messageByUserContains(comments, Config.Username, finalMessage) {
-			LogInfo("Posted message for label: " + label.Label + " on PR: " + strconv.Itoa(issue.Number))
+			mlog.Info("Posted message for label on PR", mlog.String("label", label.Label), mlog.Int("issue", issue.Number))
 			commentOnIssue(issue.RepoOwner, issue.RepoName, issue.Number, finalMessage)
 		}
 	}

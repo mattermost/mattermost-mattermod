@@ -74,5 +74,16 @@
     "AWSDnsSuffix": "",
 
     "MattermostWebhookURL": "",
-    "MattermostWebhookFooter": ""
+    "MattermostWebhookFooter": "",
+
+    "LogSettings": {
+        "EnableConsole": true,
+        "ConsoleLevel": "DEBUG",
+        "ConsoleJson": true,
+        "EnableFile": true,
+        "FileLevel": "INFO",
+        "FileJson": true,
+        "FileFormat": "",
+        "FileLocation": ""
+    }
 }

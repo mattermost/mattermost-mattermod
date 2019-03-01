@@ -6,9 +6,9 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -18,6 +18,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/store"
+	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/utils/fileutils"
 )
 
 type Server struct {
@@ -27,6 +29,7 @@ type Server struct {
 
 const (
 	INSTANCE_ID_MESSAGE = "Instance ID: "
+	LOG_FILENAME        = "mattermod.log"
 )
 
 var (
@@ -40,7 +43,8 @@ var (
 )
 
 func Start() {
-	LogInfo("Starting pr manager")
+	SetupLogging()
+	mlog.Info("Starting pr manager")
 
 	Srv = &Server{
 		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),
@@ -51,17 +55,18 @@ func Start() {
 
 	var handler http.Handler = Srv.Router
 	go func() {
-		LogInfo("Listening on " + Config.ListenAddress)
+		mlog.Info("Listening on", mlog.String("address", Config.ListenAddress))
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
 			LogErrorToMattermost(err.Error())
-			LogCritical(err.Error())
+			mlog.Critical("server_error", mlog.Err(err))
+			panic(err.Error())
 		}
 	}()
 }
 
 func Tick() {
-	LogInfo("tick")
+	mlog.Info("tick")
 
 	client := NewGithubClient()
 
@@ -70,15 +75,15 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			LogError("failed to get prs " + repository.Owner + "/" + repository.Name)
-			LogError(err.Error())
+			mlog.Error("failed to get PRs", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+			mlog.Error("pr_error", mlog.Err(err))
 			continue
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
 			pullRequest, err := GetPullRequestFromGithub(ghPullRequest)
 			if err != nil {
-				LogError("failed to convert PR for %v: %v", ghPullRequest.Number, err)
+				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(err))
 				continue
 			}
 
@@ -89,8 +94,8 @@ func Tick() {
 			State: "open",
 		})
 		if err != nil {
-			LogError("failed to get issues " + repository.Owner + "/" + repository.Name)
-			LogError(err.Error())
+			mlog.Error("failed to get issues", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+			mlog.Error("issue_error", mlog.Err(err))
 			continue
 		}
 
@@ -102,7 +107,7 @@ func Tick() {
 
 			issue, err := GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
 			if err != nil {
-				LogError("failed to convert issue for %v: %v", ghIssue.Number, err)
+				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 				continue
 			}
 
@@ -114,7 +119,7 @@ func Tick() {
 }
 
 func Stop() {
-	LogInfo("Stopping pr manager")
+	mlog.Info("Stopping pr manager")
 	manners.Close()
 }
 
@@ -130,7 +135,7 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
-		LogInfo(fmt.Sprintf("pr event %v %v", event.PRNumber, event.Action))
+		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		handlePullRequestEvent(event)
 	} else {
 		handleIssueEvent(event)
@@ -150,7 +155,7 @@ func messageByUserContains(comments []*github.IssueComment, username string, tex
 func listPrs(w http.ResponseWriter, r *http.Request) {
 	var prs []*model.PullRequest
 	if result := <-Srv.Store.PullRequest().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -158,7 +163,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(prs); err != nil {
-		LogError(err.Error())
+		mlog.Error("pr_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -168,7 +173,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 func listIssues(w http.ResponseWriter, r *http.Request) {
 	var issues []*model.Issue
 	if result := <-Srv.Store.Issue().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -176,7 +181,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(issues); err != nil {
-		LogError(err.Error())
+		mlog.Error("issue_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
@@ -186,7 +191,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	var spinmints []*model.Spinmint
 	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
-		LogError(result.Err.Error())
+		mlog.Error(result.Err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	} else {
@@ -194,9 +199,33 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if b, err := json.Marshal(spinmints); err != nil {
-		LogError(err.Error())
+		mlog.Error("spinmint_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Write(b)
 	}
+}
+
+func GetLogFileLocation(fileLocation string) string {
+	if fileLocation == "" {
+		fileLocation, _ = fileutils.FindDir("logs")
+	}
+
+	return filepath.Join(fileLocation, LOG_FILENAME)
+}
+
+func SetupLogging() {
+	loggingConfig := &mlog.LoggerConfiguration{
+		EnableConsole: Config.LogSettings.EnableConsole,
+		ConsoleJson:   Config.LogSettings.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(Config.LogSettings.ConsoleLevel),
+		EnableFile:    Config.LogSettings.EnableFile,
+		FileJson:      Config.LogSettings.FileJson,
+		FileLevel:     strings.ToLower(Config.LogSettings.FileLevel),
+		FileLocation:  GetLogFileLocation(Config.LogSettings.FileLocation),
+	}
+
+	logger := mlog.NewLogger(loggingConfig)
+	mlog.RedirectStdLog(logger)
+	mlog.InitGlobalLogger(logger)
 }

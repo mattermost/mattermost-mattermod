@@ -4,10 +4,9 @@
 package server
 
 import (
-	"strconv"
-
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/mlog"
 	"golang.org/x/oauth2"
 )
 
@@ -84,11 +83,11 @@ func LabelsToStringArray(labels []*github.Label) []string {
 }
 
 func commentOnIssue(repoOwner, repoName string, number int, comment string) {
-	LogInfo("Commenting on issue " + strconv.Itoa(number) + " Comment: " + comment)
+	mlog.Info("Commenting on issue", mlog.Int("issue", number), mlog.String("comment", comment))
 	client := NewGithubClient()
 	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		LogError("Error: ", err)
+		mlog.Error("Error", mlog.Err(err))
 	}
-	LogInfo("Finished commenting")
+	mlog.Info("Finished commenting")
 }

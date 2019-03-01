@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/mattermost/mattermost-server/mlog"
 )
 
 type LabelResponse struct {
@@ -90,6 +91,16 @@ type PRServerConfig struct {
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
+
+	LogSettings struct {
+		EnableConsole bool
+		ConsoleJson   bool
+		ConsoleLevel  string
+		EnableFile    bool
+		FileJson      bool
+		FileLevel     string
+		FileLocation  string
+	}
 }
 
 var Config *PRServerConfig = &PRServerConfig{}
@@ -110,17 +121,19 @@ func FindConfigFile(fileName string) string {
 
 func LoadConfig(fileName string) {
 	fileName = FindConfigFile(fileName)
-	LogInfo("Loading " + fileName)
+	mlog.Info("Loading config", mlog.String("filename", fileName))
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		LogCritical("Error opening config file=" + fileName + ", err=" + err.Error())
+		mlog.Critical("Error opening config file", mlog.String("filename", fileName), mlog.Err(err))
+		panic(err.Error())
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(Config)
 	if err != nil {
-		LogCritical("Error decoding config file=" + fileName + ", err=" + err.Error())
+		mlog.Critical("Error decoding config file", mlog.String("filename", fileName), mlog.Err(err))
+		panic(err.Error())
 	}
 }
 
