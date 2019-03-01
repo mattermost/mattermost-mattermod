@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:e95c8ee2ac122e3b55a7bef845c4c65bbd240685da1dbb48aee2d6854e16c758"
-  name = "github.com/alecthomas/log4go"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "d146e6b86faab5f7e4d135cc63b749d74bf0d4a6"
-
-[[projects]]
   digest = "1:2ea9a6e611b741b3f211685ac87df84da18aebc8b46de4baff424cc951a4a342"
   name = "github.com/aws/aws-sdk-go"
   packages = [
@@ -137,6 +129,48 @@
   revision = "0b12d6b5"
 
 [[projects]]
+  digest = "1:f7d0de5b8441f5e32205b2584f63a0cdd4714e4f0bf23748c6a0da9eee510c98"
+  name = "github.com/mattermost/mattermost-server"
+  packages = [
+    "mlog",
+    "utils/fileutils",
+  ]
+  pruneopts = "UT"
+  revision = "24f11a12758fe75ce06269be7f9fb7bb790aec43"
+  version = "v5.8.0"
+
+[[projects]]
+  digest = "1:3c1a69cdae3501bf75e76d0d86dc6f2b0a7421bc205c0cb7b96b19eed464a34d"
+  name = "go.uber.org/atomic"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
+  version = "v1.3.2"
+
+[[projects]]
+  digest = "1:60bf2a5e347af463c42ed31a493d817f8a72f102543060ed992754e689805d1a"
+  name = "go.uber.org/multierr"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3c4937480c32f4c13a875a1829af76c98ca3d40a"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:c52caf7bd44f92e54627a31b85baf06a68333a196b3d8d241480a774733dcf8b"
+  name = "go.uber.org/zap"
+  packages = [
+    ".",
+    "buffer",
+    "internal/bufferpool",
+    "internal/color",
+    "internal/exit",
+    "zapcore",
+  ]
+  pruneopts = "UT"
+  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
+  version = "v1.9.1"
+
+[[projects]]
   branch = "master"
   digest = "1:d6b719875cf8091fbab38527d81d34e71f4521b9ee9ccfbd4a32cff2ac5af96e"
   name = "golang.org/x/net"
@@ -175,11 +209,18 @@
   revision = "ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06"
   version = "v1.2.0"
 
+[[projects]]
+  digest = "1:c805e517269b0ba4c21ded5836019ed7d16953d4026cb7d00041d039c7906be9"
+  name = "gopkg.in/natefinch/lumberjack.v2"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a96e63847dc3c67d17befa69c303767e2f84e54f"
+  version = "v2.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/alecthomas/log4go",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
@@ -191,6 +232,8 @@
     "github.com/go-sql-driver/mysql",
     "github.com/google/go-github/github",
     "github.com/gorilla/mux",
+    "github.com/mattermost/mattermost-server/mlog",
+    "github.com/mattermost/mattermost-server/utils/fileutils",
     "golang.org/x/oauth2",
   ]
   solver-name = "gps-cdcl"
