@@ -1,0 +1,17 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12
+
+    working_directory: /go/src/github.com/mattermost/mattermost-mattermod
+    steps:
+      - checkout
+
+      - run: go build
+
+workflows:
+  version: 2
+  untagged-build:
+    jobs:
+      - build
