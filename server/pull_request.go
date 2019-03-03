@@ -155,10 +155,10 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	// Old comment created by Mattermod user for test server deletion will be deleted here
 	for _, comment := range comments {
 		if *comment.User.Login == Config.Username && *comment.Body == Config.DestroyedSpinmintMessage {
-			LogInfo("Removing old server deletion comment with ID %v", strconv.Itoa(*comment.ID))
+			mlog.Info("Removing old server deletion comment with ID", mlog.Int("ID", *comment.ID))
 			_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
-				LogError("Error: ", err)
+				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
 			}
 		}
 	}
@@ -229,13 +229,13 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		}
 
 		// Old comments created by Mattermod user will be deleted here.
-		LogInfo("Removing old Mattermod comments")
+		mlog.Info("Removing old Mattermod comments")
 		for _, comment := range comments {
 			if *comment.User.Login == Config.Username {
-				LogInfo("Removing old comment with ID %v", strconv.Itoa(*comment.ID))
+				mlog.Info("Removing old comment with ID", mlog.Int("ID", *comment.ID))
 				_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
 				if err != nil {
-					LogError("Error: ", err)
+					mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
 				}
 			}
 		}
