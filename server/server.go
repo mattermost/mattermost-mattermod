@@ -81,9 +81,9 @@ func Tick() {
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, err := GetPullRequestFromGithub(ghPullRequest)
-			if err != nil {
-				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(err))
+			pullRequest, errPR := GetPullRequestFromGithub(ghPullRequest)
+			if errPR != nil {
+				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 				continue
 			}
 

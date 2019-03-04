@@ -28,8 +28,8 @@ func checkIssueForChanges(issue *model.Issue) {
 		mlog.Error(result.Err.Error())
 		return
 	} else if result.Data == nil {
-		if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
-			mlog.Error(result.Err.Error())
+		if resultSave := <-Srv.Store.Issue().Save(issue); resultSave.Err != nil {
+			mlog.Error(resultSave.Err.Error())
 		}
 		return
 	} else {
