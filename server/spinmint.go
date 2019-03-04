@@ -340,7 +340,6 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 		mlog.Info("Sleeping a bit....Will re-check the Jenkins Build...")
 		time.Sleep(30 * time.Second)
 	}
-	return pr, true
 }
 
 // Returns instance ID of instance created
