@@ -4,8 +4,8 @@ DEP ?= $(shell command -v dep 2> /dev/null)
 PACKAGES=$(shell go list ./...)
 
 ## Checks the code style, tests, builds and bundles the plugin.
+.PHONY: all
 all: check-style
-
 
 ## Runs govet and gofmt against all packages.
 .PHONY: check-style
@@ -36,8 +36,8 @@ gofmt:
 govet:
 	@echo Running govet
 	$(GO) get -u golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet $(PACKAGES) || exit 1
-	$(GO) vet -vettool=$(which shadow) $(PACKAGES) || exit 1
+	$(GO) vet $(GOFLAGS) $(PACKAGES)  || exit 1
+	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(GOFLAGS) $(PACKAGES) || exit 1
 	@echo Govet success
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
