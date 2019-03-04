@@ -154,7 +154,8 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	// Old comment created by Mattermod user for test server deletion will be deleted here
 	for _, comment := range comments {
-		if *comment.User.Login == Config.Username && *comment.Body == Config.DestroyedSpinmintMessage {
+		if *comment.User.Login == Config.Username &&
+			strings.Contains(*comment.Body, Config.DestroyedSpinmintMessage){
 			mlog.Info("Removing old server deletion comment with ID", mlog.Int("ID", *comment.ID))
 			_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
@@ -231,7 +232,12 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		// Old comments created by Mattermod user will be deleted here.
 		mlog.Info("Removing old Mattermod comments")
 		for _, comment := range comments {
-			if *comment.User.Login == Config.Username {
+			if *comment.User.Login == Config.Username &&
+			  (strings.Contains(*comment.Body, Config.SetupSpinmintMessage) ||
+					strings.Contains(*comment.Body, Config.SetupSpinmintUpgradeMessage) ||
+					strings.Contains(*comment.Body, Config.SetupSpinmintDoneMessage) ||
+					strings.Contains(*comment.Body, Config.SetupSpinmintUpgradeDoneMessage) ||
+					strings.Contains(*comment.Body, Config.SetupSpinmintFailedMessage)){
 				mlog.Info("Removing old comment with ID", mlog.Int("ID", *comment.ID))
 				_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
 				if err != nil {
