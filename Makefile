@@ -35,9 +35,9 @@ gofmt:
 .PHONY: govet
 govet:
 	@echo Running govet
-	$(GO) get -u golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet $(GOFLAGS) $(PACKAGES)  || exit 1
-	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(GOFLAGS) $(PACKAGES) || exit 1
+	$(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	$(GO) vet $(PACKAGES)  || exit 1
+	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
 	@echo Govet success
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
