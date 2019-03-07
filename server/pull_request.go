@@ -244,8 +244,8 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 	serverMessages := []string{Config.SetupSpinmintMessage,
 		Config.SetupSpinmintUpgradeMessage,
-		Config.SetupSpinmintDoneMessage,
-		Config.SetupSpinmintUpgradeDoneMessage,
+		"Spinmint test server created",
+		"Spinmint upgrade test server created",
 		Config.SetupSpinmintFailedMessage}
 
 	mlog.Info("Removing old Mattermod comments")
