@@ -133,10 +133,15 @@ func addApis(r *mux.Router) {
 func prEvent(w http.ResponseWriter, r *http.Request) {
 	buf, _ := ioutil.ReadAll(r.Body)
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		handlePullRequestEvent(event)
+	} else if eventIssueComment.Action == "created" {
+		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
+			handleCheckCLA(*eventIssueComment)
+		}
 	} else {
 		handleIssueEvent(event)
 	}

@@ -4,8 +4,6 @@
 package server
 
 import (
-	"io/ioutil"
-	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -35,6 +33,8 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
 		}
+	} else if event.Action == "synchronize" {
+		checkCLA(pr)
 	}
 
 	checkPullRequestForChanges(pr)
@@ -102,6 +102,10 @@ func checkPullRequestForChanges(pr *model.PullRequest) {
 		prHasChanges = true
 	}
 
+	if oldPr.State != pr.State {
+		prHasChanges = true
+	}
+
 	if oldPr.BuildStatus != pr.BuildStatus {
 		prHasChanges = true
 	}
@@ -120,24 +124,7 @@ func checkPullRequestForChanges(pr *model.PullRequest) {
 }
 
 func handlePROpened(pr *model.PullRequest) {
-	username := pr.Username
-
-	resp, err := http.Get(Config.SignedCLAURL)
-	if err != nil {
-		mlog.Error("Unable to get CLA list", mlog.Err(err))
-		return
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		mlog.Error("Unable to read response body", mlog.Err(err))
-		return
-	}
-
-	if !strings.Contains(string(body), ">"+username+"<") {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
-	}
+	checkCLA(pr)
 }
 
 func handlePRLabeled(pr *model.PullRequest, addedLabel string) {

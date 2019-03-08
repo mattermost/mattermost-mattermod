@@ -18,9 +18,25 @@ type PullRequestEvent struct {
 	RepositoryUrl string              `json:"repository_url"`
 }
 
+type IssueComment struct {
+	Action     string                     `json:"action"`
+	Comment    *github.PullRequestComment `json:"comment"`
+	Issue      *github.Issue              `json:"issue"`
+	Repository *github.Repository         `json:"repository"`
+}
+
 func PullRequestEventFromJson(data io.Reader) *PullRequestEvent {
 	decoder := json.NewDecoder(data)
 	var event PullRequestEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil
+	}
+	return &event
+}
+
+func IssueCommentFromJson(data io.Reader) *IssueComment {
+	decoder := json.NewDecoder(data)
+	var event IssueComment
 	if err := decoder.Decode(&event); err != nil {
 		return nil
 	}
