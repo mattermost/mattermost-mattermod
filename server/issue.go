@@ -13,8 +13,7 @@ import (
 func handleIssueEvent(event *PullRequestEvent) {
 	parts := strings.Split(event.RepositoryUrl, "/")
 
-	mlog.Info("handle issue event", mlog.String("repoUrl", event.RepositoryUrl), mlog.String("Action", event.Action),
-		mlog.Int("PRNumber", event.PRNumber), mlog.String("PullRequest URL", *event.PullRequest.URL))
+	mlog.Info("handle issue event", mlog.String("repoUrl", event.RepositoryUrl), mlog.String("Action", event.Action), mlog.Int("PRNumber", event.PRNumber))
 	issue, err := GetIssueFromGithub(parts[len(parts)-2], parts[len(parts)-1], event.Issue)
 	if err != nil {
 		mlog.Error("issue_error", mlog.Err(err))
