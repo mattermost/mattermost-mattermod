@@ -120,7 +120,7 @@ func CleanOutdatedIssues() {
 		}
 
 		if *ghIssue.State == "closed" {
-			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number))
+			mlog.Info("Issue is closed, updating the status in the database", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
 			issue.State = *ghIssue.State
 			if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
 				mlog.Error(result.Err.Error())
