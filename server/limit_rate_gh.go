@@ -37,7 +37,7 @@ func CheckLimitRateAndAbortRequest() bool {
 	if err != nil {
 		mlog.Error("Error getting the rate limit", mlog.Err(err))
 		time.Sleep(30 * time.Second)
-		return
+		return false
 	}
 	mlog.Info("Current rate limit", mlog.Int("Remaining Rate", rate.Remaining), mlog.Int("Limit Rate", rate.Limit))
 	if rate.Remaining <= Config.GitHubTokenReserve {
