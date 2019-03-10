@@ -265,3 +265,30 @@ func isSpinmintDoneComment(message string, upgrade bool) bool {
 	pattern := regexp.MustCompile(spinmintDoneMessage)
 	return pattern.MatchString(message)
 }
+func CleanOutdatedPRs() {
+	mlog.Info("Cleaning outdated prs in the mattermod database....")
+
+	var prs []*model.PullRequest
+	if result := <-Srv.Store.PullRequest().ListOpen(); result.Err != nil {
+		mlog.Error(result.Err.Error())
+	} else {
+		prs = result.Data.([]*model.PullRequest)
+	}
+
+	client := NewGithubClient()
+	for _, pr := range prs {
+		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
+		if errPull != nil {
+			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+		}
+
+		if *pull.State == "closed" {
+			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			pr.State = *pull.State
+			if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
+				mlog.Error(result.Err.Error())
+			}
+		}
+	}
+	mlog.Info("Finished update the outdated prs in the mattermosd database....")
+}

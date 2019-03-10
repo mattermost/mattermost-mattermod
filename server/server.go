@@ -68,6 +68,8 @@ func Start() {
 func Tick() {
 	mlog.Info("tick")
 
+	CheckLimitRateGH()
+
 	client := NewGithubClient()
 
 	for _, repository := range Config.Repositories {
