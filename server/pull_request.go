@@ -291,5 +291,5 @@ func CleanOutdatedPRs() {
 			}
 		}
 	}
-	mlog.Info("Finished update the outdated prs in the mattermosd database....")
+	mlog.Info("Finished update the outdated prs in the mattermod database....")
 }
