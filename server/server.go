@@ -68,6 +68,11 @@ func Start() {
 func Tick() {
 	mlog.Info("tick")
 
+	abortTick := CheckLimitRateAndAbortRequest()
+	if abortTick {
+		return
+	}
+
 	client := NewGithubClient()
 
 	for _, repository := range Config.Repositories {
@@ -135,7 +140,10 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
-	CheckLimitRateGH()
+	abortTick := CheckLimitRateAndAbortRequest()
+	if abortTick {
+		return
+	}
 
 	if event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))

@@ -112,7 +112,7 @@ func CleanOutdatedIssues() {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errIssue))
 			if _, ok := errIssue.(*github.RateLimitError); ok {
 				mlog.Error("GitHub rate limit reached")
-				CheckLimitRateGH()
+				CheckLimitRateAndSleep()
 			}
 		}
 
