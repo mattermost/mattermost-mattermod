@@ -5,6 +5,7 @@ package server
 
 import (
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -124,7 +125,10 @@ func CleanOutdatedIssues() {
 			if result := <-Srv.Store.Issue().Save(issue); result.Err != nil {
 				mlog.Error(result.Err.Error())
 			}
+		} else {
+			mlog.Info("Nothing do to")
 		}
+		time.Sleep(5 * time.Second)
 	}
 	mlog.Info("Finished update the outdated issues in the mattermod database....")
 }

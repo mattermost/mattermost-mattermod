@@ -295,7 +295,11 @@ func CleanOutdatedPRs() {
 			if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
 				mlog.Error(result.Err.Error())
 			}
+		} else {
+			mlog.Info("Nothing do to")
 		}
+
+		time.Sleep(5 * time.Second)
 	}
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
 }
