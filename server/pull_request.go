@@ -281,6 +281,10 @@ func CleanOutdatedPRs() {
 		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(errPull))
+			if _, ok := errPull.(*github.RateLimitError); ok {
+				mlog.Error("GitHub rate limit reached")
+				CheckLimitRateGH()
+			}
 		}
 
 		if *pull.State == "closed" {

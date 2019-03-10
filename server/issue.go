@@ -6,6 +6,7 @@ package server
 import (
 	"strings"
 
+	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
 )
@@ -110,9 +111,13 @@ func CleanOutdatedIssues() {
 
 	client := NewGithubClient()
 	for _, issue := range issues {
-		ghIssue, _, errPull := client.Issues.Get(issue.RepoOwner, issue.RepoName, issue.Number)
-		if errPull != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errPull))
+		ghIssue, _, errIssue := client.Issues.Get(issue.RepoOwner, issue.RepoName, issue.Number)
+		if errIssue != nil {
+			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errIssue))
+			if _, ok := errIssue.(*github.RateLimitError); ok {
+				mlog.Error("GitHub rate limit reached")
+				CheckLimitRateGH()
+			}
 		}
 
 		if *ghIssue.State == "closed" {
