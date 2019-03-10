@@ -11,12 +11,12 @@ import (
 )
 
 func handleIssueEvent(event *PullRequestEvent) {
-	parts := strings.Split(event.RepositoryUrl, "/")
+	parts := strings.Split(*event.Issue.HTMLURL, "/")
 
-	mlog.Info("handle issue event", mlog.String("repoUrl", event.RepositoryUrl), mlog.String("Action", event.Action), mlog.Int("PRNumber", event.PRNumber))
-	issue, err := GetIssueFromGithub(parts[len(parts)-2], parts[len(parts)-1], event.Issue)
+	mlog.Info("handle issue event", mlog.String("repoUrl", *event.Issue.HTMLURL), mlog.String("Action", event.Action), mlog.Int("PRNumber", event.PRNumber))
+	issue, err := GetIssueFromGithub(parts[len(parts)-4], parts[len(parts)-3], event.Issue)
 	if err != nil {
-		mlog.Error("issue_error", mlog.Err(err))
+		mlog.Error("Error getting the issue from Github", mlog.Err(err))
 		return
 	}
 
@@ -38,6 +38,14 @@ func checkIssueForChanges(issue *model.Issue) {
 	}
 
 	hasChanges := false
+
+	if oldIssue.State != issue.State {
+		hasChanges = true
+	}
+
+	if len(issue.Labels) == 0 {
+		hasChanges = true
+	}
 
 	for _, label := range issue.Labels {
 		hadLabel := false
