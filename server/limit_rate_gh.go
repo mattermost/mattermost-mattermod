@@ -30,7 +30,7 @@ func CheckLimitRateAndSleep() {
 }
 
 func CheckLimitRateAndAbortRequest() bool {
-	mlog.Info("Checking the rate limit on Github and will sleep if need...")
+	mlog.Info("Checking the rate limit on Github and will abort request if need...")
 
 	client := NewGithubClient()
 	rate, _, err := client.RateLimit()
@@ -41,6 +41,7 @@ func CheckLimitRateAndAbortRequest() bool {
 	}
 	mlog.Info("Current rate limit", mlog.Int("Remaining Rate", rate.Remaining), mlog.Int("Limit Rate", rate.Limit))
 	if rate.Remaining <= Config.GitHubTokenReserve {
+		mlog.Info("Request will be aborted...")
 		return true
 	}
 	return false
