@@ -28,7 +28,6 @@ func main() {
 
 	ticker := time.NewTicker(time.Duration(server.Config.TickRate) * time.Second)
 
-
 	run := true
 	for run {
 		server.Tick()
