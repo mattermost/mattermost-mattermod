@@ -45,10 +45,6 @@ func checkIssueForChanges(issue *model.Issue) {
 		hasChanges = true
 	}
 
-	if len(issue.Labels) == 0 {
-		hasChanges = true
-	}
-
 	for _, label := range issue.Labels {
 		hadLabel := false
 
