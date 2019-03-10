@@ -276,6 +276,8 @@ func CleanOutdatedPRs() {
 		prs = result.Data.([]*model.PullRequest)
 	}
 
+	mlog.Info("Will process the PRs", mlog.Int("PRs Count", len(prs)))
+
 	client := NewGithubClient()
 	for _, pr := range prs {
 		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)

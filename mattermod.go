@@ -26,7 +26,7 @@ func main() {
 
 	ticker := time.NewTicker(time.Duration(server.Config.TickRate) * time.Second)
 
-	server.CleanOutdatedPRs()
+	//server.CleanOutdatedPRs()
 	server.CleanOutdatedIssues()
 
 	run := true

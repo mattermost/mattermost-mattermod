@@ -105,6 +105,8 @@ func CleanOutdatedIssues() {
 		issues = result.Data.([]*model.Issue)
 	}
 
+	mlog.Info("Will process the Issues", mlog.Int("Issues Count", len(issues)))
+
 	client := NewGithubClient()
 	for _, issue := range issues {
 		ghIssue, _, errIssue := client.Issues.Get(issue.RepoOwner, issue.RepoName, issue.Number)
