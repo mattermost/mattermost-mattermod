@@ -485,6 +485,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 }
 
 func checkSpinmintLifeTime() error {
+	mlog.Info("Checking Spinmint lifetime...")
 	spinmints := []*model.Spinmint{}
 	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
 		mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("spinmint_error", result.Err.Error()))
@@ -510,6 +511,7 @@ func checkSpinmintLifeTime() error {
 		}
 	}
 
+	mlog.Info("Done checking Spinmint lifetime.")
 	return nil
 }
 
