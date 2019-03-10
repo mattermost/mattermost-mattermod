@@ -20,6 +20,8 @@ func main() {
 
 	server.LoadConfig(flagConfigFile)
 
+	server.CleanOutdatedPRs()
+
 	server.Start()
 
 	stopChan := make(chan os.Signal)
@@ -27,7 +29,6 @@ func main() {
 
 	ticker := time.NewTicker(time.Duration(server.Config.TickRate) * time.Second)
 
-	server.CleanOutdatedPRs()
 
 	run := true
 	for run {
