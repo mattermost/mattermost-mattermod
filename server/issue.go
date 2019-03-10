@@ -126,7 +126,7 @@ func CleanOutdatedIssues() {
 				mlog.Error(result.Err.Error())
 			}
 		} else {
-			mlog.Info("Nothing do to")
+			mlog.Info("Nothing do to", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number))
 		}
 		time.Sleep(5 * time.Second)
 	}
