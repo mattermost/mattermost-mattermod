@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
