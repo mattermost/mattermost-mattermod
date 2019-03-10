@@ -21,12 +21,12 @@ func main() {
 	server.LoadConfig(flagConfigFile)
 	server.Start()
 
-	go server.CleanOutdatedPRs()
-
 	stopChan := make(chan os.Signal)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	ticker := time.NewTicker(time.Duration(server.Config.TickRate) * time.Second)
+
+	go server.CleanOutdatedPRs()
 
 	run := true
 	for run {
