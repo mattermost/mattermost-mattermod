@@ -271,6 +271,7 @@ func CleanOutdatedPRs() {
 	var prs []*model.PullRequest
 	if result := <-Srv.Store.PullRequest().ListOpen(); result.Err != nil {
 		mlog.Error(result.Err.Error())
+		return
 	} else {
 		prs = result.Data.([]*model.PullRequest)
 	}
@@ -279,7 +280,7 @@ func CleanOutdatedPRs() {
 	for _, pr := range prs {
 		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(errPull))
 		}
 		if _, ok := errPull.(*github.RateLimitError); ok {
 			mlog.Error("hit rate limit")

@@ -20,7 +20,8 @@ func main() {
 
 	server.LoadConfig(flagConfigFile)
 	server.Start()
-	server.CleanOutdatedPRs()
+
+	go server.CleanOutdatedPRs()
 
 	stopChan := make(chan os.Signal)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
