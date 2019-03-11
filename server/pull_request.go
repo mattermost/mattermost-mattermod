@@ -144,7 +144,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	// Old comment created by Mattermod user for test server deletion will be deleted here
 	for _, comment := range comments {
 		if *comment.User.Login == Config.Username &&
-			strings.Contains(*comment.Body, Config.DestroyedSpinmintMessage) {
+			strings.Contains(*comment.Body, Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, Config.DestroyedExpirationSpinmintMessage) {
 			mlog.Info("Removing old server deletion comment with ID", mlog.Int("ID", *comment.ID))
 			_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
