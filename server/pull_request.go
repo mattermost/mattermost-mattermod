@@ -270,37 +270,41 @@ func isSpinmintDoneComment(message string, upgrade bool) bool {
 func CheckPRActivity() {
 	mlog.Info("Checking if need to Stale a Pull request")
 	var prs []*model.PullRequest
-	if result := <-Srv.Store.PullRequest().ListOpen(); result.Err != nil {
+	result := <-Srv.Store.PullRequest().ListOpen()
+	if result.Err != nil {
 		mlog.Error(result.Err.Error())
-	} else {
-		prs = result.Data.([]*model.PullRequest)
+		return
 	}
+	prs = result.Data.([]*model.PullRequest)
 
 	client := NewGithubClient()
 	for _, pr := range prs {
 		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			break
 		}
 
 		timeToStale := time.Now().AddDate(0, 0, -Config.DaysUntilStale)
 		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
 			var prLabels []string
 			canStale := true
-			if labels, _, err := client.Issues.ListLabelsByIssue(pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
+			labels, _, err := client.Issues.ListLabelsByIssue(pr.RepoOwner, pr.RepoName, pr.Number, nil)
+			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-			} else {
-				prLabels = LabelsToStringArray(labels)
-				for _, prLabel := range prLabels {
-					for _, exemptStalelabel := range Config.ExemptStaleLabels {
-						if prLabel == exemptStalelabel {
-							canStale = false
-							break
-						}
-					}
-					if !canStale {
+				break
+			}
+
+			prLabels = LabelsToStringArray(labels)
+			for _, prLabel := range prLabels {
+				for _, exemptStalelabel := range Config.ExemptStaleLabels {
+					if prLabel == exemptStalelabel {
+						canStale = false
 						break
 					}
+				}
+				if !canStale {
+					break
 				}
 			}
 
@@ -309,6 +313,7 @@ func CheckPRActivity() {
 				_, _, errLabel := client.Issues.AddLabelsToIssue(pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+					break
 				}
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StaleComment)
 			}
