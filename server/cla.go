@@ -50,8 +50,18 @@ func checkCLA(pr *model.PullRequest) {
 		Context:   github.String("cla/mattermost"),
 	}
 
+	// Get Github comments
+	comments, _, err := client.Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+		return
+	}
+
 	if !strings.Contains(string(body), ">"+username+"<") {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+		_, existComment := checkCLAComment(comments)
+		if !existComment {
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+		}
 		claStatus.State = github.String("error")
 		userMsg := fmt.Sprintf("%s need to sign the CLA", username)
 		claStatus.Description = github.String(userMsg)
@@ -74,20 +84,23 @@ func checkCLA(pr *model.PullRequest) {
 		return
 	}
 	mlog.Info("will clean some comments regarding the CLA")
-	comments, _, err := client.Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		return
+	commentToRemove, existComment := checkCLAComment(comments)
+	if existComment {
+		mlog.Info("Removing old comment with ID", mlog.Int("ID", commentToRemove))
+		_, err := client.Issues.DeleteComment(pr.RepoOwner, pr.RepoName, commentToRemove)
+		if err != nil {
+			mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
+		}
 	}
+}
+
+func checkCLAComment(comments []*github.IssueComment) (int, bool) {
 	for _, comment := range comments {
 		if *comment.User.Login == Config.Username {
 			if strings.Contains(*comment.Body, "Please help complete the Mattermost") {
-				mlog.Info("Removing old comment with ID", mlog.Int("ID", *comment.ID))
-				_, err := client.Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
-				if err != nil {
-					mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
-				}
+				return *comment.ID, true
 			}
 		}
 	}
+	return 0, false
 }
