@@ -40,7 +40,7 @@ type PRServerConfig struct {
 	GitHubTokenReserve int
 	Username           string
 
-	TickRate               int
+	TickRateMinutes        int
 	SpinmintExpirationHour int
 
 	DriverName string
@@ -102,6 +102,11 @@ type PRServerConfig struct {
 		FileLevel     string
 		FileLocation  string
 	}
+
+	DaysUntilStale    int
+	ExemptStaleLabels []string
+	StaleLabel        string
+	StaleComment      string
 }
 
 var Config *PRServerConfig = &PRServerConfig{}

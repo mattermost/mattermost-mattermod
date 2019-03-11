@@ -6,12 +6,14 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/braintree/manners"
 	"github.com/google/go-github/github"
@@ -40,11 +42,14 @@ var (
 	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
 	INSTANCE_ID         = "INSTANCE_ID"
 	SPINMINT_LINK       = "SPINMINT_LINK"
+
+	startTime time.Time
 )
 
 func Start() {
 	SetupLogging()
 	mlog.Info("Starting pr manager")
+	startTime = time.Now()
 
 	Srv = &Server{
 		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),
@@ -119,8 +124,6 @@ func Tick() {
 			checkIssueForChanges(issue)
 		}
 	}
-
-	checkSpinmintLifeTime()
 }
 
 func Stop() {
@@ -129,10 +132,17 @@ func Stop() {
 }
 
 func addApis(r *mux.Router) {
+	r.HandleFunc("/", ping).Methods("GET")
 	r.HandleFunc("/pr_event", prEvent).Methods("POST")
 	r.HandleFunc("/list_prs", listPrs).Methods("GET")
 	r.HandleFunc("/list_issues", listIssues).Methods("GET")
 	r.HandleFunc("/list_spinmints", listSpinmints).Methods("GET")
+}
+
+func ping(w http.ResponseWriter, r *http.Request) {
+	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(startTime))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(msg))
 }
 
 func prEvent(w http.ResponseWriter, r *http.Request) {
@@ -181,6 +191,7 @@ func listPrs(w http.ResponseWriter, r *http.Request) {
 		mlog.Error("pr_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
 }
@@ -199,6 +210,7 @@ func listIssues(w http.ResponseWriter, r *http.Request) {
 		mlog.Error("issue_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
 }
@@ -217,6 +229,7 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 		mlog.Error("spinmint_error", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
 }

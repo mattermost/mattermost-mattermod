@@ -217,6 +217,14 @@
   revision = "a96e63847dc3c67d17befa69c303767e2f84e54f"
   version = "v2.1"
 
+[[projects]]
+  branch = "v3"
+  digest = "1:9a8faae0705aa14e591d68539bff8a395bd445f8bb64fd18c4877c713aa989e0"
+  name = "gopkg.in/robfig/cron.v3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dbf322045545dc016828ed3581ae310a1fc1152e"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -235,6 +243,7 @@
     "github.com/mattermost/mattermost-server/mlog",
     "github.com/mattermost/mattermost-server/utils/fileutils",
     "golang.org/x/oauth2",
+    "gopkg.in/robfig/cron.v3",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -5,12 +5,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/server"
+	"gopkg.in/robfig/cron.v3"
 )
 
 func main() {
@@ -21,24 +21,20 @@ func main() {
 	server.LoadConfig(flagConfigFile)
 	server.Start()
 
-	stopChan := make(chan os.Signal)
-	signal.Notify(stopChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	ticker := time.NewTicker(time.Duration(server.Config.TickRate) * time.Second)
-
 	//server.CleanOutdatedPRs()
 	//server.CleanOutdatedIssues()
 
-	run := true
-	for run {
-		server.Tick()
-		select {
-		case <-ticker.C:
-			continue
-		case <-stopChan:
-			run = false
-		}
-	}
+	c := cron.New()
+	c.AddFunc("@daily", server.CheckPRActivity)
+	c.AddFunc("@every 2h", server.CheckSpinmintLifeTime)
+
+	cronTicker := fmt.Sprintf("@every %dm", server.Config.TickRateMinutes)
+	c.AddFunc(cronTicker, server.Tick)
+
+	c.Start()
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt, os.Kill)
+	<-sig
 
 	server.Stop()
 }
