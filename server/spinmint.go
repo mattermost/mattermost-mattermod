@@ -373,6 +373,7 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 		InstanceType:     &Config.AWSInstanceType,
 		UserData:         &sdata,
 		SecurityGroupIds: []*string{&Config.AWSSecurityGroup},
+		SubnetId:         &Config.AWSSubNetId,
 	}
 
 	resp, err := svc.RunInstances(params)
