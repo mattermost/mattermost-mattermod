@@ -155,7 +155,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicdns := getPublicDnsName(*instance.InstanceId)
+	publicdns, internalIp := getPublicDnsName(*instance.InstanceId)
 
 	if err := updateRoute53Subdomain(*instance.InstanceId, publicdns, "CREATE"); err != nil {
 		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
@@ -179,7 +179,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
-	message = strings.Replace(message, INTERNAL_IP, publicdns, 1)
+	message = strings.Replace(message, INTERNAL_IP, internalIp, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
 
@@ -432,7 +432,7 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 	removeSpinmintInfo(instanceId)
 }
 
-func getPublicDnsName(instance string) string {
+func getPublicDnsName(instance string) (publicIp string, privateIp string) {
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
@@ -442,10 +442,10 @@ func getPublicDnsName(instance string) string {
 	resp, err := svc.DescribeInstances(params)
 	if err != nil {
 		mlog.Error("Problem getting instance ip", mlog.Err(err))
-		return ""
+		return "", ""
 	}
 
-	return *resp.Reservations[0].Instances[0].PublicIpAddress
+	return *resp.Reservations[0].Instances[0].PublicIpAddress, *resp.Reservations[0].Instances[0].PrivateIpAddress
 }
 
 func updateRoute53Subdomain(name, target, action string) error {
@@ -454,7 +454,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 
 	targetServer := target
 	if target == "" && action == "DELETE" {
-		targetServer = getPublicDnsName(name)
+		targetServer, _ = getPublicDnsName(name)
 	}
 
 	params := &route53.ChangeResourceRecordSetsInput{
