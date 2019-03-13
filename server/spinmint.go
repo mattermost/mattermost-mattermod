@@ -444,7 +444,7 @@ func getPublicDnsName(instance string) string {
 		return ""
 	}
 
-	return *resp.Reservations[0].Instances[0].PublicDnsName
+	return *resp.Reservations[0].Instances[0].PublicIpAddress
 }
 
 func updateRoute53Subdomain(name, target, action string) error {
