@@ -464,7 +464,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 					ResourceRecordSet: &route53.ResourceRecordSet{
 						Name: aws.String(domainName),
 						TTL:  aws.Int64(30),
-						Type: aws.String("CNAME"),
+						Type: aws.String("A"),
 						ResourceRecords: []*route53.ResourceRecord{
 							{
 								Value: aws.String(targetServer),
