@@ -179,6 +179,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
+	message = strings.Replace(message, INTERNAL_IP, publicdns, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
 

@@ -41,6 +41,7 @@ var (
 
 	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
 	INSTANCE_ID         = "INSTANCE_ID"
+	INTERNAL_IP         = "INTERNAL_IP"
 	SPINMINT_LINK       = "SPINMINT_LINK"
 
 	startTime time.Time
