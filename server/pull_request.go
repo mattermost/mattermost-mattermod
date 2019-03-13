@@ -5,7 +5,6 @@ package server
 
 import (
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -204,28 +203,20 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		(messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) || messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, Config.Username, Config.DestroyedSpinmintMessage) {
 
-		upgrade := false
-		if removedLabel == Config.SetupSpinmintUpgradeTag {
-			upgrade = true
-		}
-
-		var instanceId string
-		for _, comment := range comments {
-			if isSpinmintDoneComment(*comment.Body, upgrade) {
-				match := INSTANCE_ID_PATTERN.FindStringSubmatch(*comment.Body)
-				instanceId = match[1]
-				break
-			}
-		}
-
 		// Old comments created by Mattermod user will be deleted here.
 		removeOldComments(comments, pr)
 
-		if instanceId != "" {
-			mlog.Info("Will remove the spinmint", mlog.String("InstanceID", instanceId))
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
+		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("pr_error", result.Err.Error()))
+		} else if result.Data == nil {
+			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
+		} else {
+			spinmint := result.Data.(*model.Spinmint)
+			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
+			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
-			go destroySpinmint(pr, instanceId)
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
+			go destroySpinmint(pr, spinmint.InstanceId)
 		}
 	}
 }
@@ -252,21 +243,6 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 			}
 		}
 	}
-}
-
-func isSpinmintDoneComment(message string, upgrade bool) bool {
-	var spinmintDoneMessage string
-	if upgrade {
-		spinmintDoneMessage = regexp.QuoteMeta(Config.SetupSpinmintUpgradeDoneMessage)
-	} else {
-		spinmintDoneMessage = regexp.QuoteMeta(Config.SetupSpinmintDoneMessage)
-	}
-	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, SPINMINT_LINK, ".*", -1)
-	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INSTANCE_ID, INSTANCE_ID_PATTERN.String(), -1)
-	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INTERNAL_IP, "0.0.0.0", -1)
-
-	pattern := regexp.MustCompile(spinmintDoneMessage)
-	return pattern.MatchString(message)
 }
 
 func CheckPRActivity() {
