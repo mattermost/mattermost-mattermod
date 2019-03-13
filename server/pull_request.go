@@ -222,6 +222,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		removeOldComments(comments, pr)
 
 		if instanceId != "" {
+			mlog.Info("Will remove the spinmint", mlog.String("InstanceID", instanceId))
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 
 			go destroySpinmint(pr, instanceId)
@@ -262,6 +263,7 @@ func isSpinmintDoneComment(message string, upgrade bool) bool {
 	}
 	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, SPINMINT_LINK, ".*", -1)
 	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INSTANCE_ID, INSTANCE_ID_PATTERN.String(), -1)
+	spinmintDoneMessage = strings.Replace(spinmintDoneMessage, INTERNAL_IP, "0.0.0.0", -1)
 
 	pattern := regexp.MustCompile(spinmintDoneMessage)
 	return pattern.MatchString(message)
