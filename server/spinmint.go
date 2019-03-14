@@ -173,9 +173,9 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicdns, internalIP := getIPsForInstance(*instance.InstanceId)
+	publicDNS, internalIP := getIPsForInstance(*instance.InstanceId)
 
-	if err := updateRoute53Subdomain(*instance.InstanceId, publicdns, "CREATE"); err != nil {
+	if err := updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
 		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
