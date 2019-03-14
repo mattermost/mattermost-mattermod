@@ -22,7 +22,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 	if event.Action == "closed" {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("pr_error", result.Err.Error()))
+			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
 		} else {
@@ -207,7 +207,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		removeOldComments(comments, pr)
 
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			mlog.Error("Unable to get the spinmint information: Maybe does not exist.", mlog.String("pr_error", result.Err.Error()))
+			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
 		} else {

@@ -146,16 +146,33 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 		return
 	}
 
-	instance, err := setupSpinmint(pr.Number, pr.Ref, repo, upgradeServer)
-	if err != nil {
-		LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
+	var instance *ec2.Instance
+	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
+	} else if result.Data == nil {
+		var errInstance error
+		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, repo, upgradeServer)
+		if errInstance != nil {
+			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+			return
+		}
+		spinmint := &model.Spinmint{
+			InstanceId: *instance.InstanceId,
+			RepoOwner:  pr.RepoOwner,
+			RepoName:   pr.RepoName,
+			Number:     pr.Number,
+			CreatedAt:  time.Now().UTC().Unix(),
+		}
+		storeSpinmintInfo(spinmint)
+	} else {
+		spinmint := result.Data.(*model.Spinmint)
+		instance.InstanceId = aws.String(spinmint.InstanceId)
 	}
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicdns, internalIp := getPublicDnsName(*instance.InstanceId)
+	publicdns, internalIP := getIPsForInstance(*instance.InstanceId)
 
 	if err := updateRoute53Subdomain(*instance.InstanceId, publicdns, "CREATE"); err != nil {
 		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
@@ -179,18 +196,9 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
-	message = strings.Replace(message, INTERNAL_IP, internalIp, 1)
+	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
-
-	spinmint := &model.Spinmint{
-		InstanceId: *instance.InstanceId,
-		RepoOwner:  pr.RepoOwner,
-		RepoName:   pr.RepoName,
-		Number:     pr.Number,
-		CreatedAt:  time.Now().UTC().Unix(),
-	}
-	storeSpinmintInfo(spinmint)
 }
 
 func waitForMobileAppsBuild(pr *model.PullRequest) {
@@ -291,19 +299,19 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				subJobName := parts[len(parts)-4] //PR-XXXX
 
 				jobName = "mp/job/" + jobName + "/job/" + subJobName
-				mlog.Info("Job name for server", mlog.String("job", jobName))
+				mlog.Info("Job name for server", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 			} else if pr.RepoName == "mattermost-mobile" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
 				jobName = parts[len(parts)-3] //mattermost-mobile
 				jobName = "mm/job/" + jobName
-				mlog.Info("Job name for mobile", mlog.String("job", jobName))
+				mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 			} else if pr.RepoName == "mattermost-webapp" {
 				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 				jobName = parts[len(parts)-6]     //mattermost-webapp
 				subJobName := parts[len(parts)-4] //PR-XXXX
 
 				jobName = "mw/job/" + jobName + "/job/" + subJobName
-				mlog.Info("Job name for webapp", mlog.String("job", jobName))
+				mlog.Info("Job name for webapp", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 			} else {
 				mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
 				return pr, false
@@ -404,14 +412,14 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 	return resp.Instances[0], nil
 }
 
-func destroySpinmint(pr *model.PullRequest, instanceId string) {
-	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceId), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+func destroySpinmint(pr *model.PullRequest, instanceID string) {
+	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
-			&instanceId,
+			&instanceID,
 		},
 	}
 
@@ -422,17 +430,17 @@ func destroySpinmint(pr *model.PullRequest, instanceId string) {
 	}
 
 	// Remove route53 entry
-	err = updateRoute53Subdomain(instanceId, "", "DELETE")
+	err = updateRoute53Subdomain(instanceID, "", "DELETE")
 	if err != nil {
 		mlog.Error("Error removing the Route53 entry", mlog.Err(err))
 		return
 	}
 
 	// Remove from the local db
-	removeSpinmintInfo(instanceId)
+	removeSpinmintInfo(instanceID)
 }
 
-func getPublicDnsName(instance string) (publicIp string, privateIp string) {
+func getIPsForInstance(instance string) (publicIP string, privateIP string) {
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
@@ -454,7 +462,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 
 	targetServer := target
 	if target == "" && action == "DELETE" {
-		targetServer, _ = getPublicDnsName(name)
+		targetServer, _ = getIPsForInstance(name)
 	}
 
 	params := &route53.ChangeResourceRecordSetsInput{
