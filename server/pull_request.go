@@ -263,6 +263,11 @@ func CheckPRActivity() {
 			break
 		}
 
+		if *pull.State == model.STATE_CLOSED {
+			mlog.Info("PR/Issue is closed will not comment", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.String("State", *pull.State))
+			continue
+		}
+
 		timeToStale := time.Now().AddDate(0, 0, -Config.DaysUntilStale)
 		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
 			var prLabels []string
@@ -270,7 +275,7 @@ func CheckPRActivity() {
 			labels, _, err := client.Issues.ListLabelsByIssue(pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-				break
+				continue
 			}
 
 			prLabels = LabelsToStringArray(labels)
@@ -324,7 +329,7 @@ func CleanOutdatedPRs() {
 			}
 		}
 
-		if *pull.State == "closed" {
+		if *pull.State == model.STATE_CLOSED {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			pr.State = *pull.State
 			if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
