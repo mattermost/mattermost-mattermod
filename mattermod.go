@@ -26,6 +26,7 @@ func main() {
 
 	c := cron.New()
 	c.AddFunc("@daily", server.CheckPRActivity)
+	c.AddFunc("@midnight", server.CleanOutdatedPRs)
 	c.AddFunc("@every 2h", server.CheckSpinmintLifeTime)
 
 	cronTicker := fmt.Sprintf("@every %dm", server.Config.TickRateMinutes)
