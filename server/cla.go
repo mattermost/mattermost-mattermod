@@ -22,10 +22,19 @@ func handleCheckCLA(eventIssueComment IssueComment) {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
 	}
+
+	if *prGitHub.State == "closed" {
+		return
+	}
+
 	checkCLA(pr)
 }
 
 func checkCLA(pr *model.PullRequest) {
+	if pr.State == "closed" {
+		return
+	}
+
 	username := pr.Username
 	mlog.Info("Will check the CLA for user", mlog.String("user", username),
 		mlog.String("repo", pr.RepoOwner), mlog.String("reponame", pr.RepoName),
