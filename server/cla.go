@@ -66,7 +66,8 @@ func checkCLA(pr *model.PullRequest) {
 		return
 	}
 
-	if !strings.Contains(string(body), ">"+username+"<") || !strings.Contains(string(body), ">"+strings.ToLower(username)+"<") {
+	lowerUsername := strings.ToLower(username)
+	if !strings.Contains(string(body), ">"+username+"<") && !strings.Contains(string(body), ">"+lowerUsername+"<") {
 		_, existComment := checkCLAComment(comments)
 		if !existComment {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
