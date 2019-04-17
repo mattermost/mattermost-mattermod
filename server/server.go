@@ -159,7 +159,7 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 	if event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		handlePullRequestEvent(event)
-	} else if eventIssueComment.Action == "created" {
+	} else if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
 			handleCheckCLA(*eventIssueComment)
 		}
