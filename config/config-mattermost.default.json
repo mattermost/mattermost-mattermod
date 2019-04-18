@@ -1,0 +1,82 @@
+{
+  "ListenAddress": "0.0.0.0:8087",
+  "GithubAccessToken": "",
+  "GitHubTokenReserve": 50,
+  "Username": "",
+  "DriverName": "mysql",
+  "DataSource": "",
+  "TickRateMinutes": 15,
+  "SpinmintExpirationHour": 72,
+  "Repositories": [
+    {
+      "Owner": "",
+      "Name": "",
+      "BuildStatusContext": "",
+      "JenkinsServer": "jenkins",
+      "JobName": "",
+      "InstanceSetupUpgradeScript": "",
+      "InstanceSetupScript": ""
+    }
+  ],
+  "DaysUntilStale": 14,
+  "ExemptStaleLabels": [],
+  "StaleLabel": "",
+  "StaleComment": "",
+  "SetupSpinmintTag": "",
+  "SetupSpinmintMessage": "",
+  "SetupSpinmintDoneMessage": "",
+  "SetupSpinmintFailedMessage": "",
+  "DestroyedSpinmintMessage": "",
+  "DestroyedExpirationSpinmintMessage": "",
+  "SpinmintsUseHttps": false,
+  "SetupSpinmintUpgradeTag": "",
+  "SetupSpinmintUpgradeMessage": "",
+  "SetupSpinmintUpgradeDoneMessage": "",
+  "BuildMobileAppTag": "",
+  "BuildMobileAppInitMessage": "",
+  "BuildMobileAppDoneMessage": "",
+  "BuildMobileAppFailedMessage": "",
+  "StartLoadtestTag": "",
+  "StartLoadtestMessage": "",
+  "SignedCLAURL": "",
+  "NeedsToSignCLAMessage": "",
+  "PrLabels": [],
+  "IssueLabels": [
+    {
+      "Label": "",
+      "Message": ""
+    }
+  ],
+  "JenkinsCredentials": {
+    "jenkins": {
+      "URL": "",
+      "Username": "",
+      "ApiToken": ""
+    }
+  },
+  "AWSCredentials": {
+    "Id": "",
+    "Secret": "",
+    "Token": ""
+  },
+  "AWSRegion": "",
+  "AWSImageId": "",
+  "AWSKeyName": "",
+  "AWSInstanceType": "",
+  "AWSHostedZoneId": "",
+  "AWSSecurityGroup": "",
+  "AWSSubNetId": "",
+  "AWSDnsSuffix": "",
+  "MattermostWebhookURL": "",
+  "MattermostWebhookFooter": "",
+  "LogSettings": {
+    "EnableConsole": true,
+    "ConsoleLevel": "DEBUG",
+    "ConsoleJson": true,
+    "EnableFile": true,
+    "FileLevel": "INFO",
+    "FileJson": true,
+    "FileFormat": "",
+    "FileLocation": ""
+  }
+}

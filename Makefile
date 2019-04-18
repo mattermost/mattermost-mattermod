@@ -12,6 +12,19 @@ all: check-style
 check-style: gofmt govet
 	@echo Checking for style guide compliance
 
+build:
+	@echo Building
+
+	rm -rf dist/
+	mkdir -p dist/mattermod
+	go build
+	mv mattermost-mattermod dist/mattermod/
+	cp config/config-mattermost.default.json dist/mattermod/config-mattermod.json
+
+
+package: gofmt govet build
+	tar -C dist -czf dist/mattermod.tar.gz mattermod
+
 ## Runs gofmt against all packages.
 .PHONY: gofmt
 gofmt:
