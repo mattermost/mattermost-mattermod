@@ -286,6 +286,11 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 			pr = result.Data.(*model.PullRequest)
 		}
 
+		if pr.RepoName == "mattermost-webapp" {
+			mlog.Info("skipping build check for webapp", mlog.String("buidlink", pr.BuildLink))
+			return pr, true
+		}
+
 		if pr.BuildLink != "" {
 			mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
 			// Doing this because the lib we are using does not support folders :(
@@ -314,8 +319,6 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				// jobName = "mw/job/" + jobName + "/job/" + subJobName
 				// mlog.Info("Job name for webapp", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 				// TODO: skip build check for webapp for now, need refactor to check circleci
-				mlog.Info("skipping build check for webapp", mlog.String("buidlink", pr.BuildLink))
-				return pr, true
 			} else {
 				mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
 				return pr, false
