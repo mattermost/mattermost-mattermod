@@ -307,12 +307,15 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				jobName = "mm/job/" + jobName
 				mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 			} else if pr.RepoName == "mattermost-webapp" {
-				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
-				jobName = parts[len(parts)-6]     //mattermost-webapp
-				subJobName := parts[len(parts)-4] //PR-XXXX
+				// jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
+				// jobName = parts[len(parts)-6]     //mattermost-webapp
+				// subJobName := parts[len(parts)-4] //PR-XXXX
 
-				jobName = "mw/job/" + jobName + "/job/" + subJobName
-				mlog.Info("Job name for webapp", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
+				// jobName = "mw/job/" + jobName + "/job/" + subJobName
+				// mlog.Info("Job name for webapp", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
+				// TODO: skip build check for webapp for now, need refactor to check circleci
+				mlog.Info("skipping build check for webapp", mlog.String("buidlink", pr.BuildLink))
+				return pr, true
 			} else {
 				mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
 				return pr, false
