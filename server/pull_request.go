@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -110,6 +111,10 @@ func checkPullRequestForChanges(pr *model.PullRequest) {
 		prHasChanges = true
 	}
 
+	if oldPr.BuildConclusion != pr.BuildConclusion {
+		prHasChanges = true
+	}
+
 	if oldPr.BuildLink != pr.BuildLink {
 		prHasChanges = true
 	}
@@ -134,7 +139,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	commentLock.Lock()
 	defer commentLock.Unlock()
 
-	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, _, err := NewGithubClient().Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
@@ -144,8 +149,8 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	for _, comment := range comments {
 		if *comment.User.Login == Config.Username &&
 			strings.Contains(*comment.Body, Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, Config.DestroyedExpirationSpinmintMessage) {
-			mlog.Info("Removing old server deletion comment with ID", mlog.Int("ID", *comment.ID))
-			_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
+			mlog.Info("Removing old server deletion comment with ID", mlog.Int64("ID", *comment.ID))
+			_, err := NewGithubClient().Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
 				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
 			}
@@ -193,7 +198,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	commentLock.Lock()
 	defer commentLock.Unlock()
 
-	comments, _, err := NewGithubClient().Issues.ListComments(pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, _, err := NewGithubClient().Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
@@ -233,8 +238,8 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 		if *comment.User.Login == Config.Username {
 			for _, message := range serverMessages {
 				if strings.Contains(*comment.Body, message) {
-					mlog.Info("Removing old comment with ID", mlog.Int("ID", *comment.ID))
-					_, err := NewGithubClient().Issues.DeleteComment(pr.RepoOwner, pr.RepoName, *comment.ID)
+					mlog.Info("Removing old comment with ID", mlog.Int64("ID", *comment.ID))
+					_, err := NewGithubClient().Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
 					if err != nil {
 						mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
 					}
@@ -257,7 +262,7 @@ func CheckPRActivity() {
 
 	client := NewGithubClient()
 	for _, pr := range prs {
-		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
+		pull, _, errPull := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			break
@@ -272,7 +277,7 @@ func CheckPRActivity() {
 		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
 			var prLabels []string
 			canStale := true
-			labels, _, err := client.Issues.ListLabelsByIssue(pr.RepoOwner, pr.RepoName, pr.Number, nil)
+			labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 				continue
@@ -293,7 +298,7 @@ func CheckPRActivity() {
 
 			if canStale {
 				label := []string{Config.StaleLabel}
-				_, _, errLabel := client.Issues.AddLabelsToIssue(pr.RepoOwner, pr.RepoName, pr.Number, label)
+				_, _, errLabel := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 					break
@@ -320,7 +325,7 @@ func CleanOutdatedPRs() {
 
 	client := NewGithubClient()
 	for _, pr := range prs {
-		pull, _, errPull := client.PullRequests.Get(pr.RepoOwner, pr.RepoName, pr.Number)
+		pull, _, errPull := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(errPull))
 			if _, ok := errPull.(*github.RateLimitError); ok {

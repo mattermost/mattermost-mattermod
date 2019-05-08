@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ func handleIssueLabeled(issue *model.Issue, addedLabel string) {
 	commentLock.Lock()
 	defer commentLock.Unlock()
 
-	comments, _, err := client.Issues.ListComments(issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	comments, _, err := client.Issues.ListComments(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
 		mlog.Error("issue_error", mlog.Err(err))
 		return
@@ -110,7 +111,7 @@ func CleanOutdatedIssues() {
 
 	client := NewGithubClient()
 	for _, issue := range issues {
-		ghIssue, _, errIssue := client.Issues.Get(issue.RepoOwner, issue.RepoName, issue.Number)
+		ghIssue, _, errIssue := client.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
 		if errIssue != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errIssue))
 			if _, ok := errIssue.(*github.RateLimitError); ok {

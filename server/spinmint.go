@@ -287,73 +287,87 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 		}
 
 		if pr.RepoName == "mattermost-webapp" {
-			mlog.Info("skipping build check for webapp", mlog.String("buidlink", pr.BuildLink))
-			return pr, true
-		}
-
-		if pr.BuildLink != "" {
-			mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
-			// Doing this because the lib we are using does not support folders :(
-			var jobNumber int64
-			var jobName string
-
-			parts := strings.Split(pr.BuildLink, "/")
-			// Doing this because the lib we are using does not support folders :(
-			if pr.RepoName == "mattermost-server" {
-				jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
-				jobName = parts[len(parts)-6]     //mattermost-server
-				subJobName := parts[len(parts)-4] //PR-XXXX
-
-				jobName = "mp/job/" + jobName + "/job/" + subJobName
-				mlog.Info("Job name for server", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
-			} else if pr.RepoName == "mattermost-mobile" {
-				jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
-				jobName = parts[len(parts)-3] //mattermost-mobile
-				jobName = "mm/job/" + jobName
-				mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
-			} else if pr.RepoName == "mattermost-webapp" {
-				// jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
-				// jobName = parts[len(parts)-6]     //mattermost-webapp
-				// subJobName := parts[len(parts)-4] //PR-XXXX
-
-				// jobName = "mw/job/" + jobName + "/job/" + subJobName
-				// mlog.Info("Job name for webapp", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
-				// TODO: skip build check for webapp for now, need refactor to check circleci
-			} else {
-				mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
-				return pr, false
-			}
-
-			job, err := client.GetJob(jobName)
-			if err != nil {
-				mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
-				return pr, false
-			}
-
-			// Doing this because the lib we are using does not support folders :(
-			// This time is in the Jenkins job Name because it returns just the name
-			job.Name = jobName
-
-			build, err := client.GetBuild(job, int(jobNumber))
-			if err != nil {
-				LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
-				return pr, false
-			}
-
-			if !build.Building && build.Result == "SUCCESS" {
-				mlog.Info("build for PR succeeded!", mlog.Int64("jobnumber", jobNumber), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+			if pr.BuildStatus == "in_progress" {
+				if prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number); err != nil {
+					if prUpdate.BuildStatus == "in_progress" {
+						mlog.Info("Build in CircleCI running will wait to conclusion")
+					} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
+						mlog.Info("Build in CircleCI succeed")
+						return prUpdate, true
+					} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
+						mlog.Info("Build in CircleCI failed")
+						return prUpdate, false
+					}
+				}
+			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "success" {
+				mlog.Info("Build in CircleCI succeed")
 				return pr, true
-			} else if build.Result == "FAILURE" {
-				mlog.Error("build has status FAILURE. Aborting.", mlog.Int("build", build.Number), mlog.String("build_error", build.Result))
+			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "failure" {
+				mlog.Info("Build in CircleCI failed")
 				return pr, false
 			} else {
-				mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
+				mlog.Info("Have no info about the Checks")
+				return pr, false
 			}
+
 		} else {
-			mlog.Error("Unable to find build link for PR", mlog.Int("pr", pr.Number))
+			if pr.BuildLink != "" {
+				mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
+				// Doing this because the lib we are using does not support folders :(
+				var jobNumber int64
+				var jobName string
+
+				parts := strings.Split(pr.BuildLink, "/")
+				// Doing this because the lib we are using does not support folders :(
+				if pr.RepoName == "mattermost-server" {
+					jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
+					jobName = parts[len(parts)-6]     //mattermost-server
+					subJobName := parts[len(parts)-4] //PR-XXXX
+
+					jobName = "mp/job/" + jobName + "/job/" + subJobName
+					mlog.Info("Job name for server", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
+				} else if pr.RepoName == "mattermost-mobile" {
+					jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
+					jobName = parts[len(parts)-3] //mattermost-mobile
+					jobName = "mm/job/" + jobName
+					mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
+				} else {
+					mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
+					return pr, false
+				}
+
+				job, err := client.GetJob(jobName)
+				if err != nil {
+					mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
+					return pr, false
+				}
+
+				// Doing this because the lib we are using does not support folders :(
+				// This time is in the Jenkins job Name because it returns just the name
+				job.Name = jobName
+
+				build, err := client.GetBuild(job, int(jobNumber))
+				if err != nil {
+					LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
+					return pr, false
+				}
+
+				if !build.Building && build.Result == "SUCCESS" {
+					mlog.Info("build for PR succeeded!", mlog.Int64("jobnumber", jobNumber), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+					return pr, true
+				} else if build.Result == "FAILURE" {
+					mlog.Error("build has status FAILURE. Aborting.", mlog.Int("build", build.Number), mlog.String("build_error", build.Result))
+					return pr, false
+				} else {
+					mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
+				}
+			} else {
+				mlog.Error("Unable to find build link for PR", mlog.Int("pr", pr.Number))
+				return pr, false
+			}
 		}
 
-		mlog.Info("Sleeping a bit....Will re-check the Jenkins Build...")
+		mlog.Info("Sleeping a bit....Will re-check the Jenkins Build or CircleCI checks...")
 		time.Sleep(30 * time.Second)
 	}
 }

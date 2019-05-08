@@ -28,6 +28,7 @@ func NewSqlPullRequestStore(sqlStore *SqlStore) PullRequestStore {
 		table.ColMap("Labels").SetMaxSize(1024)
 		table.ColMap("BuildStatus").SetMaxSize(8)
 		table.ColMap("BuildLink").SetMaxSize(256)
+		table.ColMap("BuildConclusion").SetMaxSize(256)
 	}
 
 	return s

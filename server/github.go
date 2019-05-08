@@ -4,6 +4,8 @@
 package server
 
 import (
+	"context"
+
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
@@ -32,7 +34,7 @@ func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullReque
 
 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
-		if combined, _, err := client.Repositories.GetCombinedStatus(pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		if combined, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
 			return nil, err
 		} else {
 			for _, status := range combined.Statuses {
@@ -43,9 +45,23 @@ func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullReque
 				}
 			}
 		}
+
+		// for the repos using circleci we have the checks now
+		if checks, _, err := client.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+			return nil, err
+		} else {
+			for _, status := range checks.CheckRuns {
+				if *status.Name == repo.BuildStatusContext {
+					pr.BuildStatus = status.GetStatus()
+					pr.BuildConclusion = status.GetConclusion()
+					pr.BuildLink = status.GetHTMLURL()
+					break
+				}
+			}
+		}
 	}
 
-	if labels, _, err := client.Issues.ListLabelsByIssue(pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
+	if labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
 		return nil, err
 	} else {
 		pr.Labels = LabelsToStringArray(labels)
@@ -63,7 +79,7 @@ func GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.Issue) (*mod
 		State:     *ghIssue.State,
 	}
 
-	if labels, _, err := NewGithubClient().Issues.ListLabelsByIssue(issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
+	if labels, _, err := NewGithubClient().Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
 		return nil, err
 	} else {
 		issue.Labels = LabelsToStringArray(labels)
@@ -85,9 +101,20 @@ func LabelsToStringArray(labels []*github.Label) []string {
 func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	mlog.Info("Commenting on issue", mlog.Int("issue", number), mlog.String("comment", comment))
 	client := NewGithubClient()
-	_, _, err := client.Issues.CreateComment(repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	_, _, err := client.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
 		mlog.Error("Error", mlog.Err(err))
 	}
 	mlog.Info("Finished commenting")
+}
+
+func GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
+	client := NewGithubClient()
+	prGitHub, _, err := client.PullRequests.Get(context.Background(), owner, repoName, prNumber)
+	pr, err := GetPullRequestFromGithub(prGitHub)
+	if err != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+		return nil, err
+	}
+	return pr, nil
 }

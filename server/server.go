@@ -5,6 +5,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -82,7 +83,7 @@ func Tick() {
 	client := NewGithubClient()
 
 	for _, repository := range Config.Repositories {
-		ghPullRequests, _, err := client.PullRequests.List(repository.Owner, repository.Name, &github.PullRequestListOptions{
+		ghPullRequests, _, err := client.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -101,7 +102,7 @@ func Tick() {
 			checkPullRequestForChanges(pullRequest)
 		}
 
-		issues, _, err := client.Issues.ListByRepo(repository.Owner, repository.Name, &github.IssueListByRepoOptions{
+		issues, _, err := client.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
 			State: "open",
 		})
 		if err != nil {
