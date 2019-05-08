@@ -38,7 +38,8 @@ func (s SqlPullRequestStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("PullRequests", "Ref", "varchar(128)", "varchar(128)", "")
 	s.CreateColumnIfNotExists("PullRequests", "Sha", "varchar(48)", "varchar(48)", "")
 	s.CreateColumnIfNotExists("PullRequests", "State", "varchar(8)", "varchar(8)", "")
-	s.CreateColumnIfNotExists("PullRequests", "BuildStatus", "varchar(8)", "varchar(8)", "")
+	s.CreateColumnIfNotExists("PullRequests", "BuildStatus", "varchar(20)", "varchar(20)", "")
+	s.CreateColumnIfNotExists("PullRequests", "BuildConclusion", "varchar(20)", "varchar(20)", "")
 }
 
 func (s SqlPullRequestStore) Save(pr *model.PullRequest) StoreChannel {
