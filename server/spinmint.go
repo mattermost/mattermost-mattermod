@@ -288,16 +288,20 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 
 		if pr.RepoName == "mattermost-webapp" {
 			if pr.BuildStatus == "in_progress" {
-				if prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number); err != nil {
-					if prUpdate.BuildStatus == "in_progress" {
-						mlog.Info("Build in CircleCI running will wait to conclusion")
-					} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
-						mlog.Info("Build in CircleCI succeed")
-						return prUpdate, true
-					} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
-						mlog.Info("Build in CircleCI failed")
-						return prUpdate, false
-					}
+				mlog.Info("Build in CircleCI in progress will get an update check...")
+				prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
+				if err != nil {
+					mlog.Error("Unable to get checks while waiting for spinmint", mlog.String("githubError", err.Error()))
+					return nil, false
+				}
+				if prUpdate.BuildStatus == "in_progress" {
+					mlog.Info("Build in CircleCI running will wait to conclusion")
+				} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
+					mlog.Info("Build in CircleCI succeed")
+					return prUpdate, true
+				} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
+					mlog.Info("Build in CircleCI failed")
+					return prUpdate, false
 				}
 			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "success" {
 				mlog.Info("Build in CircleCI succeed")
