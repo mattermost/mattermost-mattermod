@@ -6,13 +6,15 @@
 package github
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
 // IssueEvent represents an event that occurred around an Issue or Pull Request.
 type IssueEvent struct {
-	ID  *int    `json:"id,omitempty"`
+	ID  *int64  `json:"id,omitempty"`
 	URL *string `json:"url,omitempty"`
 
 	// The User that generated this event.
@@ -33,8 +35,12 @@ type IssueEvent struct {
 	//       The Actor committed to master a commit mentioning the issue in its commit message.
 	//       CommitID holds the SHA1 of the commit.
 	//
-	//     reopened, locked, unlocked
+	//     reopened, unlocked
 	//       The Actor did that to the issue.
+	//
+	//     locked
+	//       The Actor locked the issue.
+	//       LockReason holds the reason of locking the issue (if provided while locking).
 	//
 	//     renamed
 	//       The Actor changed the issue title from Rename.From to Rename.To.
@@ -43,7 +49,7 @@ type IssueEvent struct {
 	//       Someone unspecified @mentioned the Actor [sic] in an issue comment body.
 	//
 	//     assigned, unassigned
-	//       The Actor assigned the issue to or removed the assignment from the Assignee.
+	//       The Assigner assigned the issue to or removed the assignment from the Assignee.
 	//
 	//     labeled, unlabeled
 	//       The Actor added or removed the Label from the issue.
@@ -57,23 +63,40 @@ type IssueEvent struct {
 	//     head_ref_deleted, head_ref_restored
 	//       The pull request’s branch was deleted or restored.
 	//
+	//    review_dismissed
+	//       The review was dismissed and `DismissedReview` will be populated below.
+	//
 	Event *string `json:"event,omitempty"`
 
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	Issue     *Issue     `json:"issue,omitempty"`
 
 	// Only present on certain events; see above.
-	Assignee  *User      `json:"assignee,omitempty"`
-	CommitID  *string    `json:"commit_id,omitempty"`
-	Milestone *Milestone `json:"milestone,omitempty"`
-	Label     *Label     `json:"label,omitempty"`
-	Rename    *Rename    `json:"rename,omitempty"`
+	Assignee        *User            `json:"assignee,omitempty"`
+	Assigner        *User            `json:"assigner,omitempty"`
+	CommitID        *string          `json:"commit_id,omitempty"`
+	Milestone       *Milestone       `json:"milestone,omitempty"`
+	Label           *Label           `json:"label,omitempty"`
+	Rename          *Rename          `json:"rename,omitempty"`
+	LockReason      *string          `json:"lock_reason,omitempty"`
+	ProjectCard     *ProjectCard     `json:"project_card,omitempty"`
+	DismissedReview *DismissedReview `json:"dismissed_review,omitempty"`
+}
+
+// DismissedReview represents details for 'dismissed_review' events.
+type DismissedReview struct {
+	// State represents the state of the dismissed review.
+	// Possible values are: "commented", "approved", and "changes_requested".
+	State             *string `json:"state,omitempty"`
+	ReviewID          *int64  `json:"review_id,omitempty"`
+	DismissalMessage  *string `json:"dismissal_message,omitempty"`
+	DismissalCommitID *string `json:"dismissal_commit_id,omitempty"`
 }
 
 // ListIssueEvents lists events for the specified issue.
 //
 // GitHub API docs: https://developer.github.com/v3/issues/events/#list-events-for-an-issue
-func (s *IssuesService) ListIssueEvents(owner, repo string, number int, opt *ListOptions) ([]*IssueEvent, *Response, error) {
+func (s *IssuesService) ListIssueEvents(ctx context.Context, owner, repo string, number int, opt *ListOptions) ([]*IssueEvent, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/%v/events", owner, repo, number)
 	u, err := addOptions(u, opt)
 	if err != nil {
@@ -85,8 +108,11 @@ func (s *IssuesService) ListIssueEvents(owner, repo string, number int, opt *Lis
 		return nil, nil, err
 	}
 
+	acceptHeaders := []string{mediaTypeLockReasonPreview, mediaTypeProjectCardDetailsPreview}
+	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
+
 	var events []*IssueEvent
-	resp, err := s.client.Do(req, &events)
+	resp, err := s.client.Do(ctx, req, &events)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -97,7 +123,7 @@ func (s *IssuesService) ListIssueEvents(owner, repo string, number int, opt *Lis
 // ListRepositoryEvents lists events for the specified repository.
 //
 // GitHub API docs: https://developer.github.com/v3/issues/events/#list-events-for-a-repository
-func (s *IssuesService) ListRepositoryEvents(owner, repo string, opt *ListOptions) ([]*IssueEvent, *Response, error) {
+func (s *IssuesService) ListRepositoryEvents(ctx context.Context, owner, repo string, opt *ListOptions) ([]*IssueEvent, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/events", owner, repo)
 	u, err := addOptions(u, opt)
 	if err != nil {
@@ -110,7 +136,7 @@ func (s *IssuesService) ListRepositoryEvents(owner, repo string, opt *ListOption
 	}
 
 	var events []*IssueEvent
-	resp, err := s.client.Do(req, &events)
+	resp, err := s.client.Do(ctx, req, &events)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -121,7 +147,7 @@ func (s *IssuesService) ListRepositoryEvents(owner, repo string, opt *ListOption
 // GetEvent returns the specified issue event.
 //
 // GitHub API docs: https://developer.github.com/v3/issues/events/#get-a-single-event
-func (s *IssuesService) GetEvent(owner, repo string, id int) (*IssueEvent, *Response, error) {
+func (s *IssuesService) GetEvent(ctx context.Context, owner, repo string, id int64) (*IssueEvent, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/issues/events/%v", owner, repo, id)
 
 	req, err := s.client.NewRequest("GET", u, nil)
@@ -130,7 +156,7 @@ func (s *IssuesService) GetEvent(owner, repo string, id int) (*IssueEvent, *Resp
 	}
 
 	event := new(IssueEvent)
-	resp, err := s.client.Do(req, event)
+	resp, err := s.client.Do(ctx, req, event)
 	if err != nil {
 		return nil, resp, err
 	}

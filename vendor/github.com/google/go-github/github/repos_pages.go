@@ -5,15 +5,26 @@
 
 package github
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"strings"
+)
 
 // Pages represents a GitHub Pages site configuration.
 type Pages struct {
-	URL       *string `json:"url,omitempty"`
-	Status    *string `json:"status,omitempty"`
-	CNAME     *string `json:"cname,omitempty"`
-	Custom404 *bool   `json:"custom_404,omitempty"`
-	HTMLURL   *string `json:"html_url,omitempty"`
+	URL       *string      `json:"url,omitempty"`
+	Status    *string      `json:"status,omitempty"`
+	CNAME     *string      `json:"cname,omitempty"`
+	Custom404 *bool        `json:"custom_404,omitempty"`
+	HTMLURL   *string      `json:"html_url,omitempty"`
+	Source    *PagesSource `json:"source,omitempty"`
+}
+
+// PagesSource represents a GitHub page's source.
+type PagesSource struct {
+	Branch *string `json:"branch,omitempty"`
+	Path   *string `json:"path,omitempty"`
 }
 
 // PagesError represents a build error for a GitHub Pages site.
@@ -33,10 +44,49 @@ type PagesBuild struct {
 	UpdatedAt *Timestamp  `json:"updated_at,omitempty"`
 }
 
+// EnablePages enables GitHub Pages for the named repo.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/pages/#enable-a-pages-site
+func (s *RepositoriesService) EnablePages(ctx context.Context, owner, repo string) (*Pages, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/pages", owner, repo)
+	req, err := s.client.NewRequest("POST", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	acceptHeaders := []string{mediaTypeEnablePagesAPIPreview, mediaTypePagesPreview}
+	req.Header.Set("Accept", strings.Join(acceptHeaders, ", "))
+
+	enable := new(Pages)
+	resp, err := s.client.Do(ctx, req, enable)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return enable, resp, nil
+}
+
+// DisablePages disables GitHub Pages for the named repo.
+//
+// GitHub API docs: https://developer.github.com/v3/repos/pages/#disable-a-pages-site
+func (s *RepositoriesService) DisablePages(ctx context.Context, owner, repo string) (*Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/pages", owner, repo)
+	req, err := s.client.NewRequest("DELETE", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: remove custom Accept header when this API fully launches.
+	req.Header.Set("Accept", mediaTypeEnablePagesAPIPreview)
+
+	return s.client.Do(ctx, req, nil)
+}
+
 // GetPagesInfo fetches information about a GitHub Pages site.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/pages/#get-information-about-a-pages-site
-func (s *RepositoriesService) GetPagesInfo(owner, repo string) (*Pages, *Response, error) {
+func (s *RepositoriesService) GetPagesInfo(ctx context.Context, owner, repo string) (*Pages, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pages", owner, repo)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -47,7 +97,7 @@ func (s *RepositoriesService) GetPagesInfo(owner, repo string) (*Pages, *Respons
 	req.Header.Set("Accept", mediaTypePagesPreview)
 
 	site := new(Pages)
-	resp, err := s.client.Do(req, site)
+	resp, err := s.client.Do(ctx, req, site)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -58,15 +108,20 @@ func (s *RepositoriesService) GetPagesInfo(owner, repo string) (*Pages, *Respons
 // ListPagesBuilds lists the builds for a GitHub Pages site.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/pages/#list-pages-builds
-func (s *RepositoriesService) ListPagesBuilds(owner, repo string) ([]*PagesBuild, *Response, error) {
+func (s *RepositoriesService) ListPagesBuilds(ctx context.Context, owner, repo string, opt *ListOptions) ([]*PagesBuild, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pages/builds", owner, repo)
+	u, err := addOptions(u, opt)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var pages []*PagesBuild
-	resp, err := s.client.Do(req, &pages)
+	resp, err := s.client.Do(ctx, req, &pages)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -77,7 +132,7 @@ func (s *RepositoriesService) ListPagesBuilds(owner, repo string) ([]*PagesBuild
 // GetLatestPagesBuild fetches the latest build information for a GitHub pages site.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/pages/#list-latest-pages-build
-func (s *RepositoriesService) GetLatestPagesBuild(owner, repo string) (*PagesBuild, *Response, error) {
+func (s *RepositoriesService) GetLatestPagesBuild(ctx context.Context, owner, repo string) (*PagesBuild, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pages/builds/latest", owner, repo)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -85,7 +140,7 @@ func (s *RepositoriesService) GetLatestPagesBuild(owner, repo string) (*PagesBui
 	}
 
 	build := new(PagesBuild)
-	resp, err := s.client.Do(req, build)
+	resp, err := s.client.Do(ctx, req, build)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -96,7 +151,7 @@ func (s *RepositoriesService) GetLatestPagesBuild(owner, repo string) (*PagesBui
 // GetPageBuild fetches the specific build information for a GitHub pages site.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/pages/#list-a-specific-pages-build
-func (s *RepositoriesService) GetPageBuild(owner, repo string, id int) (*PagesBuild, *Response, error) {
+func (s *RepositoriesService) GetPageBuild(ctx context.Context, owner, repo string, id int64) (*PagesBuild, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pages/builds/%v", owner, repo, id)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -104,7 +159,7 @@ func (s *RepositoriesService) GetPageBuild(owner, repo string, id int) (*PagesBu
 	}
 
 	build := new(PagesBuild)
-	resp, err := s.client.Do(req, build)
+	resp, err := s.client.Do(ctx, req, build)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -115,7 +170,7 @@ func (s *RepositoriesService) GetPageBuild(owner, repo string, id int) (*PagesBu
 // RequestPageBuild requests a build of a GitHub Pages site without needing to push new commit.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/pages/#request-a-page-build
-func (s *RepositoriesService) RequestPageBuild(owner, repo string) (*PagesBuild, *Response, error) {
+func (s *RepositoriesService) RequestPageBuild(ctx context.Context, owner, repo string) (*PagesBuild, *Response, error) {
 	u := fmt.Sprintf("repos/%v/%v/pages/builds", owner, repo)
 	req, err := s.client.NewRequest("POST", u, nil)
 	if err != nil {
@@ -126,7 +181,7 @@ func (s *RepositoriesService) RequestPageBuild(owner, repo string) (*PagesBuild,
 	req.Header.Set("Accept", mediaTypePagesPreview)
 
 	build := new(PagesBuild)
-	resp, err := s.client.Do(req, build)
+	resp, err := s.client.Do(ctx, req, build)
 	if err != nil {
 		return nil, resp, err
 	}

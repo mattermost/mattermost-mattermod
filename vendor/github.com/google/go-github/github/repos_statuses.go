@@ -6,14 +6,17 @@
 package github
 
 import (
+	"context"
 	"fmt"
+	"net/url"
 	"time"
 )
 
 // RepoStatus represents the status of a repository at a particular reference.
 type RepoStatus struct {
-	ID  *int    `json:"id,omitempty"`
-	URL *string `json:"url,omitempty"`
+	ID     *int64  `json:"id,omitempty"`
+	NodeID *string `json:"node_id,omitempty"`
+	URL    *string `json:"url,omitempty"`
 
 	// State is the current state of the repository. Possible values are:
 	// pending, success, error, or failure.
@@ -42,8 +45,8 @@ func (r RepoStatus) String() string {
 // reference. ref can be a SHA, a branch name, or a tag name.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref
-func (s *RepositoriesService) ListStatuses(owner, repo, ref string, opt *ListOptions) ([]*RepoStatus, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/commits/%v/statuses", owner, repo, ref)
+func (s *RepositoriesService) ListStatuses(ctx context.Context, owner, repo, ref string, opt *ListOptions) ([]*RepoStatus, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/commits/%v/statuses", owner, repo, url.QueryEscape(ref))
 	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
@@ -55,7 +58,7 @@ func (s *RepositoriesService) ListStatuses(owner, repo, ref string, opt *ListOpt
 	}
 
 	var statuses []*RepoStatus
-	resp, err := s.client.Do(req, &statuses)
+	resp, err := s.client.Do(ctx, req, &statuses)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -67,15 +70,15 @@ func (s *RepositoriesService) ListStatuses(owner, repo, ref string, opt *ListOpt
 // reference. Ref can be a SHA, a branch name, or a tag name.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/statuses/#create-a-status
-func (s *RepositoriesService) CreateStatus(owner, repo, ref string, status *RepoStatus) (*RepoStatus, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/statuses/%v", owner, repo, ref)
+func (s *RepositoriesService) CreateStatus(ctx context.Context, owner, repo, ref string, status *RepoStatus) (*RepoStatus, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/statuses/%v", owner, repo, url.QueryEscape(ref))
 	req, err := s.client.NewRequest("POST", u, status)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	repoStatus := new(RepoStatus)
-	resp, err := s.client.Do(req, repoStatus)
+	resp, err := s.client.Do(ctx, req, repoStatus)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -106,8 +109,8 @@ func (s CombinedStatus) String() string {
 // reference. ref can be a SHA, a branch name, or a tag name.
 //
 // GitHub API docs: https://developer.github.com/v3/repos/statuses/#get-the-combined-status-for-a-specific-ref
-func (s *RepositoriesService) GetCombinedStatus(owner, repo, ref string, opt *ListOptions) (*CombinedStatus, *Response, error) {
-	u := fmt.Sprintf("repos/%v/%v/commits/%v/status", owner, repo, ref)
+func (s *RepositoriesService) GetCombinedStatus(ctx context.Context, owner, repo, ref string, opt *ListOptions) (*CombinedStatus, *Response, error) {
+	u := fmt.Sprintf("repos/%v/%v/commits/%v/status", owner, repo, url.QueryEscape(ref))
 	u, err := addOptions(u, opt)
 	if err != nil {
 		return nil, nil, err
@@ -119,7 +122,7 @@ func (s *RepositoriesService) GetCombinedStatus(owner, repo, ref string, opt *Li
 	}
 
 	status := new(CombinedStatus)
-	resp, err := s.client.Do(req, status)
+	resp, err := s.client.Do(ctx, req, status)
 	if err != nil {
 		return nil, resp, err
 	}
