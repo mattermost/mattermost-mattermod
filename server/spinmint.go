@@ -152,7 +152,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, repo, upgradeServer)
+		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, pr.RepoNam, repo, upgradeServer)
 		if errInstance != nil {
 			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -377,7 +377,7 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (*ec2.Instance, error) {
+func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", prNumber))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
@@ -427,6 +427,14 @@ func setupSpinmint(prNumber int, prRef string, repo *Repository, upgrade bool) (
 			{
 				Key:   aws.String("Created"),
 				Value: aws.String(time.Now().Format("2006-01-02/15:04:05")),
+			},
+			{
+				Key:   aws.String("PRNumber"),
+				Value: aws.String("PR-" + strconv.Itoa(prNumber)),
+			},
+			{
+				Key:   aws.String("RepoName"),
+				Value: aws.String(prRepo),
 			},
 		},
 	})
