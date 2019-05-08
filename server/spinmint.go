@@ -152,7 +152,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, pr.RepoNam, repo, upgradeServer)
+		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, pr.RepoName, repo, upgradeServer)
 		if errInstance != nil {
 			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
