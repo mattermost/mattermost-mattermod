@@ -74,7 +74,7 @@ func checkCLA(pr *model.PullRequest) {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 		}
 		claStatus.State = github.String("error")
-		userMsg := fmt.Sprintf("%s need to sign the CLA", username)
+		userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
 		claStatus.Description = github.String(userMsg)
 		mlog.Info("will post error on CLA", mlog.String("user", username))
 		_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
