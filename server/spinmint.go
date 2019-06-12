@@ -589,7 +589,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			mlog.Error("Error decoding installation", mlog.Err(err))
 		}
 		if installationRequest.State == "stable" {
-			msg := fmt.Sprintf("Mattermost Created! :tada:\nAccess here: https://pr-%d.test.cloud.mattermost.com", pr.Number)
+			msg := fmt.Sprintf("Mattermost Created! :tada:\nAccess here: http://pr-%d.test.cloud.mattermost.com", pr.Number)
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			break
 		} else if installationRequest.State == "creation-failed" {
