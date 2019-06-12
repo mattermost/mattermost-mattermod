@@ -27,6 +27,7 @@
     "StaleLabel": "",
     "StaleComment": "",
 
+    "SetupSpinmintExperimentalTag": "",
     "SetupSpinmintTag": "",
     "SetupSpinmintMessage": "",
     "SetupSpinmintDoneMessage": "",
