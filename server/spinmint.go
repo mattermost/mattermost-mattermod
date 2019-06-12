@@ -234,18 +234,26 @@ func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
 		return
 	}
 
+	var installation string
 	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		_, errInstance = setupSpinmintExperimental(pr)
+		installation, errInstance = setupSpinmintExperimental(pr)
 		if errInstance != nil {
 			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 			return
 		}
-
+		spinmint := &model.Spinmint{
+			InstanceId: installation,
+			RepoOwner:  pr.RepoOwner,
+			RepoName:   pr.RepoName,
+			Number:     pr.Number,
+			CreatedAt:  time.Now().UTC().Unix(),
+		}
+		storeSpinmintInfo(spinmint)
 	}
 }
 
@@ -515,30 +523,79 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		mlog.Error("Error decoding", mlog.Err(err))
 		return "", err
 	}
+	mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", createClusterRequest.ID))
 
 	for {
-		url := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
-		req, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonStr))
-		client := &http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err))
-			return "", err
+		url2 := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
+		req2, err2 := http.NewRequest("GET", url2, nil)
+		client2 := &http.Client{}
+		resp2, err2 := client2.Do(req2)
+		if err2 != nil {
+			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err2))
+			return "", err2
 		}
-		defer resp.Body.Close()
+		defer resp2.Body.Close()
 		var clusterRequest Cluster
-		err = json.NewDecoder(resp.Body).Decode(&clusterRequest)
-		if err != nil && err != io.EOF {
-			mlog.Error("Error decoding", mlog.Err(err))
+		err2 = json.NewDecoder(resp2.Body).Decode(&clusterRequest)
+		if err2 != nil && err2 != io.EOF {
+			mlog.Error("Error decoding", mlog.Err(err2))
 		}
 		if clusterRequest.State == "stable" {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Cluster created")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "K8s Cluster created. Will deploy Mattermost...")
 			break
 		}
+		mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", createClusterRequest.ID), mlog.String("State", createClusterRequest.State))
 		time.Sleep(10 * time.Second)
 	}
 
-	return "", nil
+	payload := fmt.Sprintf("{\"ownerId\":\"PR-%d\",\n\"dns\": \"%d.test.cloud.mattermost.com\",\n\"version\n\": \"PR-%d\"}", pr.Number, pr.Number, pr.Number)
+	var mmStr = []byte(payload)
+	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
+	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	client = &http.Client{}
+	resp, err = client.Do(req)
+	if err != nil {
+		mlog.Error("Error making the post request to create the mm cluster", mlog.Err(err))
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var createInstallationRequest Installation
+	err = json.NewDecoder(resp.Body).Decode(&createInstallationRequest)
+	if err != nil && err != io.EOF {
+		mlog.Error("Error decoding installation request", mlog.Err(err))
+		return "", err
+	}
+	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", createInstallationRequest.ID))
+
+	for {
+		url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, createInstallationRequest.ID)
+		req, err := http.NewRequest("GET", url, nil)
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			mlog.Error("Error making the post request to create the mm installation", mlog.Err(err))
+			return "", err
+		}
+		defer resp.Body.Close()
+		var installationRequest Installation
+		err = json.NewDecoder(resp.Body).Decode(&installationRequest)
+		if err != nil && err != io.EOF {
+			mlog.Error("Error decoding installation", mlog.Err(err))
+		}
+		if installationRequest.State == "stable" {
+			msg := fmt.Sprintf("Mattermost Created!\nAccess here: %d.test.cloud.mattermost.com", pr.Number)
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			break
+		}
+		mlog.Info("Provisioner Server - installation request creating... sleep", mlog.String("InstallationID", installationRequest.ID), mlog.String("State", installationRequest.State))
+		time.Sleep(10 * time.Second)
+	}
+
+	installationClusterID := []string{createInstallationRequest.ID, createClusterRequest.ID}
+	return strings.Join(installationClusterID, "."), nil
 }
 
 func destroySpinmint(pr *model.PullRequest, instanceID string) {
@@ -567,6 +624,35 @@ func destroySpinmint(pr *model.PullRequest, instanceID string) {
 
 	// Remove from the local db
 	removeSpinmintInfo(instanceID)
+}
+
+func destroySpinmintExperimental(pr *model.PullRequest, instanceClusterID string) {
+	mlog.Info("Destroying spinmint experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+
+	split := strings.Split(instanceClusterID, ".")
+
+	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, split[0])
+	req, err := http.NewRequest("DELETE", url, nil)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		mlog.Error("Error deleting the installation", mlog.Err(err))
+	}
+	defer resp.Body.Close()
+
+	time.Sleep(30 * time.Second)
+
+	url = fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, split[1])
+	req, err = http.NewRequest("DELETE", url, nil)
+	client = &http.Client{}
+	resp, err = client.Do(req)
+	if err != nil {
+		mlog.Error("Error deleting the installation", mlog.Err(err))
+	}
+	defer resp.Body.Close()
+
+	// Remove from the local db
+	removeSpinmintInfo(instanceClusterID)
 }
 
 func getIPsForInstance(instance string) (publicIP string, privateIP string) {
@@ -677,4 +763,18 @@ type Cluster struct {
 	DeleteAt            int64
 	LockAcquiredBy      *string
 	LockAcquiredAt      int64
+}
+
+type Installation struct {
+	ID             string
+	OwnerID        string
+	Version        string
+	DNS            string
+	Affinity       string
+	GroupID        *string
+	State          string
+	CreateAt       int64
+	DeleteAt       int64
+	LockAcquiredBy *string
+	LockAcquiredAt int64
 }

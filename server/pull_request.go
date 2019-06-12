@@ -33,6 +33,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
+			go destroySpinmintExperimental(pr, spinmint.InstanceId)
 		}
 	} else if event.Action == "synchronize" {
 		checkCLA(pr)
@@ -226,6 +227,21 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
+		}
+	}
+
+	if removedLabel == Config.SetupSpinmintExperimentalTag {
+		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
+		} else if result.Data == nil {
+			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
+		} else {
+			spinmint := result.Data.(*model.Spinmint)
+			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
+			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
+
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
+			go destroySpinmintExperimental(pr, spinmint.InstanceId)
 		}
 	}
 }
