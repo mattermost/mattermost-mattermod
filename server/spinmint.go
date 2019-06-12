@@ -551,7 +551,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		time.Sleep(20 * time.Second)
 	}
 
-	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"PR-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
+	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
 	var mmStr = []byte(payload)
 	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
@@ -589,7 +589,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			mlog.Error("Error decoding installation", mlog.Err(err))
 		}
 		if installationRequest.State == "stable" {
-			msg := fmt.Sprintf("Mattermost Created! :tada:\nAccess here: https://PR-%d.test.cloud.mattermost.com", pr.Number)
+			msg := fmt.Sprintf("Mattermost Created! :tada:\nAccess here: https://pr-%d.test.cloud.mattermost.com", pr.Number)
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			break
 		} else if installationRequest.State == "creation-failed" {
