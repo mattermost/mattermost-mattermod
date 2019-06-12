@@ -543,12 +543,15 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		if clusterRequest.State == "stable" {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "K8s Cluster created. Will deploy Mattermost...")
 			break
+		} else if clusterRequest.State == "creation-failed" {
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
+			return "", fmt.Errorf("error creating k8s cluster")
 		}
 		mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", createClusterRequest.ID), mlog.String("State", createClusterRequest.State))
-		time.Sleep(10 * time.Second)
+		time.Sleep(20 * time.Second)
 	}
 
-	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
+	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"PR-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
 	var mmStr = []byte(payload)
 	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
@@ -589,6 +592,9 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			msg := fmt.Sprintf("Mattermost Created!\nAccess here: %d.test.cloud.mattermost.com", pr.Number)
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			break
+		} else if installationRequest.State == "creation-failed" {
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create mattermost installation.")
+			return "", fmt.Errorf("error creating mattermost installation")
 		}
 		mlog.Info("Provisioner Server - installation request creating... sleep", mlog.String("InstallationID", installationRequest.ID), mlog.String("State", installationRequest.State))
 		time.Sleep(10 * time.Second)
