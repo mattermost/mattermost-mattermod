@@ -548,7 +548,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		time.Sleep(10 * time.Second)
 	}
 
-	payload := fmt.Sprintf("{\"ownerId\":\"PR-%d\",\n\"dns\": \"%d.test.cloud.mattermost.com\",\n\"version\n\": \"PR-%d\"}", pr.Number, pr.Number, pr.Number)
+	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
 	var mmStr = []byte(payload)
 	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
