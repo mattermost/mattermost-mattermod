@@ -176,6 +176,7 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 	} else if addedLabel == Config.SetupSpinmintExperimentalTag {
 		mlog.Info("Label to spin an experimental test server")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will start an experimental test server using mattermost cloud")
+		go waitForBuildAndSetupSpinmintExperimental(pr)
 	} else {
 		mlog.Info("looking for other labels")
 

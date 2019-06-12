@@ -5,9 +5,13 @@ package server
 
 import (
 	// "bytes"
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"path"
 
@@ -200,6 +204,49 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+}
+
+func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if !ok || repo.JenkinsServer == "" {
+		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	if !ok {
+		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	client := jenkins.NewJenkins(&jenkins.Auth{
+		Username: credentials.Username,
+		ApiToken: credentials.ApiToken,
+	}, credentials.URL)
+
+	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+
+	pr, errr := waitForBuild(client, pr)
+	if errr == false || pr == nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
+	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
+	} else if result.Data == nil {
+		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
+		var errInstance error
+		_, errInstance = setupSpinmintExperimental(pr)
+		if errInstance != nil {
+			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+			return
+		}
+
+	}
 }
 
 func waitForMobileAppsBuild(pr *model.PullRequest) {
@@ -445,6 +492,55 @@ func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade
 	return resp.Instances[0], nil
 }
 
+func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
+	mlog.Info("Setting up spinmint experimental for PR", mlog.Int("pr", pr.Number))
+	url := fmt.Sprintf("%s/api/clusters", Config.ProvisionerServer)
+	mlog.Info("Provisioner Server ", mlog.String("Server", url))
+
+	var jsonStr = []byte(`{}`)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err))
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var createClusterRequest Cluster
+	err = json.NewDecoder(resp.Body).Decode(&createClusterRequest)
+	if err != nil && err != io.EOF {
+		mlog.Error("Error decoding", mlog.Err(err))
+		return "", err
+	}
+
+	for {
+		url := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
+		req, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonStr))
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err))
+			return "", err
+		}
+		defer resp.Body.Close()
+		var clusterRequest Cluster
+		err = json.NewDecoder(resp.Body).Decode(&clusterRequest)
+		if err != nil && err != io.EOF {
+			mlog.Error("Error decoding", mlog.Err(err))
+		}
+		if clusterRequest.State == "stable" {
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Cluster created")
+			break
+		}
+		time.Sleep(10 * time.Second)
+	}
+
+	return "", nil
+}
+
 func destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
@@ -566,4 +662,19 @@ func removeSpinmintInfo(instanceId string) {
 	if result := <-Srv.Store.Spinmint().Delete(instanceId); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
+}
+
+type Cluster struct {
+	ID                  string
+	Provider            string
+	Provisioner         string
+	ProviderMetadata    []byte `json:",omitempty"`
+	ProvisionerMetadata []byte `json:",omitempty"`
+	AllowInstallations  bool
+	Size                string
+	State               string
+	CreateAt            int64
+	DeleteAt            int64
+	LockAcquiredBy      *string
+	LockAcquiredAt      int64
 }

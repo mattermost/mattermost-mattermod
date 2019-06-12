@@ -48,7 +48,9 @@ type PRServerConfig struct {
 
 	Repositories []*Repository
 
-	SetupSpinmintExperimentalTag       string
+	SetupSpinmintExperimentalTag string
+	ProvisionerServer            string
+
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string
 	SetupSpinmintDoneMessage           string
