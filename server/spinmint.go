@@ -505,53 +505,109 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	url := fmt.Sprintf("%s/api/clusters", Config.ProvisionerServer)
 	mlog.Info("Provisioner Server ", mlog.String("Server", url))
 
-	var jsonStr = []byte(`{}`)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
+	// Get cluster list
+	req, err := http.NewRequest("GET", url, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err))
+		mlog.Error("Error making the post request to check the k8s cluster", mlog.Err(err))
 		return "", err
 	}
 	defer resp.Body.Close()
 
-	var createClusterRequest Cluster
-	err = json.NewDecoder(resp.Body).Decode(&createClusterRequest)
+	var createClusterList []Cluster
+	err = json.NewDecoder(resp.Body).Decode(&createClusterList)
 	if err != nil && err != io.EOF {
 		mlog.Error("Error decoding", mlog.Err(err))
 		return "", err
 	}
-	mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", createClusterRequest.ID))
 
-	for {
-		url2 := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
-		req2, err2 := http.NewRequest("GET", url2, nil)
-		client2 := &http.Client{}
-		resp2, err2 := client2.Do(req2)
-		if err2 != nil {
-			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err2))
-			return "", err2
+	clusterCount := 0
+	for _, cluster := range createClusterList {
+		if cluster.State == "stable" {
+			clusterCount++
+			mlog.Info("Provisioner Server counting", mlog.Int("clusterCount", clusterCount))
 		}
-		defer resp2.Body.Close()
-		var clusterRequest Cluster
-		err2 = json.NewDecoder(resp2.Body).Decode(&clusterRequest)
-		if err2 != nil && err2 != io.EOF {
-			mlog.Error("Error decoding", mlog.Err(err2))
-		}
-		if clusterRequest.State == "stable" {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Kubernetes cluster created. Now will deploy Mattermost... Hang on!")
-			break
-		} else if clusterRequest.State == "creation-failed" {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
-			return "", fmt.Errorf("error creating k8s cluster")
-		}
-		mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", createClusterRequest.ID), mlog.String("State", createClusterRequest.State))
-		time.Sleep(20 * time.Second)
 	}
 
-	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n}", pr.Number, pr.Number, pr.Number)
+	// Get cluster list
+	urlInstallation := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
+	req, err = http.NewRequest("GET", urlInstallation, nil)
+	client = &http.Client{}
+	resp, err = client.Do(req)
+	if err != nil {
+		mlog.Error("Error making the post request to check the installations", mlog.Err(err))
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var createInstallationList []Installation
+	err = json.NewDecoder(resp.Body).Decode(&createClusterList)
+	if err != nil && err != io.EOF {
+		mlog.Error("Error decoding", mlog.Err(err))
+		return "", err
+	}
+
+	installationCount := 0
+	for _, installation := range createInstallationList {
+		if installation.State == "stable" {
+			installationCount++
+			mlog.Info("Provisioner Server counting MM Installations", mlog.Int("installationCount", installationCount))
+		}
+	}
+
+	if clusterCount == 0 || (installationCount/clusterCount > 5) {
+		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount), mlog.Int("ratio", installationCount/clusterCount))
+		var jsonStr = []byte(`{}`)
+		reqCluster, errCluster := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+		reqCluster.Header.Set("Content-Type", "application/json")
+
+		clientCluster := &http.Client{}
+		respCluster, errCluster := clientCluster.Do(reqCluster)
+		if errCluster != nil {
+			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(errCluster))
+			return "", err
+		}
+		defer respCluster.Body.Close()
+
+		var createClusterRequest Cluster
+		errCluster = json.NewDecoder(respCluster.Body).Decode(&createClusterRequest)
+		if errCluster != nil && errCluster != io.EOF {
+			mlog.Error("Error decoding", mlog.Err(errCluster))
+			return "", err
+		}
+		mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", createClusterRequest.ID))
+
+		for {
+			url2 := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
+			req2, err2 := http.NewRequest("GET", url2, nil)
+			client2 := &http.Client{}
+			resp2, err2 := client2.Do(req2)
+			if err2 != nil {
+				mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err2))
+				return "", err2
+			}
+			defer resp2.Body.Close()
+			var clusterRequest Cluster
+			err2 = json.NewDecoder(resp2.Body).Decode(&clusterRequest)
+			if err2 != nil && err2 != io.EOF {
+				mlog.Error("Error decoding", mlog.Err(err2))
+			}
+			if clusterRequest.State == "stable" {
+				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Kubernetes cluster created. Now will deploy Mattermost... Hang on!")
+				break
+			} else if clusterRequest.State == "creation-failed" {
+				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
+				return "", fmt.Errorf("error creating k8s cluster")
+			}
+			mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", createClusterRequest.ID), mlog.String("State", createClusterRequest.State))
+			time.Sleep(20 * time.Second)
+		}
+
+	}
+
+	mlog.Info("Provisioner Server - Installation request")
+	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n\"affinity\":\"shared\"}", pr.Number, pr.Number, pr.Number)
 	var mmStr = []byte(payload)
 	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
@@ -600,8 +656,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		time.Sleep(10 * time.Second)
 	}
 
-	installationClusterID := []string{createInstallationRequest.ID, createClusterRequest.ID}
-	return strings.Join(installationClusterID, "."), nil
+	return createInstallationRequest.ID, nil
 }
 
 func destroySpinmint(pr *model.PullRequest, instanceID string) {
@@ -635,23 +690,10 @@ func destroySpinmint(pr *model.PullRequest, instanceID string) {
 func destroySpinmintExperimental(pr *model.PullRequest, instanceClusterID string) {
 	mlog.Info("Destroying spinmint experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	split := strings.Split(instanceClusterID, ".")
-
-	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, split[0])
+	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, instanceClusterID)
 	req, err := http.NewRequest("DELETE", url, nil)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		mlog.Error("Error deleting the installation", mlog.Err(err))
-	}
-	defer resp.Body.Close()
-
-	time.Sleep(30 * time.Second)
-
-	url = fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, split[1])
-	req, err = http.NewRequest("DELETE", url, nil)
-	client = &http.Client{}
-	resp, err = client.Do(req)
 	if err != nil {
 		mlog.Error("Error deleting the installation", mlog.Err(err))
 	}
