@@ -504,10 +504,11 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("Setting up spinmint experimental for PR", mlog.Int("pr", pr.Number))
 	url := fmt.Sprintf("%s/api/clusters", Config.ProvisionerServer)
 	mlog.Info("Provisioner Server ", mlog.String("Server", url))
+	client := &http.Client{}
 
 	// Get cluster list
+	mlog.Info("Provisioner Server getting clusters")
 	req, err := http.NewRequest("GET", url, nil)
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		mlog.Error("Error making the post request to check the k8s cluster", mlog.Err(err))
@@ -531,9 +532,9 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	}
 
 	// Get cluster list
+	mlog.Info("Provisioner Server getting installations")
 	urlInstallation := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("GET", urlInstallation, nil)
-	client = &http.Client{}
 	resp, err = client.Do(req)
 	if err != nil {
 		mlog.Error("Error making the post request to check the installations", mlog.Err(err))
@@ -616,7 +617,6 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	client = &http.Client{}
 	resp, err = client.Do(req)
 	if err != nil {
 		mlog.Error("Error making the post request to create the mm cluster", mlog.Err(err))
@@ -635,7 +635,6 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	for {
 		url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, createInstallationRequest.ID)
 		req, err := http.NewRequest("GET", url, nil)
-		client := &http.Client{}
 		resp, err := client.Do(req)
 		if err != nil {
 			mlog.Error("Error making the post request to create the mm installation", mlog.Err(err))
