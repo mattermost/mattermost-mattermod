@@ -558,8 +558,8 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	}
 
 	mlog.Info("will check if need create a cluster")
-	if clusterCount == 0 || (installationCount/clusterCount > 5) {
-		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount), mlog.Int("ratio", installationCount/clusterCount))
+	if clusterCount == 0 || installationCount/clusterCount > 5 {
+		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount))
 		payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
 		var jsonStr = []byte(payloadCluster)
 		reqCluster, errCluster := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
