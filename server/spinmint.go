@@ -557,6 +557,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		}
 	}
 
+	mlog.Info("will check if need create a cluster")
 	if clusterCount == 0 || (installationCount/clusterCount > 5) {
 		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount), mlog.Int("ratio", installationCount/clusterCount))
 		payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
@@ -607,6 +608,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 		}
 
 	} else {
+		mlog.Info("not needed to create a cluster")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "We don't need a new Kubernetes cluster, will reuse an existing one. Requesting to deploy Mattermost.")
 	}
 
