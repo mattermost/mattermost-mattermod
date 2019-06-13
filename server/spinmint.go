@@ -604,6 +604,8 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			time.Sleep(20 * time.Second)
 		}
 
+	} else {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "We don't need a new Kubernetes cluster, will reuse an existing one. Requesting to deploy Mattermost.")
 	}
 
 	mlog.Info("Provisioner Server - Installation request")
