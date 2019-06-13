@@ -560,6 +560,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("will check if need create a cluster")
 	if clusterCount == 0 || installationCount/clusterCount > 5 {
 		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will spin a Kubernetes Cluster. This may take up to 600 seconds.")
 		payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
 		var jsonStr = []byte(payloadCluster)
 		reqCluster, errCluster := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -613,7 +614,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	}
 
 	mlog.Info("Provisioner Server - Installation request")
-	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\"\n\"affinity\":\"shared\"}", pr.Number, pr.Number, pr.Number)
+	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\",\n\"affinity\":\"shared\"}", pr.Number, pr.Number, pr.Number)
 	var mmStr = []byte(payload)
 	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
