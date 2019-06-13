@@ -541,7 +541,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			mlog.Error("Error decoding", mlog.Err(err2))
 		}
 		if clusterRequest.State == "stable" {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "K8s Cluster created. Will deploy Mattermost...")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Kubernetes cluster created. Now will deploy Mattermost... Hang on!")
 			break
 		} else if clusterRequest.State == "creation-failed" {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
@@ -589,7 +589,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 			mlog.Error("Error decoding installation", mlog.Err(err))
 		}
 		if installationRequest.State == "stable" {
-			msg := fmt.Sprintf("Mattermost Created! :tada:\nAccess here: https://pr-%d.test.cloud.mattermost.com", pr.Number)
+			msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.test.cloud.mattermost.com", pr.Number)
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			break
 		} else if installationRequest.State == "creation-failed" {
