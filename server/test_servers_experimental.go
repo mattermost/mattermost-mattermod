@@ -229,6 +229,10 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 }
 
 func upgradeTestServer(pr *model.PullRequest) {
+	// TODO: add a new column in the db to get the previous job and wait for the new one start
+	// for now will sleep some time
+	time.Sleep(30 * time.Second)
+
 	var installation string
 	result := <-Srv.Store.Spinmint().Get(pr.Number)
 	if result.Err != nil {
@@ -242,6 +246,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 		installation = spinmint.InstanceId
 	}
 
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will upgrade the test server with the build pass.")
 	err := waitForBuildComplete(pr)
 	if err != nil {
 		return
@@ -251,7 +256,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
 	var mmStr = []byte(payload)
-	url := fmt.Sprintf("%s/api/installations/%s/mattermost", Config.ProvisionerServer, installation)
+	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installation)
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
 		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
@@ -259,7 +264,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 		return
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 202 {
 		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process")
 		return
