@@ -5,13 +5,10 @@ package server
 
 import (
 	// "bytes"
-	"bytes"
+
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"path"
 
@@ -204,57 +201,6 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
-}
-
-func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
-
-	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-
-	pr, errr := waitForBuild(client, pr)
-	if errr == false || pr == nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	var installation string
-	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
-	} else if result.Data == nil {
-		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
-		var errInstance error
-		installation, errInstance = setupSpinmintExperimental(pr)
-		if errInstance != nil {
-			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-			return
-		}
-		spinmint := &model.Spinmint{
-			InstanceId: installation,
-			RepoOwner:  pr.RepoOwner,
-			RepoName:   pr.RepoName,
-			Number:     pr.Number,
-			CreatedAt:  time.Now().UTC().Unix(),
-		}
-		storeSpinmintInfo(spinmint)
-	}
 }
 
 func waitForMobileAppsBuild(pr *model.PullRequest) {
@@ -500,170 +446,6 @@ func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade
 	return resp.Instances[0], nil
 }
 
-func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
-	mlog.Info("Setting up spinmint experimental for PR", mlog.Int("pr", pr.Number))
-	url := fmt.Sprintf("%s/api/clusters", Config.ProvisionerServer)
-	mlog.Info("Provisioner Server ", mlog.String("Server", url))
-	client := &http.Client{}
-
-	// Get cluster list
-	mlog.Info("Provisioner Server getting clusters")
-	req, err := http.NewRequest("GET", url, nil)
-	resp, err := client.Do(req)
-	if err != nil {
-		mlog.Error("Error making the post request to check the k8s cluster", mlog.Err(err))
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var createClusterList []Cluster
-	err = json.NewDecoder(resp.Body).Decode(&createClusterList)
-	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding", mlog.Err(err))
-		return "", err
-	}
-
-	clusterCount := 0
-	for _, cluster := range createClusterList {
-		if cluster.State == "stable" {
-			clusterCount++
-			mlog.Info("Provisioner Server counting", mlog.Int("clusterCount", clusterCount))
-		}
-	}
-
-	// Get cluster list
-	mlog.Info("Provisioner Server getting installations")
-	urlInstallation := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
-	req, err = http.NewRequest("GET", urlInstallation, nil)
-	resp, err = client.Do(req)
-	if err != nil {
-		mlog.Error("Error making the post request to check the installations", mlog.Err(err))
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var createInstallationList []Installation
-	err = json.NewDecoder(resp.Body).Decode(&createClusterList)
-	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding", mlog.Err(err))
-		return "", err
-	}
-
-	installationCount := 0
-	for _, installation := range createInstallationList {
-		if installation.State == "stable" {
-			installationCount++
-			mlog.Info("Provisioner Server counting MM Installations", mlog.Int("installationCount", installationCount))
-		}
-	}
-
-	mlog.Info("will check if need create a cluster")
-	if clusterCount == 0 || installationCount/clusterCount > 5 {
-		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will spin a Kubernetes Cluster. This may take up to 600 seconds.")
-		payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
-		var jsonStr = []byte(payloadCluster)
-		reqCluster, errCluster := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
-		reqCluster.Header.Set("Content-Type", "application/json")
-
-		clientCluster := &http.Client{}
-		respCluster, errCluster := clientCluster.Do(reqCluster)
-		if errCluster != nil {
-			mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(errCluster))
-			return "", err
-		}
-		defer respCluster.Body.Close()
-
-		var createClusterRequest Cluster
-		errCluster = json.NewDecoder(respCluster.Body).Decode(&createClusterRequest)
-		if errCluster != nil && errCluster != io.EOF {
-			mlog.Error("Error decoding", mlog.Err(errCluster))
-			return "", err
-		}
-		mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", createClusterRequest.ID))
-
-		for {
-			url2 := fmt.Sprintf("%s/api/cluster/%s", Config.ProvisionerServer, createClusterRequest.ID)
-			req2, err2 := http.NewRequest("GET", url2, nil)
-			client2 := &http.Client{}
-			resp2, err2 := client2.Do(req2)
-			if err2 != nil {
-				mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(err2))
-				return "", err2
-			}
-			defer resp2.Body.Close()
-			var clusterRequest Cluster
-			err2 = json.NewDecoder(resp2.Body).Decode(&clusterRequest)
-			if err2 != nil && err2 != io.EOF {
-				mlog.Error("Error decoding", mlog.Err(err2))
-			}
-			if clusterRequest.State == "stable" {
-				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Kubernetes cluster created. Now will deploy Mattermost... Hang on!")
-				break
-			} else if clusterRequest.State == "creation-failed" {
-				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
-				return "", fmt.Errorf("error creating k8s cluster")
-			}
-			mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", createClusterRequest.ID), mlog.String("State", createClusterRequest.State))
-			time.Sleep(20 * time.Second)
-		}
-
-	} else {
-		mlog.Info("not needed to create a cluster")
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "We don't need a new Kubernetes cluster, will reuse an existing one. Requesting to deploy Mattermost.")
-	}
-
-	mlog.Info("Provisioner Server - Installation request")
-	payload := fmt.Sprintf("{\n\"ownerId\":\"PR-%d\",\n\"dns\": \"pr-%d.test.cloud.mattermost.com\",\n\"version\": \"PR-%d\",\n\"affinity\":\"multitenant\"}", pr.Number, pr.Number, pr.Number)
-	var mmStr = []byte(payload)
-	url = fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
-	req, err = http.NewRequest("POST", url, bytes.NewBuffer(mmStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err = client.Do(req)
-	if err != nil {
-		mlog.Error("Error making the post request to create the mm cluster", mlog.Err(err))
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var createInstallationRequest Installation
-	err = json.NewDecoder(resp.Body).Decode(&createInstallationRequest)
-	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding installation request", mlog.Err(err))
-		return "", err
-	}
-	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", createInstallationRequest.ID))
-
-	for {
-		url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, createInstallationRequest.ID)
-		req, err := http.NewRequest("GET", url, nil)
-		resp, err := client.Do(req)
-		if err != nil {
-			mlog.Error("Error making the post request to create the mm installation", mlog.Err(err))
-			return "", err
-		}
-		defer resp.Body.Close()
-		var installationRequest Installation
-		err = json.NewDecoder(resp.Body).Decode(&installationRequest)
-		if err != nil && err != io.EOF {
-			mlog.Error("Error decoding installation", mlog.Err(err))
-		}
-		if installationRequest.State == "stable" {
-			msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.test.cloud.mattermost.com", pr.Number)
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-			break
-		} else if installationRequest.State == "creation-failed" {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create mattermost installation.")
-			return "", fmt.Errorf("error creating mattermost installation")
-		}
-		mlog.Info("Provisioner Server - installation request creating... sleep", mlog.String("InstallationID", installationRequest.ID), mlog.String("State", installationRequest.State))
-		time.Sleep(10 * time.Second)
-	}
-
-	return createInstallationRequest.ID, nil
-}
-
 func destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
@@ -690,22 +472,6 @@ func destroySpinmint(pr *model.PullRequest, instanceID string) {
 
 	// Remove from the local db
 	removeSpinmintInfo(instanceID)
-}
-
-func destroySpinmintExperimental(pr *model.PullRequest, instanceClusterID string) {
-	mlog.Info("Destroying spinmint experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-
-	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, instanceClusterID)
-	req, err := http.NewRequest("DELETE", url, nil)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		mlog.Error("Error deleting the installation", mlog.Err(err))
-	}
-	defer resp.Body.Close()
-
-	// Remove from the local db
-	removeSpinmintInfo(instanceClusterID)
 }
 
 func getIPsForInstance(instance string) (publicIP string, privateIP string) {
@@ -801,33 +567,4 @@ func removeSpinmintInfo(instanceId string) {
 	if result := <-Srv.Store.Spinmint().Delete(instanceId); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
-}
-
-type Cluster struct {
-	ID                  string
-	Provider            string
-	Provisioner         string
-	ProviderMetadata    []byte `json:",omitempty"`
-	ProvisionerMetadata []byte `json:",omitempty"`
-	AllowInstallations  bool
-	Size                string
-	State               string
-	CreateAt            int64
-	DeleteAt            int64
-	LockAcquiredBy      *string
-	LockAcquiredAt      int64
-}
-
-type Installation struct {
-	ID             string
-	OwnerID        string
-	Version        string
-	DNS            string
-	Affinity       string
-	GroupID        *string
-	State          string
-	CreateAt       int64
-	DeleteAt       int64
-	LockAcquiredBy *string
-	LockAcquiredAt int64
 }

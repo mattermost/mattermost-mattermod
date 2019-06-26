@@ -50,6 +50,7 @@ type PRServerConfig struct {
 
 	SetupSpinmintExperimentalTag string
 	ProvisionerServer            string
+	DNSNameTestServer            string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string
