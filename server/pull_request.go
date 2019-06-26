@@ -37,6 +37,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	} else if event.Action == "synchronize" {
 		checkCLA(pr)
+		upgradeTestServer(pr)
 	}
 
 	checkPullRequestForChanges(pr)

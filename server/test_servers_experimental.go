@@ -219,6 +219,49 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	return createInstallationRequest.ID, nil
 }
 
+func upgradeTestServer(pr *model.PullRequest) {
+	var installation string
+	result := <-Srv.Store.Spinmint().Get(pr.Number)
+	if result.Err != nil {
+		mlog.Error("Unable to get the spinmint information. nothing to do", mlog.String("pr_error", result.Err.Error()))
+		return
+	} else if result.Data == nil {
+		mlog.Error("No spinmint for this PR in the Database. nothing to do.")
+		return
+	} else {
+		spinmint := result.Data.(*model.Spinmint)
+		installation = spinmint.InstanceId
+	}
+
+	mlog.Info("Provisioner Server - Upgrade request")
+	shortCommit := pr.Sha[0:7]
+	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
+	var mmStr = []byte(payload)
+	url := fmt.Sprintf("%s/api/installations/%s/mattermost", Config.ProvisionerServer, installation)
+	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
+	if err != nil {
+		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process")
+		return
+	}
+
+	wait := 480
+	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	defer cancel()
+	err = waitMattermostInstallation(ctx, pr, installation)
+	if err != nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+}
+
 func destroySpinmintExperimental(pr *model.PullRequest, instanceClusterID string) {
 	mlog.Info("Destroying spinmint experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
