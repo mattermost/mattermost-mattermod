@@ -48,30 +48,8 @@ type Installation struct {
 }
 
 func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
-
-	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-
-	pr, errr := waitForBuild(client, pr)
-	if errr == false || pr == nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+	err := waitForBuildComplete(pr)
+	if err != nil {
 		return
 	}
 
@@ -96,6 +74,37 @@ func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
 		}
 		storeSpinmintInfo(spinmint)
 	}
+}
+
+func waitForBuildComplete(pr *model.PullRequest) error {
+	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	if !ok || repo.JenkinsServer == "" {
+		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return fmt.Errorf("Unable to set up spintmint for PR without Jenkins configured for server")
+	}
+
+	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	if !ok {
+		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return fmt.Errorf("No Jenkins credentials for server required for PR")
+	}
+
+	client := jenkins.NewJenkins(&jenkins.Auth{
+		Username: credentials.Username,
+		ApiToken: credentials.ApiToken,
+	}, credentials.URL)
+
+	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+
+	pr, errr := waitForBuild(client, pr)
+	if errr == false || pr == nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return fmt.Errorf("error in the build. aborting")
+	}
+
+	return nil
 }
 
 func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
@@ -233,6 +242,11 @@ func upgradeTestServer(pr *model.PullRequest) {
 		installation = spinmint.InstanceId
 	}
 
+	err := waitForBuildComplete(pr)
+	if err != nil {
+		return
+	}
+
 	mlog.Info("Provisioner Server - Upgrade request")
 	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
@@ -292,6 +306,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 		err = json.NewDecoder(resp.Body).Decode(&installationRequest)
 		if err != nil && err != io.EOF {
 			mlog.Error("Error decoding installation", mlog.Err(err))
+			return fmt.Errorf("Error decoding installation")
 		}
 		if installationRequest.State == "stable" {
 			msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
@@ -306,7 +321,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 		case <-ctx.Done():
 			destroyMMInstallation(installationRequest.ID)
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted the installation. Aborted the test server. Please check the logs.")
-			return fmt.Errorf("timed out waiting for the mattermost installation complete. requesting the deletion.")
+			return fmt.Errorf("timed out waiting for the mattermost installation complete. requesting the deletion")
 		case <-time.After(10 * time.Second):
 		}
 	}
