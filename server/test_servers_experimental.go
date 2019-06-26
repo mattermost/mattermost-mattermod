@@ -243,8 +243,19 @@ func upgradeTestServer(pr *model.PullRequest) {
 	mlog.Info("Sleeping a bit to wait for the build process start", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
 	time.Sleep(60 * time.Second)
 
+	wait := 480
+	mlog.Info("Waiting up to 480 seconds to get the up-to-date build link...")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	defer cancel()
+
+	updatedPR, err := checkBuildLink(ctx, pr)
+	if err != nil {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		return
+	}
+
 	var installation string
-	result := <-Srv.Store.Spinmint().Get(pr.Number)
+	result := <-Srv.Store.Spinmint().Get(updatedPR.Number)
 	if result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. nothing to do", mlog.String("pr_error", result.Err.Error()))
 		return
@@ -256,37 +267,37 @@ func upgradeTestServer(pr *model.PullRequest) {
 		installation = spinmint.InstanceId
 	}
 
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will upgrade the test server with the build pass.")
-	err := waitForBuildComplete(pr)
+	commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, "Will upgrade the test server with the build pass.")
+	err = waitForBuildComplete(updatedPR)
 	if err != nil {
 		return
 	}
 
-	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", pr.Sha))
-	shortCommit := pr.Sha[0:7]
+	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", updatedPR.Sha))
+	shortCommit := updatedPR.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
 	var mmStr = []byte(payload)
 	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installation)
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
 		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 202 {
 		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, updatedPR.Number, "Error doing the upgrade process")
 		return
 	}
 
-	wait := 480
+	wait = 480
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, pr, installation, true)
+	err = waitMattermostInstallation(ctx, updatedPR, installation, true)
 	if err != nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 }
@@ -306,6 +317,28 @@ func destroyMMInstallation(instanceClusterID string) {
 		mlog.Error("Error deleting the installation", mlog.Err(err))
 	}
 	defer resp.Body.Close()
+}
+
+func checkBuildLink(ctx context.Context, pr *model.PullRequest) (*model.PullRequest, error) {
+	client := NewGithubClient()
+	for {
+		prGitHub, _, err := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		//get the latest update PR build link
+		pr, err := GetPullRequestFromGithub(prGitHub)
+		if err != nil {
+			mlog.Error("pr_error", mlog.Err(err))
+			return nil, err
+		}
+		if pr.BuildLink != "" {
+			return pr, nil
+		}
+		select {
+		case <-ctx.Done():
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted. Aborted the upgrade of the test server. Please check the logs.")
+			return nil, fmt.Errorf("timed out waiting the build link")
+		case <-time.After(10 * time.Second):
+		}
+	}
 }
 
 func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, installationRequestID string, upgrade bool) error {
