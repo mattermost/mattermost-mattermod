@@ -96,7 +96,7 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 		ApiToken: credentials.ApiToken,
 	}, credentials.URL)
 
-	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
 
 	pr, errr := waitForBuild(client, pr)
 	if errr == false || pr == nil {
@@ -255,9 +255,13 @@ func upgradeTestServer(pr *model.PullRequest) {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
-	mlog.Info("Build Link updated", mlog.String("buildLink", buildLink))
+	mlog.Info("Build Link updated", mlog.String("buildLink", buildLink), mlog.String("OldBuildLink", pr.BuildLink))
 	// update the build link
 	pr.BuildLink = buildLink
+	if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
+		mlog.Error(result.Err.Error())
+	}
+	mlog.Info("New build", mlog.String("New", pr.BuildLink))
 
 	var installation string
 	result := <-Srv.Store.Spinmint().Get(pr.Number)
