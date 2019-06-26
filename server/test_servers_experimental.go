@@ -229,6 +229,15 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 }
 
 func upgradeTestServer(pr *model.PullRequest) {
+
+	for _, label := range pr.Labels {
+		if label == Config.SetupSpinmintExperimentalTag {
+			mlog.Info("PR has the setup test experimental tag enabled will check the upgrade")
+			break
+		}
+		return
+	}
+
 	// TODO: add a new column in the db to get the previous job and wait for the new one start
 	// for now will sleep some time
 	mlog.Info("Sleeping a bit to wait for the build process start", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
