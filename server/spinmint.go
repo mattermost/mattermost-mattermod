@@ -319,20 +319,20 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 			if pr.BuildLink != "" {
 				mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
 				// Doing this because the lib we are using does not support folders :(
-				var jobNumber int64
+				// var jobNumber int64
 				var jobName string
 
 				parts := strings.Split(pr.BuildLink, "/")
 				// Doing this because the lib we are using does not support folders :(
 				if pr.RepoName == "mattermost-server" {
-					jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
+					// jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 					jobName = parts[len(parts)-6]     //mattermost-server
 					subJobName := parts[len(parts)-4] //PR-XXXX
 
 					jobName = "mp/job/" + jobName + "/job/" + subJobName
 					mlog.Info("Job name for server", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
 				} else if pr.RepoName == "mattermost-mobile" {
-					jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
+					// jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
 					jobName = parts[len(parts)-3] //mattermost-mobile
 					jobName = "mm/job/" + jobName
 					mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
@@ -351,17 +351,18 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				// This time is in the Jenkins job Name because it returns just the name
 				job.Name = jobName
 
-				build, err := client.GetBuild(job, int(jobNumber))
+				// build, err := client.GetBuild(job, int(jobNumber))
+				build, err := client.GetLastBuild(job)
 				if err != nil {
-					LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", jobNumber, pr.Number, pr.RepoOwner, pr.RepoName, err)
+					LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", build.Number, pr.Number, pr.RepoOwner, pr.RepoName, err)
 					return pr, false
 				}
 
 				if !build.Building && build.Result == "SUCCESS" {
-					mlog.Info("build for PR succeeded!", mlog.Int64("jobnumber", jobNumber), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+					mlog.Info("build for PR succeeded!", mlog.Int("jobnumber", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 					return pr, true
-				} else if build.Result == "FAILURE" {
-					mlog.Error("build has status FAILURE. Aborting.", mlog.Int("build", build.Number), mlog.String("build_error", build.Result))
+				} else if build.Result == "FAILURE" || build.Result == "ABORTED" {
+					mlog.Error("build has status FAILURE/ABORTED. Aborting.", mlog.Int("build", build.Number), mlog.String("build_error", build.Result))
 					return pr, false
 				} else {
 					mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
