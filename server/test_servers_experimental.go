@@ -248,14 +248,19 @@ func upgradeTestServer(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
 
-	updatedPR, err := checkBuildLink(ctx, pr)
-	if err != nil {
+	// need to do this workaroud here because when push a new commit the build link
+	// is not updated and can be blank for some time
+	buildLink, err := checkBuildLink(ctx, pr)
+	if err != nil || buildLink == "" {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
+	mlog.Info("Build Link updated", mlog.String("buildLink", buildLink))
+	// update the build link
+	pr.BuildLink = buildLink
 
 	var installation string
-	result := <-Srv.Store.Spinmint().Get(updatedPR.Number)
+	result := <-Srv.Store.Spinmint().Get(pr.Number)
 	if result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. nothing to do", mlog.String("pr_error", result.Err.Error()))
 		return
@@ -267,27 +272,27 @@ func upgradeTestServer(pr *model.PullRequest) {
 		installation = spinmint.InstanceId
 	}
 
-	commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, "Will upgrade the test server with the build pass.")
-	err = waitForBuildComplete(updatedPR)
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will upgrade the test server with the build pass.")
+	err = waitForBuildComplete(pr)
 	if err != nil {
 		return
 	}
 
-	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", updatedPR.Sha))
-	shortCommit := updatedPR.Sha[0:7]
+	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", pr.Sha))
+	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
 	var mmStr = []byte(payload)
 	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installation)
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
 		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
-		commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 202 {
 		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, updatedPR.Number, "Error doing the upgrade process")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process")
 		return
 	}
 
@@ -295,9 +300,9 @@ func upgradeTestServer(pr *model.PullRequest) {
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, updatedPR, installation, true)
+	err = waitMattermostInstallation(ctx, pr, installation, true)
 	if err != nil {
-		commentOnIssue(updatedPR.RepoOwner, updatedPR.RepoName, updatedPR.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 }
@@ -319,23 +324,25 @@ func destroyMMInstallation(instanceClusterID string) {
 	defer resp.Body.Close()
 }
 
-func checkBuildLink(ctx context.Context, pr *model.PullRequest) (*model.PullRequest, error) {
+func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) {
 	client := NewGithubClient()
+	repo, _ := Config.GetRepository(pr.RepoOwner, pr.RepoName)
 	for {
-		prGitHub, _, err := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
-		//get the latest update PR build link
-		pr, err := GetPullRequestFromGithub(prGitHub)
+		combined, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
-			mlog.Error("pr_error", mlog.Err(err))
-			return nil, err
+			return "", err
 		}
-		if pr.BuildLink != "" {
-			return pr, nil
+		for _, status := range combined.Statuses {
+			if *status.Context == repo.BuildStatusContext {
+				if *status.TargetURL != "" {
+					return *status.TargetURL, nil
+				}
+			}
 		}
 		select {
 		case <-ctx.Done():
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted. Aborted the upgrade of the test server. Please check the logs.")
-			return nil, fmt.Errorf("timed out waiting the build link")
+			return "", fmt.Errorf("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}
 	}
