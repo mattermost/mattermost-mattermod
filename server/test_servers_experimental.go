@@ -220,7 +220,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, pr, createInstallationRequest.ID)
+	err = waitMattermostInstallation(ctx, pr, createInstallationRequest.ID, false)
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +231,8 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 func upgradeTestServer(pr *model.PullRequest) {
 	// TODO: add a new column in the db to get the previous job and wait for the new one start
 	// for now will sleep some time
-	time.Sleep(30 * time.Second)
+	mlog.Info("Sleeping a bit to wait for the build process start", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
+	time.Sleep(60 * time.Second)
 
 	var installation string
 	result := <-Srv.Store.Spinmint().Get(pr.Number)
@@ -252,7 +253,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 		return
 	}
 
-	mlog.Info("Provisioner Server - Upgrade request")
+	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", pr.Sha))
 	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
 	var mmStr = []byte(payload)
@@ -274,7 +275,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, pr, installation)
+	err = waitMattermostInstallation(ctx, pr, installation, true)
 	if err != nil {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
@@ -298,7 +299,7 @@ func destroyMMInstallation(instanceClusterID string) {
 	defer resp.Body.Close()
 }
 
-func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, installationRequestID string) error {
+func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, installationRequestID string, upgrade bool) error {
 	for {
 		url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, installationRequestID)
 		resp, err := makeRequest("GET", url, nil)
@@ -314,8 +315,13 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 			return fmt.Errorf("Error decoding installation")
 		}
 		if installationRequest.State == "stable" {
-			msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			if !upgrade {
+				msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
+				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			} else {
+				msg := fmt.Sprintf("Mattermost test server updated!\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
+				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			}
 			return nil
 		} else if installationRequest.State == "creation-failed" {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create mattermost installation.")

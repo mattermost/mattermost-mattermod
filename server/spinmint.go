@@ -279,13 +279,13 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 
 func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, bool) {
 	for {
-		if result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number); result.Err != nil {
+		result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+		if result.Err != nil {
 			mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("build_error", result.Err.Error()))
 			return nil, false
-		} else {
-			// Update the PR in case the build link has changed because of a new commit
-			pr = result.Data.(*model.PullRequest)
 		}
+		// Update the PR in case the build link has changed because of a new commit
+		pr = result.Data.(*model.PullRequest)
 
 		if pr.RepoName == "mattermost-webapp" {
 			if pr.BuildStatus == "in_progress" {
