@@ -287,10 +287,11 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 		// Update the PR in case the build link has changed because of a new commit
 		pr = result.Data.(*model.PullRequest)
 
+		prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
 		if pr.RepoName == "mattermost-webapp" {
-			if pr.BuildStatus == "in_progress" {
+			if prUpdate.BuildStatus == "in_progress" {
 				mlog.Info("Build in CircleCI in progress will get an update check...")
-				prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
+				prUpdate, err = GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
 				if err != nil {
 					mlog.Error("Unable to get checks while waiting for spinmint", mlog.String("githubError", err.Error()))
 					return nil, false

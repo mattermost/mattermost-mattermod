@@ -281,6 +281,8 @@ func upgradeTestServer(pr *model.PullRequest) {
 	if err != nil {
 		return
 	}
+	// TODO: remove this when we starting building the docker image in the sam build pipeline
+	time.Sleep(60 * time.Second)
 
 	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", pr.Sha))
 	shortCommit := pr.Sha[0:7]
