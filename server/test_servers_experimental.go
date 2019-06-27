@@ -292,7 +292,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
 		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error during the request to upgrade. Please remove the label and try again.")
 		return
 	}
 	defer resp.Body.Close()
