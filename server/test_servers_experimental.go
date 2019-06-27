@@ -340,11 +340,13 @@ func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) 
 		}
 		for _, status := range combined.Statuses {
 			if *status.Context == repo.BuildStatusContext {
+				mlog.Info("BuildContextStatus", mlog.String("Context", *status.Context), mlog.String("TargerURL", *status.TargetURL))
 				if *status.TargetURL != "" {
 					return *status.TargetURL, nil
 				}
 			}
 		}
+
 		select {
 		case <-ctx.Done():
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted. Aborted the upgrade of the test server. Please check the logs.")
