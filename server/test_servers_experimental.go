@@ -339,12 +339,21 @@ func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) 
 			return "", err
 		}
 		for _, status := range combined.Statuses {
-			mlog.Debug("Statuses", mlog.String("Statuses", *status.Context), mlog.String("TargerURL", *status.TargetURL))
 			if *status.Context == repo.BuildStatusContext {
-				mlog.Info("BuildContextStatus", mlog.String("RepoConfigured", repo.BuildStatusContext), mlog.String("Context", *status.Context), mlog.String("TargerURL", *status.TargetURL))
 				if *status.TargetURL != "" {
 					return *status.TargetURL, nil
 				}
+			}
+		}
+
+		// for the repos using circleci we have the checks now
+		checks, _, err := client.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		if err != nil {
+			return "", err
+		}
+		for _, status := range checks.CheckRuns {
+			if *status.Name == repo.BuildStatusContext {
+				return status.GetHTMLURL(), nil
 			}
 		}
 
