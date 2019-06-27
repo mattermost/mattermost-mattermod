@@ -339,8 +339,9 @@ func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) 
 			return "", err
 		}
 		for _, status := range combined.Statuses {
+			mlog.Debug("Statuses", mlog.String("Statuses", *status.Context), mlog.String("TargerURL", *status.TargetURL))
 			if *status.Context == repo.BuildStatusContext {
-				mlog.Info("BuildContextStatus", mlog.String("Context", *status.Context), mlog.String("TargerURL", *status.TargetURL))
+				mlog.Info("BuildContextStatus", mlog.String("RepoConfigured", repo.BuildStatusContext), mlog.String("Context", *status.Context), mlog.String("TargerURL", *status.TargetURL))
 				if *status.TargetURL != "" {
 					return *status.TargetURL, nil
 				}
