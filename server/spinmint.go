@@ -304,6 +304,9 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 				} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
 					mlog.Info("Build in CircleCI failed")
 					return prUpdate, false
+				} else {
+					mlog.Info("Error", mlog.String("status", prUpdate.BuildStatus), mlog.String("conclusion", prUpdate.BuildConclusion))
+					return prUpdate, false
 				}
 			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "success" {
 				mlog.Info("Build in CircleCI succeed")
