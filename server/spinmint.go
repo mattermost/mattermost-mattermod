@@ -308,15 +308,15 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 					mlog.Info("Error", mlog.String("status", prUpdate.BuildStatus), mlog.String("conclusion", prUpdate.BuildConclusion))
 					return prUpdate, false
 				}
-			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "success" {
+			} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
 				mlog.Info("Build in CircleCI succeed")
 				return pr, true
-			} else if pr.BuildStatus == "completed" && pr.BuildConclusion == "failure" {
+			} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
 				mlog.Info("Build in CircleCI failed")
-				return pr, false
+				return prUpdate, false
 			} else {
 				mlog.Info("Have no info about the Checks")
-				return pr, false
+				return prUpdate, false
 			}
 
 		} else {
