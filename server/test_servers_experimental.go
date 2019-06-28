@@ -476,7 +476,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	}
 	user, response := Client.CreateUser(user)
 	if response.StatusCode != 201 {
-		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message)))
+		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
 	}
 	mlog.Info("Done the creation of the initial user")
@@ -506,7 +506,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 
 	config, response := Client.GetConfig()
 	if response.StatusCode != 201 {
-		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message)))
+		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
 	}
 
