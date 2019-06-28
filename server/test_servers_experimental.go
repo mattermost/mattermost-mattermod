@@ -482,7 +482,12 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	mlog.Info("Done the creation of the initial user")
 
 	mlog.Info("Logging into MM")
-	Client.Login(user.Username, user.Password)
+	Client.Logout()
+	_, response = Client.Login(user.Username, user.Password)
+	if response.StatusCode != 200 {
+		mlog.Error("Error logging with the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
+		return response.Error
+	}
 	mlog.Info("Done logging into MM")
 
 	mlog.Info("Creating new Team")
