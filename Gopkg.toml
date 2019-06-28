@@ -6,22 +6,14 @@
   name = "github.com/google/go-github"
   version = "25.0.2"
 
-[prune]
-  go-tests = true
-  unused-packages = true
-
 [[constraint]]
   name = "github.com/mattermost/mattermost-server"
-  packages = [
-    "mlog",
-    "model",
-    "services/timezones",
-    "utils/fileutils",
-    "utils/jsonutils",
-    "utils/markdown",
-  ]
-  version = "v5.11.0"
+  version = "v5.12.1"
 
 [[constraint]]
   branch = "v3"
   name = "gopkg.in/robfig/cron.v3"
+
+[prune]
+  go-tests = true
+  unused-packages = true
