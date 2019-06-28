@@ -30,6 +30,9 @@
     "SetupSpinmintExperimentalTag": "",
     "ProvisionerServer": "",
     "DNSNameTestServer": "",
+    "AWSEmailAccessKey": "",
+    "AWSEmailSecretKey": "",
+    "AWSEmailEndpoint": "",
 
     "SetupSpinmintTag": "",
     "SetupSpinmintMessage": "",

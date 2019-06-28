@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"time"
 
@@ -484,15 +483,65 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 
 	Client.Login(user.Username, user.Password)
 
-	teamName := fmt.Sprintf("pr-%d", prNumber)
+	teamName := fmt.Sprintf("pr%d", prNumber)
 	_, err := Client.CreateTeam(&mattermostModel.Team{
 		Name:        teamName,
-		DisplayName: strings.ToUpper(teamName),
+		DisplayName: teamName,
 		Type:        "O",
 	})
-	if err != nil {
+	if err.Error != nil {
 		mlog.Error("Error creating the initial team", mlog.String("Error", response.Error.Error()))
 		return response.Error
 	}
+
+	config, resp := Client.GetConfig()
+	if resp.Error != nil {
+		mlog.Error("Error getting the config ", mlog.String("Error", resp.Error.Error()))
+		return response.Error
+	}
+
+	config.TeamSettings.EnableOpenServer = NewBool(true)
+	config.TeamSettings.ExperimentalViewArchivedChannels = NewBool(true)
+	config.PluginSettings.EnableUploads = NewBool(true)
+	config.ServiceSettings.EnableTesting = NewBool(true)
+	config.ServiceSettings.ExperimentalLdapGroupSync = NewBool(true)
+	config.ServiceSettings.EnableDeveloper = NewBool(true)
+	config.LogSettings.FileLevel = NewString("INFO")
+	config.EmailSettings.FeedbackName = NewString("Feedback Spinmints")
+	config.EmailSettings.FeedbackEmail = NewString("feedback@mattermost.com")
+	config.EmailSettings.ReplyToAddress = NewString("feedback@mattermost.com")
+	config.EmailSettings.SMTPUsername = NewString(Config.AWSEmailAccessKey)
+	config.EmailSettings.SMTPPassword = NewString(Config.AWSEmailSecretKey)
+	config.EmailSettings.SMTPServer = NewString(Config.AWSEmailEndpoint)
+	config.EmailSettings.SMTPPort = NewString("465")
+	config.EmailSettings.EnableSMTPAuth = NewBool(true)
+	config.EmailSettings.ConnectionSecurity = NewString("TLS")
+	config.EmailSettings.SendEmailNotifications = NewBool(true)
+	config.LdapSettings.Enable = NewBool(true)
+	config.LdapSettings.EnableSync = NewBool(true)
+	config.LdapSettings.LdapServer = NewString("ldap.forumsys.com")
+	config.LdapSettings.BaseDN = NewString("dc=example,dc=com")
+	config.LdapSettings.BindUsername = NewString("cn=read-only-admin,dc=example,dc=com")
+	config.LdapSettings.BindPassword = NewString("password")
+	config.LdapSettings.GroupDisplayNameAttribute = NewString("cn")
+	config.LdapSettings.GroupIdAttribute = NewString("entryUUID")
+	config.LdapSettings.EmailAttribute = NewString("mail")
+	config.LdapSettings.UsernameAttribute = NewString("uid")
+	config.LdapSettings.IdAttribute = NewString("uid")
+	config.LdapSettings.LoginIdAttribute = NewString("uid")
+
+	// UpdateConfig
+	_, resp = Client.UpdateConfig(config)
+	if resp.Error != nil {
+		mlog.Error("Error setting the config ", mlog.String("Error", resp.Error.Error()))
+		return response.Error
+	}
+
 	return nil
 }
+
+func NewBool(b bool) *bool       { return &b }
+func NewInt(n int) *int          { return &n }
+func NewInt64(n int64) *int64    { return &n }
+func NewInt32(n int32) *int32    { return &n }
+func NewString(s string) *string { return &s }

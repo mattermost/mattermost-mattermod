@@ -51,6 +51,9 @@ type PRServerConfig struct {
 	SetupSpinmintExperimentalTag string
 	ProvisionerServer            string
 	DNSNameTestServer            string
+	AWSEmailAccessKey            string
+	AWSEmailSecretKey            string
+	AWSEmailEndpoint             string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string

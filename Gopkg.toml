@@ -10,6 +10,17 @@
   go-tests = true
   unused-packages = true
 
+[[constraint]]
+  name = "github.com/mattermost/mattermost-server"
+  packages = [
+    "mlog",
+    "model",
+    "services/timezones",
+    "utils/fileutils",
+    "utils/jsonutils",
+    "utils/markdown",
+  ]
+  version = "v5.11.0"
 
 [[constraint]]
   branch = "v3"

@@ -90,6 +90,14 @@
   version = "v1.38.3"
 
 [[projects]]
+  digest = "1:e9a0fa7c2dfc90e0fae16be5825ad98074d8704f5fcebfdc289a8e8fb0f8e4b5"
+  name = "github.com/go-ldap/ldap"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9f0d712775a0973b7824a1585a86a4ea1d5263d9"
+  version = "v3.0.3"
+
+[[projects]]
   digest = "1:adea5a94903eb4384abef30f3d878dc9ff6b6b5b0722da25b82e5169216dfb61"
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
@@ -161,7 +169,20 @@
   revision = "0b12d6b5"
 
 [[projects]]
-  digest = "1:f093de3654ea519b4a72665695528fe8b93fa839770e63218bd66296fd3d4c6a"
+  digest = "1:3e7f985557bc1a34b4a250d71801b7a1b67cce3ed1bf01f0db087efb969c29eb"
+  name = "github.com/mattermost/go-i18n"
+  packages = [
+    "i18n",
+    "i18n/bundle",
+    "i18n/language",
+    "i18n/translation",
+  ]
+  pruneopts = "UT"
+  revision = "9a9b2eb57c9f39e7142fe48a35f047716c444ed1"
+  version = "v1.11.0"
+
+[[projects]]
+  digest = "1:3895d89237d0114f166e21804de2d1b0c8658239251ba6dcb9ff3ec373329ad1"
   name = "github.com/mattermost/mattermost-server"
   packages = [
     "mlog",
@@ -172,21 +193,8 @@
     "utils/markdown",
   ]
   pruneopts = "UT"
-  revision = "24f11a12758fe75ce06269be7f9fb7bb790aec43"
-  version = "v5.8.0"
-
-[[projects]]
-  digest = "1:7157fd3f337f20f9058789e47f3341ae5cb77081fa01c1d678af5a03afea6f3e"
-  name = "github.com/nicksnyder/go-i18n"
-  packages = [
-    "i18n",
-    "i18n/bundle",
-    "i18n/language",
-    "i18n/translation",
-  ]
-  pruneopts = "UT"
-  revision = "3c6ee9071cf061f4b0101e14412f74d6e7a8ada6"
-  version = "v2.0.0"
+  revision = "dbe330511eb45dcfaca1b5a5fd7e5097d50fc83a"
+  version = "v5.12.1"
 
 [[projects]]
   digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
@@ -309,6 +317,14 @@
   pruneopts = "UT"
   revision = "ae0ab99deb4dc413a2b4bd6c8bdd0eb67f1e4d06"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:af07c44dc04418be522bfd4e21ca9130d58169ea084e3a883e23772003a381c4"
+  name = "gopkg.in/asn1-ber.v1"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f715ec2f112d1e4195b827ad68cf44017a3ef2b1"
+  version = "v1.3"
 
 [[projects]]
   digest = "1:c805e517269b0ba4c21ded5836019ed7d16953d4026cb7d00041d039c7906be9"
