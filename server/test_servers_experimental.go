@@ -500,7 +500,6 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	_, response = Client.CreateTeam(team)
 	if response.StatusCode != 200 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
-		return fmt.Errorf("Error creating the initial team")
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
