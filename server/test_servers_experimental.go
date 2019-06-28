@@ -537,7 +537,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	// UpdateConfig
 	_, response = Client.UpdateConfig(config)
 	if response.StatusCode != 200 {
-		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode)))
+		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode))
 		return response.Error
 	}
 
