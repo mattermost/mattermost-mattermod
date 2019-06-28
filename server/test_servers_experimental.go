@@ -476,7 +476,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	}
 	user, response := Client.CreateUser(user)
 	if response.StatusCode != 201 {
-		mlog.Error("Error creating the initial user", mlog.String("Error", response.Error.Error()))
+		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message)))
 		return response.Error
 	}
 	mlog.Info("Done the creation of the initial user")
@@ -493,14 +493,14 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 		Type:        "O",
 	})
 	if response.StatusCode != 200 {
-		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
+		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
 	config, response := Client.GetConfig()
 	if response.StatusCode != 201 {
-		mlog.Error("Error getting the config ", mlog.String("Error", response.Error.Error()))
+		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message)))
 		return response.Error
 	}
 
@@ -537,7 +537,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	// UpdateConfig
 	_, response = Client.UpdateConfig(config)
 	if response.StatusCode != 200 {
-		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode))
+		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
 	}
 
