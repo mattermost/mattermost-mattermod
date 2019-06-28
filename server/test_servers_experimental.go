@@ -487,11 +487,12 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 
 	mlog.Info("Creating new Team")
 	teamName := fmt.Sprintf("pr%d", prNumber)
-	_, response = Client.CreateTeam(&mattermostModel.Team{
+	team := &mattermostModel.Team{
 		Name:        teamName,
 		DisplayName: teamName,
 		Type:        "O",
-	})
+	}
+	_, response = Client.CreateTeam(team)
 	if response.StatusCode != 200 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
