@@ -474,7 +474,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 		Email:    "sysadmin@example.com",
 		Password: "Sys@dmin123",
 	}
-	user, response := Client.CreateUser(user)
+	_, response := Client.CreateUser(user)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
@@ -483,7 +483,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 
 	mlog.Info("Logging into MM")
 	Client.Logout()
-	_, response = Client.Login(user.Username, user.Password)
+	_, response = Client.Login("sysadmin", "Sys@dmin123")
 	if response.StatusCode != 200 {
 		mlog.Error("Error logging with the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return response.Error
