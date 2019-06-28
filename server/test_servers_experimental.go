@@ -498,13 +498,13 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 		Type:        "O",
 	}
 	_, response = Client.CreateTeam(team)
-	if response.StatusCode != 200 {
+	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
 	config, response := Client.GetConfig()
-	if response.StatusCode != 201 {
+	if response.StatusCode != 200 {
 		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
 	}
