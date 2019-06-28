@@ -8,7 +8,7 @@
 
 [[constraint]]
   name = "github.com/mattermost/mattermost-server"
-  version = "v5.12.1"
+  branch = "master"
 
 [[constraint]]
   branch = "v3"
