@@ -487,20 +487,20 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 
 	mlog.Info("Creating new Team")
 	teamName := fmt.Sprintf("pr%d", prNumber)
-	_, err := Client.CreateTeam(&mattermostModel.Team{
+	_, response = Client.CreateTeam(&mattermostModel.Team{
 		Name:        teamName,
 		DisplayName: teamName,
 		Type:        "O",
 	})
-	if err.Error != nil {
-		mlog.Error("Error creating the initial team", mlog.String("Error", response.Error.Error()))
+	if response.StatusCode != 200 {
+		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
 		return response.Error
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
-	config, resp := Client.GetConfig()
-	if resp.Error != nil {
-		mlog.Error("Error getting the config ", mlog.String("Error", resp.Error.Error()))
+	config, response := Client.GetConfig()
+	if response.StatusCode != 201 {
+		mlog.Error("Error getting the config ", mlog.String("Error", response.Error.Error()))
 		return response.Error
 	}
 
@@ -535,9 +535,9 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	config.LdapSettings.LoginIdAttribute = NewString("uid")
 
 	// UpdateConfig
-	_, resp = Client.UpdateConfig(config)
-	if resp.Error != nil {
-		mlog.Error("Error setting the config ", mlog.String("Error", resp.Error.Error()))
+	_, response = Client.UpdateConfig(config)
+	if response.StatusCode != 200 {
+		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode)))
 		return response.Error
 	}
 
