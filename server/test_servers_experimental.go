@@ -16,6 +16,7 @@ import (
 	jenkins "github.com/cpanato/golang-jenkins"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
+	mattermostModel "github.com/mattermost/mattermost-server/model"
 )
 
 type Cluster struct {
@@ -382,11 +383,18 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 			return fmt.Errorf("Error decoding installation")
 		}
 		if installationRequest.State == "stable" {
+			mmURL := fmt.Sprintf("https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
 			if !upgrade {
-				msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
+				userErr := createInitialMMUser(mmURL)
+				if userErr != nil {
+					msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: %s", mmURL)
+					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+					return nil
+				}
+				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `sysadmin`", mmURL)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			} else {
-				msg := fmt.Sprintf("Mattermost test server updated!\nAccess here: https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
+				msg := fmt.Sprintf("Mattermost test server updated!\n\nAccess here: %s", mmURL)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			}
 			return nil
@@ -452,4 +460,22 @@ func makeRequest(method, url string, payload io.Reader) (*http.Response, error) 
 	}
 
 	return resp, nil
+}
+
+func createInitialMMUser(mmURL string) *mattermostModel.AppError {
+	mlog.Info("Will create the initial user")
+	Client := mattermostModel.NewAPIv4Client(mmURL)
+
+	user := &mattermostModel.User{
+		Username: "sysadmin",
+		Email:    "sysadmin@example.com",
+		Password: "sysadmin",
+	}
+	_, response := Client.CreateUser(user)
+	if response.StatusCode != 201 {
+		mlog.Error("Error creating the initial user", mlog.String("Error", response.Error.Error()))
+		return response.Error
+	}
+	mlog.Info("Done the creation of the initial user")
+	return nil
 }
