@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"time"
 
@@ -385,7 +386,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 		if installationRequest.State == "stable" {
 			mmURL := fmt.Sprintf("https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
 			if !upgrade {
-				userErr := createInitialMMUser(mmURL)
+				userErr := initializeMattermostTestServer(mmURL, pr.Number)
 				if userErr != nil {
 					msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: %s", mmURL)
 					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
@@ -462,7 +463,10 @@ func makeRequest(method, url string, payload io.Reader) (*http.Response, error) 
 	return resp, nil
 }
 
-func createInitialMMUser(mmURL string) *mattermostModel.AppError {
+func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel.AppError {
+	mlog.Info("Will sleep a bit to wait for DNS propagation")
+	time.Sleep(60 * time.Second)
+
 	mlog.Info("Will create the initial user")
 	Client := mattermostModel.NewAPIv4Client(mmURL)
 
@@ -471,11 +475,24 @@ func createInitialMMUser(mmURL string) *mattermostModel.AppError {
 		Email:    "sysadmin@example.com",
 		Password: "sysadmin",
 	}
-	_, response := Client.CreateUser(user)
+	user, response := Client.CreateUser(user)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial user", mlog.String("Error", response.Error.Error()))
 		return response.Error
 	}
 	mlog.Info("Done the creation of the initial user")
+
+	Client.Login(user.Username, user.Password)
+
+	teamName := fmt.Sprintf("pr-%d", prNumber)
+	_, err := Client.CreateTeam(&mattermostModel.Team{
+		Name:        teamName,
+		DisplayName: strings.ToUpper(teamName),
+		Type:        "O",
+	})
+	if err != nil {
+		mlog.Error("Error creating the initial team", mlog.String("Error", response.Error.Error()))
+		return response.Error
+	}
 	return nil
 }
