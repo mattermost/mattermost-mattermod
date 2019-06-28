@@ -481,8 +481,11 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	}
 	mlog.Info("Done the creation of the initial user")
 
+	mlog.Info("Logging into MM")
 	Client.Login(user.Username, user.Password)
+	mlog.Info("Done logging into MM")
 
+	mlog.Info("Creating new Team")
 	teamName := fmt.Sprintf("pr%d", prNumber)
 	_, err := Client.CreateTeam(&mattermostModel.Team{
 		Name:        teamName,
@@ -493,6 +496,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 		mlog.Error("Error creating the initial team", mlog.String("Error", response.Error.Error()))
 		return response.Error
 	}
+	mlog.Info("Done creating new Team and will update the config")
 
 	config, resp := Client.GetConfig()
 	if resp.Error != nil {
@@ -536,6 +540,8 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 		mlog.Error("Error setting the config ", mlog.String("Error", resp.Error.Error()))
 		return response.Error
 	}
+
+	mlog.Info("Done update the config. All good.")
 
 	return nil
 }
