@@ -462,7 +462,7 @@ func makeRequest(method, url string, payload io.Reader) (*http.Response, error) 
 	return resp, nil
 }
 
-func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel.AppError {
+func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	mlog.Info("Will sleep a bit to wait for DNS propagation")
 	time.Sleep(60 * time.Second)
 
@@ -477,7 +477,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	_, response := Client.CreateUser(user)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
-		return response.Error
+		return fmt.Errorf(response.Error.Message)
 	}
 	mlog.Info("Done the creation of the initial user")
 
@@ -486,7 +486,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	_, response = Client.Login("sysadmin", "Sys@dmin123")
 	if response.StatusCode != 200 {
 		mlog.Error("Error logging with the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
-		return response.Error
+		return fmt.Errorf(response.Error.Message)
 	}
 	mlog.Info("Done logging into MM")
 
@@ -500,14 +500,14 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	_, response = Client.CreateTeam(team)
 	if response.StatusCode != 200 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
-		return response.Error
+		return fmt.Errorf(response.Error.Message)
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
 	config, response := Client.GetConfig()
 	if response.StatusCode != 201 {
 		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
-		return response.Error
+		return fmt.Errorf(response.Error.Message)
 	}
 
 	config.TeamSettings.EnableOpenServer = NewBool(true)
@@ -544,7 +544,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) *mattermostModel
 	_, response = Client.UpdateConfig(config)
 	if response.StatusCode != 200 {
 		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
-		return response.Error
+		return fmt.Errorf(response.Error.Message)
 	}
 
 	mlog.Info("Done update the config. All good.")
