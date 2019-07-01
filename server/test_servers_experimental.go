@@ -165,7 +165,7 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("will check if need create a cluster")
 	if clusterCount == 0 || installationCount/clusterCount > 5 {
 		mlog.Info("Need to spin a new k8s cluster", mlog.Int("clusterCount", installationCount), mlog.Int("clusterCount", clusterCount))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will spin a Kubernetes Cluster. This may take up to 600 seconds.")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will spin a new Kubernetes Cluster. This may take up to 600 seconds.")
 		payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
 		var jsonStr = []byte(payloadCluster)
 		respCluster, errCluster := makeRequest("POST", url, bytes.NewBuffer(jsonStr))
@@ -277,7 +277,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 		installation = spinmint.InstanceId
 	}
 
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will upgrade the test server with the build pass.")
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Detected a new commit, will upgrade the test server if the build succeed.")
 	err = waitForBuildComplete(pr)
 	if err != nil {
 		return
@@ -299,7 +299,7 @@ func upgradeTestServer(pr *model.PullRequest) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 202 {
 		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process. Please remove the label and try again.")
 		return
 	}
 

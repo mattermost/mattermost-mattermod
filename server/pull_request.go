@@ -241,6 +241,9 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
 			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
+			// Old comments created by Mattermod user will be deleted here.
+			removeOldComments(comments, pr)
+
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmintExperimental(pr, spinmint.InstanceId)
 		}
@@ -252,7 +255,21 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 		Config.SetupSpinmintUpgradeMessage,
 		"Spinmint test server created",
 		"Spinmint upgrade test server created",
-		Config.SetupSpinmintFailedMessage}
+		Config.SetupSpinmintFailedMessage,
+		"We don't need a new Kubernetes cluster",
+		"Will spin a new Kubernetes Cluster",
+		"Detected a new commit",
+		"Error during the request to upgrade",
+		"Error doing the upgrade process",
+		"Timeouted. Aborted the upgrade of the test server",
+		"Mattermost test server created!",
+		"Mattermost test server updated!",
+		"Failed to create mattermost installation",
+		"Timeouted the installation",
+		"Kubernetes cluster created",
+		"Failed to create the k8s cluster",
+		"Timeouted the k8s cluster installation"
+	}
 
 	mlog.Info("Removing old Mattermod comments")
 	for _, comment := range comments {
