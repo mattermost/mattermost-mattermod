@@ -328,7 +328,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 					return nil
 				}
-				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`", mmURL)
+				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\nTest User Account: Username: user-1 | Password: User@123", mmURL)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			} else {
 				msg := fmt.Sprintf("Mattermost test server updated!\n\nAccess here: %s", mmURL)
@@ -417,7 +417,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 
 	user := &mattermostModel.User{
 		Username: "sysadmin",
-		Email:    "sysadmin@example.com",
+		Email:    "sysadmin@example.mattermost.com",
 		Password: "Sys@dmin123",
 	}
 	_, response := Client.CreateUser(user)
@@ -429,7 +429,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 
 	mlog.Info("Logging into MM")
 	Client.Logout()
-	_, response = Client.Login("sysadmin", "Sys@dmin123")
+	userLogged, response := Client.Login("sysadmin", "Sys@dmin123")
 	if response.StatusCode != 200 {
 		mlog.Error("Error logging with the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
@@ -443,11 +443,31 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 		DisplayName: teamName,
 		Type:        "O",
 	}
-	_, response = Client.CreateTeam(team)
+	firstTeam, response := Client.CreateTeam(team)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
 	}
 	mlog.Info("Done creating new Team and will update the config")
+
+	_, response = Client.AddTeamMember(firstTeam.Id, userLogged.Id)
+	if response.StatusCode != 201 {
+		mlog.Error("Error adding sysadmin to the initial team", mlog.Int("StatusCode", response.StatusCode))
+	}
+
+	// Create test user-1
+	testUser := &mattermostModel.User{
+		Username: "user-1",
+		Email:    "user-1@example.mattermost.com",
+		Password: "User@123",
+	}
+	testUser, response = Client.CreateUser(testUser)
+	if response.StatusCode != 201 {
+		mlog.Error("Error creating the initial test user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
+	}
+	_, response = Client.AddTeamMember(firstTeam.Id, testUser.Id)
+	if response.StatusCode != 201 {
+		mlog.Error("Error adding test user to the initial team", mlog.Int("StatusCode", response.StatusCode))
+	}
 
 	config, response := Client.GetConfig()
 	if response.StatusCode != 200 {
