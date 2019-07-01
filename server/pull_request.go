@@ -268,7 +268,7 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 		"Timeouted the installation",
 		"Kubernetes cluster created",
 		"Failed to create the k8s cluster",
-		"Timeouted the k8s cluster installation"
+		"Timeouted the k8s cluster installation",
 	}
 
 	mlog.Info("Removing old Mattermod comments")
