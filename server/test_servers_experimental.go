@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 
 	"time"
 
@@ -398,8 +400,17 @@ func makeRequest(method, url string, payload io.Reader) (*http.Response, error) 
 }
 
 func initializeMattermostTestServer(mmURL string, prNumber int) error {
-	mlog.Info("Will sleep a bit to wait for DNS propagation")
-	time.Sleep(60 * time.Second)
+	mlog.Info("Will check if can ping the new DNS otherwise will wait for the DNS propagation for 5 minutes")
+	wait := 300
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	defer cancel()
+
+	mmHost, _ := url.Parse(mmURL)
+	err := checkDNS(ctx, fmt.Sprintf("%s:443", mmHost.Host))
+	if err != nil {
+		mlog.Info("URL not accessible")
+		return err
+	}
 
 	mlog.Info("Will create the initial user")
 	Client := mattermostModel.NewAPIv4Client(mmURL)
@@ -517,6 +528,24 @@ func requestK8sClusterCreation(pr *model.PullRequest) error {
 	}
 
 	return nil
+}
+
+func checkDNS(ctx context.Context, url string) error {
+	for {
+		timeout := time.Duration(2 * time.Second)
+		_, err := net.DialTimeout("tcp", url, timeout)
+		if err == nil {
+			mlog.Debug("URL reachable", mlog.String("URL", url))
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			mlog.Error("Timeout while checking the URL. URL not reachabled", mlog.String("URL", url))
+			return fmt.Errorf("Timeout while checking the URL. URL not reachabled")
+		case <-time.After(10 * time.Second):
+			mlog.Debug("not reachabled, will sleep 10 seconds", mlog.String("URL", url))
+		}
+	}
 }
 
 func NewBool(b bool) *bool       { return &b }
