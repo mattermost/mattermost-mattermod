@@ -328,7 +328,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 					return nil
 				}
-				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\nTest User Account: Username: user-1 | Password: User-1@123", mmURL)
+				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\n\nTest User Account: Username: `user-1` | Password: `User-1@123`", mmURL)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			} else {
 				msg := fmt.Sprintf("Mattermost test server updated!\n\nAccess here: %s", mmURL)
