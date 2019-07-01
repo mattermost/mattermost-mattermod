@@ -413,14 +413,23 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	}
 
 	mlog.Info("Will create the initial user")
-	Client := mattermostModel.NewAPIv4Client(mmURL)
+	client := mattermostModel.NewAPIv4Client(mmURL)
+
+	//check if Mattermost is available
+	wait = 300
+	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	defer cancel()
+	err = checkMMPing(client, ctx)
+	if err != nil {
+		return err
+	}
 
 	user := &mattermostModel.User{
 		Username: "sysadmin",
 		Email:    "sysadmin@example.mattermost.com",
 		Password: "Sys@dmin123",
 	}
-	_, response := Client.CreateUser(user)
+	_, response := client.CreateUser(user)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
@@ -428,8 +437,8 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	mlog.Info("Done the creation of the initial user")
 
 	mlog.Info("Logging into MM")
-	Client.Logout()
-	userLogged, response := Client.Login("sysadmin", "Sys@dmin123")
+	client.Logout()
+	userLogged, response := client.Login("sysadmin", "Sys@dmin123")
 	if response.StatusCode != 200 {
 		mlog.Error("Error logging with the initial user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
@@ -443,13 +452,13 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 		DisplayName: teamName,
 		Type:        "O",
 	}
-	firstTeam, response := Client.CreateTeam(team)
+	firstTeam, response := client.CreateTeam(team)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial team", mlog.Int("StatusCode", response.StatusCode))
 	}
 	mlog.Info("Done creating new Team and will update the config")
 
-	_, response = Client.AddTeamMember(firstTeam.Id, userLogged.Id)
+	_, response = client.AddTeamMember(firstTeam.Id, userLogged.Id)
 	if response.StatusCode != 201 {
 		mlog.Error("Error adding sysadmin to the initial team", mlog.Int("StatusCode", response.StatusCode))
 	}
@@ -460,16 +469,16 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 		Email:    "user-1@example.mattermost.com",
 		Password: "User-1@123",
 	}
-	testUser, response = Client.CreateUser(testUser)
+	testUser, response = client.CreateUser(testUser)
 	if response.StatusCode != 201 {
 		mlog.Error("Error creating the initial test user", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 	}
-	_, response = Client.AddTeamMember(firstTeam.Id, testUser.Id)
+	_, response = client.AddTeamMember(firstTeam.Id, testUser.Id)
 	if response.StatusCode != 201 {
 		mlog.Error("Error adding test user to the initial team", mlog.Int("StatusCode", response.StatusCode))
 	}
 
-	config, response := Client.GetConfig()
+	config, response := client.GetConfig()
 	if response.StatusCode != 200 {
 		mlog.Error("Error getting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
@@ -506,7 +515,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	config.LdapSettings.LoginIdAttribute = NewString("uid")
 
 	// UpdateConfig
-	_, response = Client.UpdateConfig(config)
+	_, response = client.UpdateConfig(config)
 	if response.StatusCode != 200 {
 		mlog.Error("Error setting the config ", mlog.Int("StatusCode", response.StatusCode), mlog.String("Message", response.Error.Message))
 		return fmt.Errorf(response.Error.Message)
@@ -564,6 +573,22 @@ func checkDNS(ctx context.Context, url string) error {
 			return fmt.Errorf("Timeout while checking the URL. URL not reachabled")
 		case <-time.After(10 * time.Second):
 			mlog.Debug("not reachabled, will sleep 10 seconds", mlog.String("URL", url))
+		}
+	}
+}
+
+func checkMMPing(client *mattermostModel.Client4, ctx context.Context) error {
+	for {
+		status, response := client.GetPing()
+		if response.StatusCode == 200 && status == "OK" {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			mlog.Error("Timeout while checking mattermost")
+			return fmt.Errorf("Timeout while checking mattermost")
+		case <-time.After(10 * time.Second):
+			mlog.Debug("cannot get the mattermost ping, waiting a bit more")
 		}
 	}
 }
