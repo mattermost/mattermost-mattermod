@@ -256,7 +256,6 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 		"Spinmint test server created",
 		"Spinmint upgrade test server created",
 		Config.SetupSpinmintFailedMessage,
-		"We don't need a new Kubernetes cluster",
 		"Will spin a new Kubernetes Cluster",
 		"Detected a new commit",
 		"Error during the request to upgrade",
@@ -269,7 +268,6 @@ func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 		"Kubernetes cluster created",
 		"Failed to create the k8s cluster",
 		"Timeouted the k8s cluster installation",
-		"Will upgrade the test server with the build pass",
 		"Will start an experimental test server using Mattermost Cloud",
 	}
 
