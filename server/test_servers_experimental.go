@@ -328,7 +328,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 					return nil
 				}
-				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\nTest User Account: Username: user-1 | Password: User@123", mmURL)
+				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\nTest User Account: Username: user-1 | Password: User-1@123", mmURL)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 			} else {
 				msg := fmt.Sprintf("Mattermost test server updated!\n\nAccess here: %s", mmURL)
@@ -458,7 +458,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	testUser := &mattermostModel.User{
 		Username: "user-1",
 		Email:    "user-1@example.mattermost.com",
-		Password: "User@123",
+		Password: "User-1@123",
 	}
 	testUser, response = Client.CreateUser(testUser)
 	if response.StatusCode != 201 {
