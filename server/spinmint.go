@@ -153,7 +153,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = setupSpinmint(pr.Number, pr.Ref, pr.RepoName, repo, upgradeServer)
+		instance, errInstance = setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
 			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -382,8 +382,8 @@ func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRe
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade bool) (*ec2.Instance, error) {
-	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", prNumber))
+func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
+	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
 	svc := ec2.New(session.New(), Config.GetAwsConfig())
 
@@ -399,8 +399,15 @@ func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade
 		return nil, err
 	}
 	sdata := string(data)
-	sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(prNumber), -1)
-	sdata = strings.Replace(sdata, "BRANCH_NAME", prRef, -1)
+	if pr.RepoName == "mattermost-webapp" {
+		// with circleci if the PR is opened in upstream we dont have the PR number and we have the branch name instead.
+		// so we will use the commit hash that we upload too
+		partialURL := fmt.Sprintf("commit/%s", pr.Sha)
+		sdata = strings.Replace(sdata, "BUILD_NUMBER", partialURL, -1)
+	} else {
+		sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(pr.Number), -1)
+	}
+	sdata = strings.Replace(sdata, "BRANCH_NAME", pr.Ref, -1)
 	bsdata := []byte(sdata)
 	sdata = base64.StdEncoding.EncodeToString(bsdata)
 
@@ -427,7 +434,7 @@ func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade
 		Tags: []*ec2.Tag{
 			{
 				Key:   aws.String("Name"),
-				Value: aws.String("Spinmint-" + prRef),
+				Value: aws.String("Spinmint-" + pr.Ref),
 			},
 			{
 				Key:   aws.String("Created"),
@@ -435,11 +442,11 @@ func setupSpinmint(prNumber int, prRef, prRepo string, repo *Repository, upgrade
 			},
 			{
 				Key:   aws.String("PRNumber"),
-				Value: aws.String("PR-" + strconv.Itoa(prNumber)),
+				Value: aws.String("PR-" + strconv.Itoa(pr.Number)),
 			},
 			{
 				Key:   aws.String("RepoName"),
-				Value: aws.String(prRepo),
+				Value: aws.String(pr.RepoName),
 			},
 		},
 	})
