@@ -399,14 +399,12 @@ func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.
 		return nil, err
 	}
 	sdata := string(data)
-	if pr.RepoName == "mattermost-webapp" {
-		// with circleci if the PR is opened in upstream we dont have the PR number and we have the branch name instead.
-		// so we will use the commit hash that we upload too
-		partialURL := fmt.Sprintf("commit/%s", pr.Sha)
-		sdata = strings.Replace(sdata, "BUILD_NUMBER", partialURL, -1)
-	} else {
-		sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(pr.Number), -1)
-	}
+	// with circleci if the PR is opened in upstream we dont have the PR number and we have the branch name instead.
+	// so we will use the commit hash that we upload too
+	partialURL := fmt.Sprintf("commit/%s", pr.Sha)
+	sdata = strings.Replace(sdata, "PR-BUILD_NUMBER", partialURL, -1)
+	// for server
+	sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(pr.Number), -1)
 	sdata = strings.Replace(sdata, "BRANCH_NAME", pr.Ref, -1)
 	mlog.Debug("Script to bootstrap the server", mlog.String("Script", sdata))
 	bsdata := []byte(sdata)
