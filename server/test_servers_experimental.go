@@ -324,8 +324,8 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 			if !upgrade {
 				userErr := initializeMattermostTestServer(mmURL, pr.Number)
 				if userErr != nil {
-					msg := fmt.Sprintf("Mattermost test server created! :tada:\nAccess here: %s", mmURL)
-					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+					commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create mattermost installation.")
+					destroyMMInstallation(installationRequest.ID)
 					return nil
 				}
 				msg := fmt.Sprintf("Mattermost test server created! :tada:\n\nAccess here: %s\n\nTest Admin Account: Username: `sysadmin` | Password: `Sys@dmin123`\n\nTest User Account: Username: `user-1` | Password: `User-1@123`", mmURL)
@@ -337,6 +337,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 			return nil
 		} else if installationRequest.State == "creation-failed" {
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create mattermost installation.")
+			destroyMMInstallation(installationRequest.ID)
 			return fmt.Errorf("error creating mattermost installation")
 		}
 		mlog.Info("Provisioner Server - installation request creating... sleep", mlog.String("InstallationID", installationRequest.ID), mlog.String("State", installationRequest.State))

@@ -408,6 +408,7 @@ func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.
 		sdata = strings.Replace(sdata, "BUILD_NUMBER", strconv.Itoa(pr.Number), -1)
 	}
 	sdata = strings.Replace(sdata, "BRANCH_NAME", pr.Ref, -1)
+	mlog.Debug("Script to bootstrap the server", mlog.String("Script", sdata))
 	bsdata := []byte(sdata)
 	sdata = base64.StdEncoding.EncodeToString(bsdata)
 
