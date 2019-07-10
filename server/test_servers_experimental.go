@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"time"
 
@@ -113,7 +114,8 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("Provisioner Server - Installation request")
 	shortCommit := pr.Sha[0:7]
-	payload := fmt.Sprintf("{\n\"ownerId\":\"%s-PR-%d\",\n\"dns\": \"pr-%d.%s\",\n\"version\": \"%s\",\n\"affinity\":\"multitenant\"}", pr.RepoName, pr.Number, pr.Number, Config.DNSNameTestServer, shortCommit)
+	prID := strings.ToLower(fmt.Sprintf("%s-pr-%d", pr.RepoName, pr.Number))
+	payload := fmt.Sprintf("{\n\"ownerId\":\"%s\",\n\"dns\": \"%s.%s\",\n\"version\": \"%s\",\n\"affinity\":\"multitenant\"}", prID, prID, Config.DNSNameTestServer, shortCommit)
 	var mmStr = []byte(payload)
 	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	respReqInstallation, err := makeRequest("POST", url, bytes.NewBuffer(mmStr))
