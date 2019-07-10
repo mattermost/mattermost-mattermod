@@ -114,7 +114,7 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("Provisioner Server - Installation request")
 	shortCommit := pr.Sha[0:7]
-	prID := strings.ToLower(fmt.Sprintf("%s-pr-%d", pr.RepoName, pr.Number))
+	prID := makePullRequestID(pr.RepoName, pr.Number)
 	payload := fmt.Sprintf("{\n\"ownerId\":\"%s\",\n\"dns\": \"%s.%s\",\n\"version\": \"%s\",\n\"affinity\":\"multitenant\"}", prID, prID, Config.DNSNameTestServer, shortCommit)
 	var mmStr = []byte(payload)
 	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
@@ -322,7 +322,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 			return fmt.Errorf("Error decoding installation")
 		}
 		if installationRequest.State == "stable" {
-			mmURL := fmt.Sprintf("https://pr-%d.%s", pr.Number, Config.DNSNameTestServer)
+			mmURL := fmt.Sprintf("https://%s.%s", makePullRequestID(pr.RepoName, pr.Number), Config.DNSNameTestServer)
 			if !upgrade {
 				userErr := initializeMattermostTestServer(mmURL, pr.Number)
 				if userErr != nil {
@@ -594,6 +594,10 @@ func checkMMPing(client *mattermostModel.Client4, ctx context.Context) error {
 			mlog.Debug("cannot get the mattermost ping, waiting a bit more")
 		}
 	}
+}
+
+func makePullRequestID(repoName string, prNumber int) string {
+	return strings.ToLower(fmt.Sprintf("%s-pr-%d", repoName, prNumber))
 }
 
 func NewBool(b bool) *bool       { return &b }
