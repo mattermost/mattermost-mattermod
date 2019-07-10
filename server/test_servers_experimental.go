@@ -22,6 +22,21 @@ import (
 	mattermostModel "github.com/mattermost/mattermost-server/model"
 )
 
+// The following structs are copied from the mattermost-cloud repo to allow
+// mattermod to interact with provisioning servers.
+//
+// TODO: consider moving the structs in mattermost-cloud for these models out
+// of the /internal directory so that they can be vendored and imported here.
+// When doing this, we should start using semver in the mattermost-cloud repo.
+
+// CreateClusterRequest specifies the parameters for a new cluster.
+type CreateClusterRequest struct {
+	Provider string
+	Size     string
+	Zones    []string
+}
+
+// Cluster represents a Kubernetes cluster.
 type Cluster struct {
 	ID                  string
 	Provider            string
@@ -37,6 +52,15 @@ type Cluster struct {
 	LockAcquiredAt      int64
 }
 
+// CreateInstallationRequest specifies the parameters for a new installation.
+type CreateInstallationRequest struct {
+	OwnerID  string
+	Version  string
+	DNS      string
+	Affinity string
+}
+
+// Installation represents a Mattermost installation.
 type Installation struct {
 	ID             string
 	OwnerID        string
@@ -51,26 +75,25 @@ type Installation struct {
 	LockAcquiredAt int64
 }
 
-func waitForBuildAndSetupSpinmintExperimental(pr *model.PullRequest) {
+func waitForBuildAndSetupSpinWick(pr *model.PullRequest) {
 	err := waitForBuildComplete(pr)
 	if err != nil {
 		return
 	}
 
-	var installation string
 	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
+		mlog.Error("Unable to get the SpinWick information. Will not build the SpinWick", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
-		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
-		var errInstance error
-		installation, errInstance = setupSpinmintExperimental(pr)
-		if errInstance != nil {
-			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+		mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
+		installationID, err := createSpinWick(pr)
+		if err != nil {
+			LogErrorToMattermost("Unable to set up SpinWick for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 			return
 		}
+
 		spinmint := &model.Spinmint{
-			InstanceId: installation,
+			InstanceId: installationID,
 			RepoOwner:  pr.RepoOwner,
 			RepoName:   pr.RepoName,
 			Number:     pr.Number,
@@ -111,45 +134,61 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 	return nil
 }
 
-func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
+func createSpinWick(pr *model.PullRequest) (string, error) {
 	mlog.Info("Provisioner Server - Installation request")
-	shortCommit := pr.Sha[0:7]
+
 	prID := makePullRequestID(pr.RepoName, pr.Number)
-	payload := fmt.Sprintf("{\n\"ownerId\":\"%s\",\n\"dns\": \"%s.%s\",\n\"version\": \"%s\",\n\"affinity\":\"multitenant\"}", prID, prID, Config.DNSNameTestServer, shortCommit)
-	var mmStr = []byte(payload)
-	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
-	respReqInstallation, err := makeRequest("POST", url, bytes.NewBuffer(mmStr))
+	installationRequest := CreateInstallationRequest{
+		OwnerID:  prID,
+		Version:  pr.Sha[0:7],
+		DNS:      fmt.Sprintf("%s.%s", prID, Config.DNSNameTestServer),
+		Affinity: "multitenant",
+	}
+
+	b, err := json.Marshal(installationRequest)
 	if err != nil {
-		mlog.Error("Error making the post request to create the mm cluster", mlog.Err(err))
+		mlog.Error("Error trying to marshal the installation request", mlog.Err(err))
+		return "", err
+	}
+
+	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
+	respReqInstallation, err := makeRequest("POST", url, bytes.NewBuffer(b))
+	if err != nil {
+		mlog.Error("Error making the post request to create the mattermost installation", mlog.Err(err))
 		return "", err
 	}
 	defer respReqInstallation.Body.Close()
 
-	var createInstallationRequest Installation
-	err = json.NewDecoder(respReqInstallation.Body).Decode(&createInstallationRequest)
+	var installation Installation
+	err = json.NewDecoder(respReqInstallation.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding installation request", mlog.Err(err))
+		mlog.Error("Error decoding installation response", mlog.Err(err))
 		return "", err
 	}
-	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", createInstallationRequest.ID))
+	installationID := installation.ID
+	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", installationID))
 
 	time.Sleep(3 * time.Second)
 	// Get the installaion to check if the state is creation-no-compatible-clusters
 	// if is that state we need to requst a new k8s cluster
-	url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, createInstallationRequest.ID)
+	// TODO:
+	// There is no garauntee that the installation has been worked on yet. We
+	// may have to wait longer for it to enter the creation-no-compatible-clusters
+	// state.
+	url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, installationID)
 	resp, err := makeRequest("GET", url, nil)
 	if err != nil {
 		mlog.Error("Error making the post request to create the mm installation", mlog.Err(err))
 		return "", err
 	}
 	defer resp.Body.Close()
-	var installationRequest Installation
-	err = json.NewDecoder(resp.Body).Decode(&installationRequest)
+
+	err = json.NewDecoder(resp.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
 		mlog.Error("Error decoding installation", mlog.Err(err))
 		return "", fmt.Errorf("Error decoding installation")
 	}
-	if installationRequest.State == "creation-no-compatible-clusters" {
+	if installation.State == "creation-no-compatible-clusters" {
 		err = requestK8sClusterCreation(pr)
 		if err != nil {
 			return "", err
@@ -160,16 +199,15 @@ func setupSpinmintExperimental(pr *model.PullRequest) (string, error) {
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, pr, createInstallationRequest.ID, false)
+	err = waitMattermostInstallation(ctx, pr, installationID, false)
 	if err != nil {
 		return "", err
 	}
 
-	return createInstallationRequest.ID, nil
+	return installationID, nil
 }
 
-func upgradeTestServer(pr *model.PullRequest) {
-
+func updateSpinWick(pr *model.PullRequest) {
 	for _, label := range pr.Labels {
 		if label == Config.SetupSpinmintExperimentalTag {
 			mlog.Info("PR has the setup test experimental tag enabled will check the upgrade")
@@ -206,17 +244,17 @@ func upgradeTestServer(pr *model.PullRequest) {
 	var installation string
 	result := <-Srv.Store.Spinmint().Get(pr.Number)
 	if result.Err != nil {
-		mlog.Error("Unable to get the spinmint information. nothing to do", mlog.String("pr_error", result.Err.Error()))
+		mlog.Error("Unable to get the SpinWick information; skipping...", mlog.String("pr_error", result.Err.Error()))
 		return
 	} else if result.Data == nil {
-		mlog.Error("No spinmint for this PR in the Database. nothing to do.")
+		mlog.Error("No SpinWick for this PR in the database; skipping...")
 		return
 	} else {
 		spinmint := result.Data.(*model.Spinmint)
 		installation = spinmint.InstanceId
 	}
 
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Detected a new commit, will upgrade the test server if the build succeed.")
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
 	err = waitForBuildComplete(pr)
 	if err != nil {
 		return
@@ -253,8 +291,8 @@ func upgradeTestServer(pr *model.PullRequest) {
 	}
 }
 
-func destroySpinmintExperimental(pr *model.PullRequest, instanceClusterID string) {
-	mlog.Info("Destroying spinmint experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+func destroySpinWick(pr *model.PullRequest, instanceClusterID string) {
+	mlog.Info("Destroying SpinWick experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
 	destroyMMInstallation(instanceClusterID)
 	// Remove from the local db
@@ -299,7 +337,7 @@ func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) 
 
 		select {
 		case <-ctx.Done():
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted. Aborted the upgrade of the test server. Please check the logs.")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
 			return "", fmt.Errorf("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}
@@ -346,7 +384,7 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 		select {
 		case <-ctx.Done():
 			destroyMMInstallation(installationRequest.ID)
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted the installation. Aborted the test server. Please check the logs.")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for the mattermost installation. Please check the logs.")
 			return fmt.Errorf("timed out waiting for the mattermost installation complete. requesting the deletion")
 		case <-time.After(10 * time.Second):
 		}
@@ -379,7 +417,7 @@ func waitK8sCluster(ctx context.Context, pr *model.PullRequest, clusterRequestID
 		time.Sleep(20 * time.Second)
 		select {
 		case <-ctx.Done():
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timeouted the k8s cluster installation. Aborted the test server. Please check the logs.")
+			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for the kubernetes cluster. Please check the logs.")
 			return fmt.Errorf("timed out waiting for the cluster installation complete")
 		case <-time.After(10 * time.Second):
 		}
@@ -494,7 +532,7 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	config.ServiceSettings.ExperimentalLdapGroupSync = NewBool(true)
 	config.ServiceSettings.EnableDeveloper = NewBool(true)
 	config.LogSettings.FileLevel = NewString("INFO")
-	config.EmailSettings.FeedbackName = NewString("Feedback Spinmints")
+	config.EmailSettings.FeedbackName = NewString("SpinWick Feedback")
 	config.EmailSettings.FeedbackEmail = NewString("feedback@mattermost.com")
 	config.EmailSettings.ReplyToAddress = NewString("feedback@mattermost.com")
 	config.EmailSettings.SMTPUsername = NewString(Config.AWSEmailAccessKey)
@@ -530,36 +568,41 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 }
 
 func requestK8sClusterCreation(pr *model.PullRequest) error {
-	mlog.Info("Need to spin a new k8s cluster")
+	mlog.Info("Building new kubernetes cluster")
+
 	url := fmt.Sprintf("%s/api/clusters", Config.ProvisionerServer)
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will spin a new Kubernetes Cluster. This may take up to 600 seconds.")
-	payloadCluster := fmt.Sprint("{\n\"size\":\"SizeAlef1000\"\n}")
-	var jsonStr = []byte(payloadCluster)
-	respCluster, errCluster := makeRequest("POST", url, bytes.NewBuffer(jsonStr))
-	if errCluster != nil {
-		mlog.Error("Error making the post request to create the k8s cluster", mlog.Err(errCluster))
-		return errCluster
-	}
-	defer respCluster.Body.Close()
+	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Please wait while a new kubernetes cluster is created for your SpinWick")
 
-	var createClusterRequest Cluster
-	errCluster = json.NewDecoder(respCluster.Body).Decode(&createClusterRequest)
-	if errCluster != nil && errCluster != io.EOF {
-		mlog.Error("Error decoding", mlog.Err(errCluster))
-		return errCluster
+	clusterRequest := CreateClusterRequest{
+		Size: "SizeAlef1000",
 	}
-	mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", createClusterRequest.ID))
-
-	wait := 900
-	mlog.Info("Waiting up to 900 seconds for the k8s cluster installation to complete...")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
-	defer cancel()
-	err := waitK8sCluster(ctx, pr, createClusterRequest.ID)
+	b, err := json.Marshal(clusterRequest)
 	if err != nil {
+		mlog.Error("Error trying to marshal the cluster request", mlog.Err(err))
 		return err
 	}
 
-	return nil
+	respReqCluster, err := makeRequest("POST", url, bytes.NewBuffer(b))
+	if err != nil {
+		mlog.Error("Error trying to send the k8s-cluster-creation request", mlog.Err(err))
+		return err
+	}
+	defer respReqCluster.Body.Close()
+
+	var cluster Cluster
+	err = json.NewDecoder(respReqCluster.Body).Decode(&cluster)
+	if err != nil && err != io.EOF {
+		mlog.Error("Error decoding", mlog.Err(err))
+		return err
+	}
+	mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", cluster.ID))
+
+	wait := 900
+	mlog.Info("Waiting up to 900 seconds for the k8s cluster creation to complete...")
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	defer cancel()
+
+	return waitK8sCluster(ctx, pr, cluster.ID)
 }
 
 func checkDNS(ctx context.Context, url string) error {
