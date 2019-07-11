@@ -57,6 +57,7 @@ type CreateInstallationRequest struct {
 	OwnerID  string
 	Version  string
 	DNS      string
+	Size     string
 	Affinity string
 }
 
@@ -66,6 +67,7 @@ type Installation struct {
 	OwnerID        string
 	Version        string
 	DNS            string
+	Size           string
 	Affinity       string
 	GroupID        *string
 	State          string
@@ -75,7 +77,7 @@ type Installation struct {
 	LockAcquiredAt int64
 }
 
-func waitForBuildAndSetupSpinWick(pr *model.PullRequest) {
+func waitForBuildAndSetupSpinWick(pr *model.PullRequest, size string) {
 	err := waitForBuildComplete(pr)
 	if err != nil {
 		return
@@ -85,7 +87,7 @@ func waitForBuildAndSetupSpinWick(pr *model.PullRequest) {
 		mlog.Error("Unable to get the SpinWick information. Will not build the SpinWick", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
 		mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
-		installationID, err := createSpinWick(pr)
+		installationID, err := createSpinWick(pr, size)
 		if err != nil {
 			LogErrorToMattermost("Unable to set up SpinWick for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
@@ -123,7 +125,7 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 		ApiToken: credentials.ApiToken,
 	}, credentials.URL)
 
-	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+	mlog.Info("Waiting for Jenkins to build to set up SpinWick for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
 
 	pr, errr := waitForBuild(client, pr)
 	if errr == false || pr == nil {
@@ -134,7 +136,7 @@ func waitForBuildComplete(pr *model.PullRequest) error {
 	return nil
 }
 
-func createSpinWick(pr *model.PullRequest) (string, error) {
+func createSpinWick(pr *model.PullRequest, size string) (string, error) {
 	mlog.Info("Provisioner Server - Installation request")
 
 	prID := makePullRequestID(pr.RepoName, pr.Number)
@@ -142,6 +144,7 @@ func createSpinWick(pr *model.PullRequest) (string, error) {
 		OwnerID:  prID,
 		Version:  pr.Sha[0:7],
 		DNS:      fmt.Sprintf("%s.%s", prID, Config.DNSNameTestServer),
+		Size:     size,
 		Affinity: "multitenant",
 	}
 
@@ -209,8 +212,8 @@ func createSpinWick(pr *model.PullRequest) (string, error) {
 
 func updateSpinWick(pr *model.PullRequest) {
 	for _, label := range pr.Labels {
-		if label == Config.SetupSpinmintExperimentalTag {
-			mlog.Info("PR has the setup test experimental tag enabled will check the upgrade")
+		if label == Config.SetupSpinWick {
+			mlog.Info("PR has the SpinWick label; will check the upgrade")
 			break
 		}
 		return
@@ -257,6 +260,7 @@ func updateSpinWick(pr *model.PullRequest) {
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
 	err = waitForBuildComplete(pr)
 	if err != nil {
+		mlog.Error(fmt.Sprintf("Error waiting for build to complete: %s", err))
 		return
 	}
 	// TODO: remove this when we starting building the docker image in the sam build pipeline
