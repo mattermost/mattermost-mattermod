@@ -216,6 +216,10 @@ func updateSpinWick(pr *model.PullRequest) {
 			mlog.Info("PR has the SpinWick label; will check the upgrade")
 			break
 		}
+		if label == Config.SetupSpinWickHA {
+			mlog.Info("PR has the SpinWick HA label; will check the upgrade")
+			break
+		}
 		return
 	}
 
