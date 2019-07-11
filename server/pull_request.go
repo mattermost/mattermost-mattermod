@@ -33,11 +33,11 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
 			go destroySpinmint(pr, spinmint.InstanceId)
-			go destroySpinmintExperimental(pr, spinmint.InstanceId)
+			go destroySpinWick(pr, spinmint.InstanceId)
 		}
 	} else if event.Action == "synchronize" {
 		checkCLA(pr)
-		upgradeTestServer(pr)
+		updateSpinWick(pr)
 	}
 
 	checkPullRequestForChanges(pr)
@@ -176,9 +176,9 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
 	} else if addedLabel == Config.SetupSpinmintExperimentalTag && !messageByUserContains(comments, Config.Username, "Mattermost test server created!") {
-		mlog.Info("Label to spin an experimental test server")
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Will start an experimental test server using Mattermost Cloud.")
-		go waitForBuildAndSetupSpinmintExperimental(pr)
+		mlog.Info("Label to create a SpinWick")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
+		go waitForBuildAndSetupSpinWick(pr)
 	} else {
 		mlog.Info("looking for other labels")
 
@@ -245,7 +245,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 			removeOldComments(comments, pr)
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
-			go destroySpinmintExperimental(pr, spinmint.InstanceId)
+			go destroySpinWick(pr, spinmint.InstanceId)
 		}
 	}
 }
@@ -253,22 +253,20 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 func removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
 	serverMessages := []string{Config.SetupSpinmintMessage,
 		Config.SetupSpinmintUpgradeMessage,
+		Config.SetupSpinmintFailedMessage,
 		"Spinmint test server created",
 		"Spinmint upgrade test server created",
-		Config.SetupSpinmintFailedMessage,
-		"Will spin a new Kubernetes Cluster",
-		"Detected a new commit",
+		"New commit detected",
 		"Error during the request to upgrade",
 		"Error doing the upgrade process",
-		"Timeouted. Aborted the upgrade of the test server",
+		"Timed out waiting",
 		"Mattermost test server created!",
 		"Mattermost test server updated!",
 		"Failed to create mattermost installation",
-		"Timeouted the installation",
 		"Kubernetes cluster created",
 		"Failed to create the k8s cluster",
-		"Timeouted the k8s cluster installation",
-		"Will start an experimental test server using Mattermost Cloud",
+		"Creating a new SpinWick test server using Mattermost Cloud.",
+		"Please wait while a new kubernetes cluster is created for your SpinWick",
 	}
 
 	mlog.Info("Removing old Mattermod comments")
