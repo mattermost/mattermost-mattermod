@@ -27,7 +27,8 @@
     "StaleLabel": "",
     "StaleComment": "",
 
-    "SetupSpinmintExperimentalTag": "",
+    "SetupSpinWick": "",
+    "SetupSpinWickHA": "",
     "ProvisionerServer": "",
     "DNSNameTestServer": "",
     "AWSEmailAccessKey": "",

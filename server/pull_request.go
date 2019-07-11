@@ -175,10 +175,14 @@ func handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		mlog.Info("Label to spin a load test")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
-	} else if addedLabel == Config.SetupSpinmintExperimentalTag && !messageByUserContains(comments, Config.Username, "Mattermost test server created!") {
+	} else if addedLabel == Config.SetupSpinWick && !messageByUserContains(comments, Config.Username, "Mattermost test server created!") {
 		mlog.Info("Label to create a SpinWick")
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
-		go waitForBuildAndSetupSpinWick(pr)
+		go waitForBuildAndSetupSpinWick(pr, "100users")
+	} else if addedLabel == Config.SetupSpinWickHA && !messageByUserContains(comments, Config.Username, "Mattermost test server created!") {
+		mlog.Info("Label to create an HA SpinWick")
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
+		go waitForBuildAndSetupSpinWick(pr, "1000users")
 	} else {
 		mlog.Info("looking for other labels")
 
@@ -231,15 +235,15 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		}
 	}
 
-	if removedLabel == Config.SetupSpinmintExperimentalTag {
+	if removedLabel == Config.SetupSpinWick || removedLabel == Config.SetupSpinWickHA {
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
-			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
+			mlog.Error("Unable to get the SpinWick information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
-			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
+			mlog.Info("Nothing to do. There is not SpinWick for this PR", mlog.Int("pr", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
-			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
+			mlog.Info("SpinWick instance", mlog.String("spinmint", spinmint.InstanceId))
+			mlog.Info("Will destroy the SpinWick for a merged/closed PR.")
 
 			// Old comments created by Mattermod user will be deleted here.
 			removeOldComments(comments, pr)
