@@ -36,6 +36,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 			go destroySpinWick(pr, spinmint.InstanceId)
 		}
 	} else if event.Action == "synchronize" {
+		mlog.Info("pr has a new commit", mlog.Int("pr", pr.Number))
 		checkCLA(pr)
 		updateSpinWick(pr)
 	}
