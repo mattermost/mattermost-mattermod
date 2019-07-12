@@ -211,15 +211,22 @@ func createSpinWick(pr *model.PullRequest, size string) (string, error) {
 }
 
 func updateSpinWick(pr *model.PullRequest) {
+	foundLabel := false
 	for _, label := range pr.Labels {
 		if label == Config.SetupSpinWick {
-			mlog.Info("PR has the SpinWick label; will check the upgrade")
+			mlog.Info("PR has the SpinWick label; will check the upgrade", mlog.Int("pr", pr.Number))
+			foundLabel = true
 			break
 		}
 		if label == Config.SetupSpinWickHA {
-			mlog.Info("PR has the SpinWick HA label; will check the upgrade")
+			mlog.Info("PR has the SpinWick HA label; will check the upgrade", mlog.Int("pr", pr.Number))
+			foundLabel = true
 			break
 		}
+	}
+
+	if !foundLabel {
+		mlog.Info("PR does not have a SpinWick label", mlog.Int("pr", pr.Number))
 		return
 	}
 
