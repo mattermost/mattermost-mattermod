@@ -64,6 +64,7 @@ func doCherryPick(version string, pr *model.PullRequest) error {
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),
+		os.Getenv("PATH"),
 		fmt.Sprintf("ORIGINAL_AUTHOR=%s", pr.Username),
 		fmt.Sprintf("GITHUB_USER=%s", Config.GithubUsername),
 		fmt.Sprintf("GITHUB_TOKEN=%s", Config.GithubAccessTokenCherryPick),
@@ -145,8 +146,7 @@ func returnToMaster(dir string) {
 	cmd.Dir = dir
 	cmd.Env = append(
 		os.Environ(),
-		fmt.Sprintf("GITHUB_USER=%s", Config.GithubUsername),
-		fmt.Sprintf("GITHUB_TOKEN=%s", Config.GithubAccessTokenCherryPick),
+		os.Getenv("PATH"),
 	)
 	cmd.Run()
 }
