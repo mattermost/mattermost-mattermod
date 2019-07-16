@@ -127,7 +127,7 @@ func updateCherryPickLabels(newPR string, pr *model.PullRequest) {
 		return
 	}
 
-	_, err = client.Issues.RemoveLabelForIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPickApproved")
+	_, err = client.Issues.RemoveLabelForIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPick/Approved")
 	if err != nil {
 		mlog.Error("Error removing the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
