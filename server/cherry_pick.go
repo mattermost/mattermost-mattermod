@@ -18,6 +18,25 @@ import (
 	"github.com/google/go-github/github"
 )
 
+func handleCherryPick(eventIssueComment IssueComment) {
+	client := NewGithubClient()
+	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	pr, err := GetPullRequestFromGithub(prGitHub)
+	if err != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+		return
+	}
+
+	args := strings.Split(*eventIssueComment.Comment.Body, " ")
+	mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
+	if !prGitHub.GetMerged() {
+		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prGitHub.GetNumber()), mlog.String("Repo", pr.RepoName))
+		return
+	}
+
+	doCherryPick(args[1], pr)
+}
+
 func checkIfNeedCherryPick(pr *model.PullRequest) {
 	client := NewGithubClient()
 

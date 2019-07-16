@@ -164,6 +164,9 @@ func prEvent(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
 			handleCheckCLA(*eventIssueComment)
 		}
+		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
+			handleCherryPick(*eventIssueComment)
+		}
 	} else {
 		handleIssueEvent(event)
 	}
