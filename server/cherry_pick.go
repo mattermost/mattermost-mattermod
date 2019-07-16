@@ -94,7 +94,7 @@ func doCherryPick(version string, pr *model.PullRequest) error {
 		returnToMaster(repoFolder)
 		webhookMessage := fmt.Sprintf("Error doing the Cherry pick, see the logs\n%s\n", string(out))
 		webhookRequest := &WebhookRequest{Username: "Mattermost-Build", Text: webhookMessage}
-		if errWebhook := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
+		if errWebhook := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); errWebhook != nil {
 			mlog.Error("Unable to post to Mattermost webhook", mlog.Err(errWebhook))
 		}
 		return err
