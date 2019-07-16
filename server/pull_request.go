@@ -22,6 +22,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 	}
 
 	if event.Action == "closed" {
+		go checkIfNeedCherryPick(pr)
 		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {

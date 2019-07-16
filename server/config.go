@@ -35,10 +35,12 @@ type JenkinsCredentials struct {
 }
 
 type PRServerConfig struct {
-	ListenAddress      string
-	GithubAccessToken  string
-	GitHubTokenReserve int
-	Username           string
+	ListenAddress               string
+	GithubAccessToken           string
+	GitHubTokenReserve          int
+	GithubUsername              string
+	GithubAccessTokenCherryPick string
+	Username                    string
 
 	TickRateMinutes        int
 	SpinmintExpirationHour int

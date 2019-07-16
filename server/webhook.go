@@ -14,6 +14,7 @@ import (
 type WebhookRequest struct {
 	Username string `json:"username"`
 	Text     string `json:"text"`
+	Channel  string `json:"channel"`
 }
 
 func sendToWebhook(webhookRequest *WebhookRequest, url string) error {
