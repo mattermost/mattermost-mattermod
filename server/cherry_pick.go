@@ -139,15 +139,15 @@ func addReviewers(newPR string, pr *model.PullRequest) {
 	newPRNumner, _ := strconv.Atoi(newPR)
 	// Get the reviwers from the cherry pick PR
 
-	reviewersFromPR, _, err := client.PullRequests.ListReviewers(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
 	var requestReviewers []string
-	for _, reviewer := range reviewersFromPR.Users {
-		requestReviewers = append(requestReviewers, reviewer.GetLogin())
+	for _, reviewer := range reviewersFromPR {
+		requestReviewers = append(requestReviewers, reviewer.User.GetLogin())
 	}
 
 	reviewReq := github.ReviewersRequest{
