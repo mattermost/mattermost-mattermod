@@ -113,8 +113,10 @@ func doCherryPick(version string, pr *model.PullRequest) error {
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
 	newPRURL := gitHubPR.FindString(string(out))
 	newPR := strings.Split(newPRURL, "/")
-	updateCherryPickLabels(newPR[len(newPR)-1], pr)
-	addReviewers(newPR[len(newPR)-1], pr)
+	newPRNumber := newPR[len(newPR)-1]
+	updateCherryPickLabels(newPRNumber, pr)
+	addReviewers(newPRNumber, pr)
+	addAssignee(newPRNumber, pr)
 	returnToMaster(repoFolder)
 	return nil
 }
@@ -146,9 +148,8 @@ func updateCherryPickLabels(newPR string, pr *model.PullRequest) {
 
 func addReviewers(newPR string, pr *model.PullRequest) {
 	client := NewGithubClient()
-	newPRNumner, _ := strconv.Atoi(newPR)
+	newPRNumber, _ := strconv.Atoi(newPR)
 	// Get the reviwers from the cherry pick PR
-
 	reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
@@ -163,9 +164,21 @@ func addReviewers(newPR string, pr *model.PullRequest) {
 	reviewReq := github.ReviewersRequest{
 		Reviewers: requestReviewers,
 	}
-	_, _, err = client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumner, reviewReq)
+	_, _, err = client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
 	if err != nil {
-		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumner), mlog.String("Repo", pr.RepoName))
+		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
+		return
+	}
+}
+
+func addAssignee(newPR string, pr *model.PullRequest) {
+	client := NewGithubClient()
+	newPRNumber, _ := strconv.Atoi(newPR)
+
+	assignee := []string{pr.Username}
+	_, _, err := client.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignee)
+	if err != nil {
+		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
 	}
 }
