@@ -27,6 +27,12 @@ func handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
+	userComment := *eventIssueComment.Comment.User
+	if !checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
+		return
+	}
+
 	args := strings.Split(*eventIssueComment.Comment.Body, " ")
 	mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
 	if !prGitHub.GetMerged() {
@@ -56,7 +62,9 @@ func checkIfNeedCherryPick(pr *model.PullRequest) {
 		mlog.Info("PR does not have milestone, not cherry picking", mlog.Int("PR Number", prCherryCandidate.GetNumber()), mlog.String("Repo", pr.RepoName))
 		return
 	}
-	milestone := strings.Trim(prMilestone.GetTitle(), "v")
+
+	milestone := strings.TrimSpace(prMilestone.GetTitle())
+	milestone = strings.Trim(milestone, "v")
 	milestone = fmt.Sprintf("release-%s", strings.Trim(milestone, ".0"))
 
 	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
@@ -70,6 +78,8 @@ func checkIfNeedCherryPick(pr *model.PullRequest) {
 			err := doCherryPick(milestone, pr)
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
+				errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking\n\n`%s`\n", err.Error())
+				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 				return
 			}
 		}

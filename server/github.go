@@ -123,3 +123,18 @@ func GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, 
 
 	return pr, nil
 }
+
+func checkUserPermission(user, repoOwner string) bool {
+	client := NewGithubClient()
+
+	_, resp, err := client.Organizations.GetOrgMembership(context.Background(), user, repoOwner)
+	if resp.StatusCode == 404 {
+		mlog.Info("User is not part of the ORG", mlog.String("User", user))
+		return false
+	}
+	if err != nil {
+		return false
+	}
+
+	return true
+}
