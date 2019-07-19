@@ -117,7 +117,7 @@ func (s SqlSpinmintStore) GetTestServer(instanceID string) StoreChannel {
 			`SELECT * FROM
         Spinmint
       WHERE
-        InstanceId = :instanceID AND RepoName = :repoName`, map[string]interface{}{"instanceID": instanceID}); err != nil {
+        InstanceId = :instanceID`, map[string]interface{}{"instanceID": instanceID}); err != nil {
 			if err != sql.ErrNoRows {
 				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
 					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
