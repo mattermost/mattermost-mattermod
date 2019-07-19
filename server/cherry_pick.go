@@ -41,7 +41,13 @@ func handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	doCherryPick(args[1], pr)
+	cmdOut, err := doCherryPick(args[1], pr)
+	if err != nil {
+		mlog.Error("Error doing the cherry pick", mlog.Err(err))
+		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+		return
+	}
 }
 
 func checkIfNeedCherryPick(pr *model.PullRequest) {
@@ -76,10 +82,10 @@ func checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := LabelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			err := doCherryPick(milestone, pr)
+			cmdOut, err := doCherryPick(milestone, pr)
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
-				errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking\n\n`%s`\n", err.Error())
+				errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
 				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 				return
 			}
@@ -87,7 +93,7 @@ func checkIfNeedCherryPick(pr *model.PullRequest) {
 	}
 }
 
-func doCherryPick(version string, pr *model.PullRequest) error {
+func doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err error) {
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
 	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
 	cmd := exec.Command("/home/ubuntu/git/devops/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number))
@@ -108,9 +114,8 @@ func doCherryPick(version string, pr *model.PullRequest) error {
 		if errWebhook := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); errWebhook != nil {
 			mlog.Error("Unable to post to Mattermost webhook", mlog.Err(errWebhook))
 		}
-		return err
+		return string(out), err
 	}
-	fmt.Println(string(out))
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
 	newPRURL := gitHubPR.FindString(string(out))
 	newPR := strings.Split(newPRURL, "/")
@@ -119,7 +124,7 @@ func doCherryPick(version string, pr *model.PullRequest) error {
 	addReviewers(newPRNumber, pr)
 	addAssignee(newPRNumber, pr)
 	returnToMaster(repoFolder)
-	return nil
+	return "", nil
 }
 
 func updateCherryPickLabels(newPR string, pr *model.PullRequest) {
