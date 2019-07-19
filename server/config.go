@@ -50,13 +50,14 @@ type PRServerConfig struct {
 
 	Repositories []*Repository
 
-	SetupSpinWick     string
-	SetupSpinWickHA   string
-	ProvisionerServer string
-	DNSNameTestServer string
-	AWSEmailAccessKey string
-	AWSEmailSecretKey string
-	AWSEmailEndpoint  string
+	SetupSpinWick            string
+	SetupSpinWickHA          string
+	ProvisionerServer        string
+	DNSNameTestServer        string
+	AWSEmailAccessKey        string
+	AWSEmailSecretKey        string
+	AWSEmailEndpoint         string
+	TokenToDeleteTestServers string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string

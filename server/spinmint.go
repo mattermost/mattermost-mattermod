@@ -148,7 +148,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	}
 
 	var instance *ec2.Instance
-	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+	if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")

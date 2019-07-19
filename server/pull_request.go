@@ -23,7 +23,7 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 
 	if event.Action == "closed" {
 		go checkIfNeedCherryPick(pr)
-		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+		if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
@@ -33,8 +33,11 @@ func handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.DestroyedSpinmintMessage)
-			go destroySpinmint(pr, spinmint.InstanceId)
-			go destroySpinWick(pr, spinmint.InstanceId)
+			if strings.Contains(spinmint.InstanceId, "i-") {
+				go destroySpinmint(pr, spinmint.InstanceId)
+			} else {
+				go destroySpinWick(pr, spinmint.InstanceId)
+			}
 		}
 	} else if event.Action == "synchronize" {
 		mlog.Info("pr has a new commit", mlog.Int("pr", pr.Number))
@@ -223,7 +226,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		// Old comments created by Mattermod user will be deleted here.
 		removeOldComments(comments, pr)
 
-		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+		if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
@@ -238,7 +241,7 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	}
 
 	if removedLabel == Config.SetupSpinWick || removedLabel == Config.SetupSpinWickHA {
-		if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+		if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the SpinWick information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
 			mlog.Info("Nothing to do. There is not SpinWick for this PR", mlog.Int("pr", pr.Number))

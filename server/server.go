@@ -139,6 +139,7 @@ func addApis(r *mux.Router) {
 	r.HandleFunc("/list_prs", listPrs).Methods("GET")
 	r.HandleFunc("/list_issues", listIssues).Methods("GET")
 	r.HandleFunc("/list_spinmints", listSpinmints).Methods("GET")
+	r.HandleFunc("/delete_test_server", deleteTestServer).Methods("DELETE")
 }
 
 func ping(w http.ResponseWriter, r *http.Request) {
@@ -237,6 +238,41 @@ func listSpinmints(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(b)
 	}
+}
+
+func deleteTestServer(w http.ResponseWriter, r *http.Request) {
+	instance := r.FormValue("instance")
+	token := r.FormValue("token")
+
+	if strings.Compare(token, Config.TokenToDeleteTestServers) != 0 {
+		mlog.Error("Invalid Token")
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
+	var testServer *model.Spinmint
+	if result := <-Srv.Store.Spinmint().GetTestServer(instance); result.Err != nil {
+		mlog.Error(result.Err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		testServer = result.Data.(*model.Spinmint)
+	}
+
+	var pr *model.PullRequest
+	result := <-Srv.Store.PullRequest().Get(testServer.RepoOwner, testServer.RepoName, testServer.Number)
+	if result.Err != nil {
+		mlog.Error("delete test server error ", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	// Update the PR in case the build link has changed because of a new commit
+	pr = result.Data.(*model.PullRequest)
+	if strings.Contains(testServer.InstanceId, "i-") {
+		destroySpinmint(pr, testServer.InstanceId)
+	} else {
+		destroySpinWick(pr, testServer.InstanceId)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func GetLogFileLocation(fileLocation string) string {

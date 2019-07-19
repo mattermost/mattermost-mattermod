@@ -50,7 +50,8 @@ type IssueStore interface {
 
 type SpinmintStore interface {
 	Save(spinmint *model.Spinmint) StoreChannel
-	Delete(instanceId string) StoreChannel
-	Get(prNumber int) StoreChannel
+	Delete(instanceID string) StoreChannel
+	Get(prNumber int, repoName string) StoreChannel
+	GetTestServer(instanceID string) StoreChannel
 	List() StoreChannel
 }

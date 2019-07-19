@@ -83,7 +83,7 @@ func waitForBuildAndSetupSpinWick(pr *model.PullRequest, size string) {
 		return
 	}
 
-	if result := <-Srv.Store.Spinmint().Get(pr.Number); result.Err != nil {
+	if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 		mlog.Error("Unable to get the SpinWick information. Will not build the SpinWick", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
 		mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
@@ -256,7 +256,7 @@ func updateSpinWick(pr *model.PullRequest) {
 	mlog.Info("New build", mlog.String("New", pr.BuildLink))
 
 	var installation string
-	result := <-Srv.Store.Spinmint().Get(pr.Number)
+	result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
 	if result.Err != nil {
 		mlog.Error("Unable to get the SpinWick information; skipping...", mlog.String("pr_error", result.Err.Error()))
 		return

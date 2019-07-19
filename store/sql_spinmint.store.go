@@ -77,7 +77,7 @@ func (s SqlSpinmintStore) List() StoreChannel {
 	return storeChannel
 }
 
-func (s SqlSpinmintStore) Get(prNumber int) StoreChannel {
+func (s SqlSpinmintStore) Get(prNumber int, repoName string) StoreChannel {
 	storeChannel := make(StoreChannel)
 
 	go func() {
@@ -88,7 +88,7 @@ func (s SqlSpinmintStore) Get(prNumber int) StoreChannel {
 			`SELECT * FROM
         Spinmint
       WHERE
-        Number = :prNumber`, map[string]interface{}{"prNumber": prNumber}); err != nil {
+        Number = :prNumber AND RepoName = :repoName`, map[string]interface{}{"prNumber": prNumber, "repoName": repoName}); err != nil {
 			if err != sql.ErrNoRows {
 				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
 					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
@@ -106,7 +106,36 @@ func (s SqlSpinmintStore) Get(prNumber int) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlSpinmintStore) Delete(instanceid string) StoreChannel {
+func (s SqlSpinmintStore) GetTestServer(instanceID string) StoreChannel {
+	storeChannel := make(StoreChannel)
+
+	go func() {
+		result := StoreResult{}
+
+		var spinmint model.Spinmint
+		if err := s.GetReplica().SelectOne(&spinmint,
+			`SELECT * FROM
+        Spinmint
+      WHERE
+        InstanceId = :instanceID AND RepoName = :repoName`, map[string]interface{}{"instanceID": instanceID}); err != nil {
+			if err != sql.ErrNoRows {
+				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
+					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
+			} else {
+				result.Data = nil
+			}
+		} else {
+			result.Data = &spinmint
+		}
+
+		storeChannel <- result
+		close(storeChannel)
+	}()
+
+	return storeChannel
+}
+
+func (s SqlSpinmintStore) Delete(instanceID string) StoreChannel {
 	storeChannel := make(StoreChannel)
 	go func() {
 		result := StoreResult{}
@@ -116,7 +145,7 @@ func (s SqlSpinmintStore) Delete(instanceid string) StoreChannel {
 			`DELETE FROM
         Spinmint
       WHERE
-        InstanceId = :InstanceId`, map[string]interface{}{"InstanceId": instanceid}); err != nil {
+        InstanceId = :InstanceID`, map[string]interface{}{"InstanceID": instanceID}); err != nil {
 			result.Err = model.NewLocAppError("SqlSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
 		} else {
 			result.Data = spinmint
