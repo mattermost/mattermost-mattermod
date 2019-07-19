@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"path/filepath"
 	"regexp"
@@ -52,6 +53,8 @@ func Start() {
 	SetupLogging()
 	mlog.Info("Starting pr manager")
 	startTime = time.Now()
+
+	rand.Seed(time.Now().Unix())
 
 	Srv = &Server{
 		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),

@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -157,9 +158,8 @@ func addReviewers(newPR string, pr *model.PullRequest) {
 	}
 
 	var requestReviewers []string
-	for _, reviewer := range reviewersFromPR {
-		requestReviewers = append(requestReviewers, reviewer.User.GetLogin())
-	}
+	randonReviewer := rand.Intn(len(reviewersFromPR) - 1)
+	requestReviewers = append(requestReviewers, reviewersFromPR[randonReviewer].User.GetLogin())
 
 	reviewReq := github.ReviewersRequest{
 		Reviewers: requestReviewers,
