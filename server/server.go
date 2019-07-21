@@ -68,7 +68,7 @@ func Start() {
 		mlog.Info("Listening on", mlog.String("address", Config.ListenAddress))
 		err := manners.ListenAndServe(Config.ListenAddress, handler)
 		if err != nil {
-			LogErrorToMattermost(err.Error())
+			logErrorToMattermost(err.Error())
 			mlog.Critical("server_error", mlog.Err(err))
 			panic(err.Error())
 		}
@@ -272,7 +272,7 @@ func deleteTestServer(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(testServer.InstanceId, "i-") {
 		destroySpinmint(pr, testServer.InstanceId)
 	} else {
-		destroySpinWick(pr, testServer.InstanceId)
+		handleDestroySpinWick(pr, testServer.InstanceId)
 	}
 
 	w.WriteHeader(http.StatusOK)

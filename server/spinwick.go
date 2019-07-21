@@ -16,10 +16,10 @@ import (
 
 	"time"
 
-	jenkins "github.com/cpanato/golang-jenkins"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
 	mattermostModel "github.com/mattermost/mattermost-server/model"
+	"github.com/pkg/errors"
 )
 
 // The following structs are copied from the mattermost-cloud repo to allow
@@ -77,96 +77,97 @@ type Installation struct {
 	LockAcquiredAt int64
 }
 
-func waitForBuildAndSetupSpinWick(pr *model.PullRequest, size string) {
-	err := waitForBuildComplete(pr)
+func handleCreateSpinWick(pr *model.PullRequest, size string) {
+	installationID, sendMattermostLog, err := createSpinWick(pr, size)
 	if err != nil {
+		mlog.Error("Failed to create SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		if sendMattermostLog {
+			logPrettyErrorToMattermost("[ SpinWick ] Creation Failed", pr, err)
+		}
+
 		return
 	}
 
-	if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
-		mlog.Error("Unable to get the SpinWick information. Will not build the SpinWick", mlog.String("pr_error", result.Err.Error()))
-	} else if result.Data == nil {
-		mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
-		installationID, err := createSpinWick(pr, size)
-		if err != nil {
-			LogErrorToMattermost("Unable to set up SpinWick for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, err.Error())
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-			return
-		}
-
-		spinmint := &model.Spinmint{
+	if installationID != "" {
+		storeSpinmintInfo(&model.Spinmint{
 			InstanceId: installationID,
 			RepoOwner:  pr.RepoOwner,
 			RepoName:   pr.RepoName,
 			Number:     pr.Number,
 			CreatedAt:  time.Now().UTC().Unix(),
-		}
-		storeSpinmintInfo(spinmint)
+		})
 	}
 }
 
-func waitForBuildComplete(pr *model.PullRequest) error {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return fmt.Errorf("Unable to set up spintmint for PR without Jenkins configured for server")
+// createSpinWick creates a SpinWick and returns an error as well as a bool
+// indicating if the error should be logged to Mattermost.
+func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
+	result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if result.Err != nil {
+		return "", true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
+	}
+	if result.Data != nil {
+		mlog.Info("PR already has a SpinWick created", mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		return "", false, nil
 	}
 
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return fmt.Errorf("No Jenkins credentials for server required for PR")
+	mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
+
+	_, client, err := buildJenkinsClient(pr)
+	if err != nil {
+		return "", true, errors.Wrap(err, "unable to build Jenkins client")
 	}
 
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
+	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
 
-	mlog.Info("Waiting for Jenkins to build to set up SpinWick for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
 
-	pr, errr := waitForBuild(client, pr)
-	if errr == false || pr == nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return fmt.Errorf("error in the build. aborting")
+	pr, err = waitForBuild(ctx, client, pr)
+	if err != nil {
+		return "", false, errors.Wrap(err, "error waiting for PR build to finish")
 	}
 
-	return nil
-}
+	// Check the mattermod store again just in case a separate process created
+	// a SpinWick while we waited for the build to finish.
+	//
+	// TODO: this should be improved in the future.
+	result = <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if result.Err != nil {
+		return "", true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
+	}
+	if result.Data != nil {
+		return "", true, errors.New("More than a single process was trying to create a SpinWick")
+	}
 
-func createSpinWick(pr *model.PullRequest, size string) (string, error) {
-	mlog.Info("Provisioner Server - Installation request")
+	mlog.Info("Provisioning Server - Installation request")
 
-	prID := makePullRequestID(pr.RepoName, pr.Number)
+	spinwickID := makeSpinWickID(pr.RepoName, pr.Number)
 	installationRequest := CreateInstallationRequest{
-		OwnerID:  prID,
+		OwnerID:  spinwickID,
 		Version:  pr.Sha[0:7],
-		DNS:      fmt.Sprintf("%s.%s", prID, Config.DNSNameTestServer),
+		DNS:      fmt.Sprintf("%s.%s", spinwickID, Config.DNSNameTestServer),
 		Size:     size,
 		Affinity: "multitenant",
 	}
 
 	b, err := json.Marshal(installationRequest)
 	if err != nil {
-		mlog.Error("Error trying to marshal the installation request", mlog.Err(err))
-		return "", err
+		return "", true, errors.Wrap(err, "unable to marshal the installation request")
 	}
 
 	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	respReqInstallation, err := makeRequest("POST", url, bytes.NewBuffer(b))
 	if err != nil {
-		mlog.Error("Error making the post request to create the mattermost installation", mlog.Err(err))
-		return "", err
+		return "", true, errors.Wrap(err, "unable to make the installation creation request to the provisioning server")
 	}
 	defer respReqInstallation.Body.Close()
 
 	var installation Installation
 	err = json.NewDecoder(respReqInstallation.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding installation response", mlog.Err(err))
-		return "", err
+		return "", true, errors.Wrap(err, "error decoding installation")
 	}
 	installationID := installation.ID
 	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", installationID))
@@ -181,53 +182,58 @@ func createSpinWick(pr *model.PullRequest, size string) (string, error) {
 	url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, installationID)
 	resp, err := makeRequest("GET", url, nil)
 	if err != nil {
-		mlog.Error("Error making the post request to create the mm installation", mlog.Err(err))
-		return "", err
+		return "", true, errors.Wrap(err, "error getting the mattermost installation")
 	}
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding installation", mlog.Err(err))
-		return "", fmt.Errorf("Error decoding installation")
+		return "", true, errors.Wrap(err, "error decoding installation")
 	}
 	if installation.State == "creation-no-compatible-clusters" {
 		err = requestK8sClusterCreation(pr)
 		if err != nil {
-			return "", err
+			return "", true, errors.Wrap(err, "unable to create a new cluster to accommodate the installation")
 		}
 	}
 
 	wait := 480
 	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
 	err = waitMattermostInstallation(ctx, pr, installationID, false)
 	if err != nil {
-		return "", err
+		return "", true, errors.Wrap(err, "error waiting for installation to become stable")
 	}
 
-	return installationID, nil
+	return installationID, false, nil
 }
 
-func updateSpinWick(pr *model.PullRequest) {
+func handleUpdateSpinWick(pr *model.PullRequest) {
+	sendMattermostLog, err := updateSpinWick(pr)
+	if err != nil {
+		mlog.Error("Error trying to update SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		if sendMattermostLog {
+			logPrettyErrorToMattermost("[ SpinWick ] Update Failed", pr, err)
+		}
+	}
+}
+
+// udpateSpinWick updates a SpinWick and returns an error as well as a bool
+// indicating if the error should be logged to Mattermost.
+func updateSpinWick(pr *model.PullRequest) (bool, error) {
 	foundLabel := false
 	for _, label := range pr.Labels {
-		if label == Config.SetupSpinWick {
-			mlog.Info("PR has the SpinWick label; will check the upgrade", mlog.Int("pr", pr.Number))
-			foundLabel = true
-			break
-		}
-		if label == Config.SetupSpinWickHA {
-			mlog.Info("PR has the SpinWick HA label; will check the upgrade", mlog.Int("pr", pr.Number))
+		if isSpinWickLabel(label) {
+			mlog.Info("PR has a SpinWick label; proceeding with upgrade", mlog.Int("pr", pr.Number))
 			foundLabel = true
 			break
 		}
 	}
 
 	if !foundLabel {
-		mlog.Info("PR does not have a SpinWick label", mlog.Int("pr", pr.Number))
-		return
+		return false, nil
 	}
 
 	// TODO: add a new column in the db to get the previous job and wait for the new one start
@@ -236,7 +242,7 @@ func updateSpinWick(pr *model.PullRequest) {
 	time.Sleep(60 * time.Second)
 
 	wait := 480
-	mlog.Info("Waiting up to 480 seconds to get the up-to-date build link...")
+	mlog.Info("Waiting to get the up-to-date build link", mlog.Int("wait_seconds", wait))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
 
@@ -244,83 +250,94 @@ func updateSpinWick(pr *model.PullRequest) {
 	// is not updated and can be blank for some time
 	buildLink, err := checkBuildLink(ctx, pr)
 	if err != nil || buildLink == "" {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
+		return true, errors.Wrap(err, "error waiting for build link")
 	}
 	mlog.Info("Build Link updated", mlog.String("buildLink", buildLink), mlog.String("OldBuildLink", pr.BuildLink))
-	// update the build link
 	pr.BuildLink = buildLink
-	if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
-		mlog.Error(result.Err.Error())
-	}
-	mlog.Info("New build", mlog.String("New", pr.BuildLink))
-
-	var installation string
-	result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	result := <-Srv.Store.PullRequest().Save(pr)
 	if result.Err != nil {
-		mlog.Error("Unable to get the SpinWick information; skipping...", mlog.String("pr_error", result.Err.Error()))
-		return
-	} else if result.Data == nil {
-		mlog.Error("No SpinWick for this PR in the database; skipping...")
-		return
-	} else {
-		spinmint := result.Data.(*model.Spinmint)
-		installation = spinmint.InstanceId
+		return true, errors.Wrap(result.Err, "unable to save updated PR to the database")
 	}
+
+	result = <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if result.Err != nil {
+		return true, errors.Wrap(result.Err, "unable to get SpinWick information from the database")
+	}
+	if result.Data == nil {
+		return true, errors.New("no SpinWick database information found")
+	}
+	installationID := result.Data.(*model.Spinmint).InstanceId
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
-	err = waitForBuildComplete(pr)
+
+	_, client, err := buildJenkinsClient(pr)
 	if err != nil {
-		mlog.Error(fmt.Sprintf("Error waiting for build to complete: %s", err))
-		return
+		return true, errors.Wrap(err, "unable to build Jenkins client")
 	}
+
+	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+
+	ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+
+	pr, err = waitForBuild(ctx, client, pr)
+	if err != nil {
+		return false, errors.Wrap(err, "error waiting for PR build to finish")
+	}
+
 	// TODO: remove this when we starting building the docker image in the sam build pipeline
 	time.Sleep(60 * time.Second)
 
-	mlog.Info("Provisioner Server - Upgrade request", mlog.String("SHA", pr.Sha))
+	mlog.Info("Provisioning Server - Upgrade request", mlog.String("SHA", pr.Sha))
 	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
 	var mmStr = []byte(payload)
-	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installation)
+	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installationID)
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
-		mlog.Error("Error making the put request to upgrade the mm cluster", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error during the request to upgrade. Please remove the label and try again.")
-		return
+		return true, errors.Wrap(err, "encountered error making upgrade request to provisioning server")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 202 {
-		mlog.Error("Error request was not accepted", mlog.Int("StatusCode", resp.StatusCode))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Error doing the upgrade process. Please remove the label and try again.")
-		return
+		return true, fmt.Errorf("upgrade request not accepted by the provisioning server: status code %d", resp.StatusCode)
 	}
 
-	wait = 480
-	mlog.Info("Waiting up to 480 seconds for the mattermost installation to complete...")
+	mlog.Info("Waiting for mattermost installation to become stable", mlog.Int("wait_seconds", wait))
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = waitMattermostInstallation(ctx, pr, installation, true)
+	err = waitMattermostInstallation(ctx, pr, installationID, true)
 	if err != nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
+		return true, errors.Wrap(err, "encountered error waiting for installation to become stable")
 	}
+
+	return false, nil
 }
 
-func destroySpinWick(pr *model.PullRequest, instanceClusterID string) {
-	mlog.Info("Destroying SpinWick experimental for PR", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+func handleDestroySpinWick(pr *model.PullRequest, instanceClusterID string) {
+	mlog.Info("Destroying SpinWick", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	destroyMMInstallation(instanceClusterID)
-	// Remove from the local db
+	sendMattermostLog, err := updateSpinWick(pr)
+	if err != nil {
+		mlog.Error("Failed to delete Mattermost installation", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		if sendMattermostLog {
+			logPrettyErrorToMattermost("[ SpinWick ] Destroy Failed", pr, err)
+		}
+	}
+
 	removeSpinmintInfo(instanceClusterID)
 }
 
-func destroyMMInstallation(instanceClusterID string) {
+// destroySpinWick destroys a SpinWick and returns an error as well as a bool
+// indicating if the error should be logged to Mattermost.
+func destroyMMInstallation(instanceClusterID string) (bool, error) {
 	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, instanceClusterID)
 	resp, err := makeRequest("DELETE", url, nil)
 	if err != nil {
-		mlog.Error("Error deleting the installation", mlog.Err(err))
+		return true, errors.Wrap(err, "unable to make installation delete request to provisioning server")
 	}
 	defer resp.Body.Close()
+
+	return false, nil
 }
 
 func checkBuildLink(ctx context.Context, pr *model.PullRequest) (string, error) {
@@ -372,10 +389,10 @@ func waitMattermostInstallation(ctx context.Context, pr *model.PullRequest, inst
 		err = json.NewDecoder(resp.Body).Decode(&installationRequest)
 		if err != nil && err != io.EOF {
 			mlog.Error("Error decoding installation", mlog.Err(err))
-			return fmt.Errorf("Error decoding installation")
+			return fmt.Errorf("Error decoding installation: %s", err)
 		}
 		if installationRequest.State == "stable" {
-			mmURL := fmt.Sprintf("https://%s.%s", makePullRequestID(pr.RepoName, pr.Number), Config.DNSNameTestServer)
+			mmURL := fmt.Sprintf("https://%s.%s", makeSpinWickID(pr.RepoName, pr.Number), Config.DNSNameTestServer)
 			if !upgrade {
 				userErr := initializeMattermostTestServer(mmURL, pr.Number)
 				if userErr != nil {
@@ -473,10 +490,9 @@ func initializeMattermostTestServer(mmURL string, prNumber int) error {
 	client := mattermostModel.NewAPIv4Client(mmURL)
 
 	//check if Mattermost is available
-	wait = 300
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
-	err = checkMMPing(client, ctx)
+	err = checkMMPing(ctx, client)
 	if err != nil {
 		return err
 	}
@@ -608,8 +624,8 @@ func requestK8sClusterCreation(pr *model.PullRequest) error {
 	var cluster Cluster
 	err = json.NewDecoder(respReqCluster.Body).Decode(&cluster)
 	if err != nil && err != io.EOF {
-		mlog.Error("Error decoding", mlog.Err(err))
-		return err
+		mlog.Error("Error decoding cluster", mlog.Err(err))
+		return fmt.Errorf("Error decoding cluster: %s", err)
 	}
 	mlog.Info("Provisioner Server - cluster request", mlog.String("ClusterID", cluster.ID))
 
@@ -639,7 +655,7 @@ func checkDNS(ctx context.Context, url string) error {
 	}
 }
 
-func checkMMPing(client *mattermostModel.Client4, ctx context.Context) error {
+func checkMMPing(ctx context.Context, client *mattermostModel.Client4) error {
 	for {
 		status, response := client.GetPing()
 		if response.StatusCode == 200 && status == "OK" {
@@ -655,12 +671,14 @@ func checkMMPing(client *mattermostModel.Client4, ctx context.Context) error {
 	}
 }
 
-func makePullRequestID(repoName string, prNumber int) string {
+func makeSpinWickID(repoName string, prNumber int) string {
 	return strings.ToLower(fmt.Sprintf("%s-pr-%d", repoName, prNumber))
 }
 
-func NewBool(b bool) *bool       { return &b }
-func NewInt(n int) *int          { return &n }
-func NewInt64(n int64) *int64    { return &n }
-func NewInt32(n int32) *int32    { return &n }
-func NewString(s string) *string { return &s }
+func isSpinWickLabel(label string) bool {
+	if label == Config.SetupSpinWick || label == Config.SetupSpinWickHA {
+		return true
+	}
+
+	return false
+}
