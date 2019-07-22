@@ -4,15 +4,12 @@
 package server
 
 import (
-	// "bytes"
-
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"path"
-
-	// "path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -21,7 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
-	jenkins "github.com/cpanato/golang-jenkins"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
 	// "github.com/mattermost/mattermost-load-test/ltops"
@@ -120,29 +116,21 @@ func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 }
 
 func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		mlog.Error("Unable to set up spintmint for PR without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+	repo, client, err := buildJenkinsClient(pr)
+	if err != nil {
+		mlog.Error("Error building Jenkins client", mlog.Err(err))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
-
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
 
 	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	pr, errr := waitForBuild(client, pr)
-	if errr == false || pr == nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+
+	pr, err = waitForBuild(ctx, client, pr)
+	if err != nil {
+		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
@@ -155,7 +143,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 		var errInstance error
 		instance, errInstance = setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
-			LogErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			logErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 			return
 		}
@@ -177,7 +165,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	publicDNS, internalIP := getIPsForInstance(*instance.InstanceId)
 
 	if err := updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
-		LogErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
+		logErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
@@ -204,30 +192,22 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 }
 
 func waitForMobileAppsBuild(pr *model.PullRequest) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
-	if !ok || repo.JenkinsServer == "" {
-		mlog.Error("Unable to build the mobile app for PR %v in %v/%v without Jenkins configured for server", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+	repo, client, err := buildJenkinsClient(pr)
+	if err != nil {
+		mlog.Error("Error building Jenkins client", mlog.Err(err))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
-
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
-	if !ok {
-		mlog.Error("No Jenkins credentials for server required for PR", mlog.String("jenkins", repo.JenkinsServer), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
-		return
-	}
-
-	client := jenkins.NewJenkins(&jenkins.Auth{
-		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
-	}, credentials.URL)
 
 	mlog.Info("Waiting for Jenkins to build to start build the mobile app for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	pr, errr := waitForBuild(client, pr)
-	if errr == false || pr == nil {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
+
+	pr, err = waitForBuild(ctx, client, pr)
+	if err != nil {
+		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
+		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -275,110 +255,6 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	msgMobile = strings.Replace(msgMobile, "IOS_APP", prNumberStr, 1)
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
 	return
-}
-
-func waitForBuild(client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, bool) {
-	for {
-		result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-		if result.Err != nil {
-			mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("build_error", result.Err.Error()))
-			return nil, false
-		}
-		// Update the PR in case the build link has changed because of a new commit
-		pr = result.Data.(*model.PullRequest)
-
-		prUpdate, err := GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
-		if pr.RepoName == "mattermost-webapp" {
-			if prUpdate.BuildStatus == "in_progress" {
-				mlog.Info("Build in CircleCI in progress will get an update check...")
-				prUpdate, err = GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
-				if err != nil {
-					mlog.Error("Unable to get checks while waiting for spinmint", mlog.String("githubError", err.Error()))
-					return nil, false
-				}
-				if prUpdate.BuildStatus == "in_progress" {
-					mlog.Info("Build in CircleCI running will wait to conclusion")
-				} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
-					mlog.Info("Build in CircleCI succeed")
-					return prUpdate, true
-				} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
-					mlog.Info("Build in CircleCI failed")
-					return prUpdate, false
-				} else {
-					mlog.Info("Error", mlog.String("status", prUpdate.BuildStatus), mlog.String("conclusion", prUpdate.BuildConclusion))
-					return prUpdate, false
-				}
-			} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "success" {
-				mlog.Info("Build in CircleCI succeed")
-				return pr, true
-			} else if prUpdate.BuildStatus == "completed" && prUpdate.BuildConclusion == "failure" {
-				mlog.Info("Build in CircleCI failed")
-				return prUpdate, false
-			} else {
-				mlog.Info("Have no info about the Checks")
-				return prUpdate, false
-			}
-
-		} else {
-			if pr.BuildLink != "" {
-				mlog.Info("BuildLink for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("buildlink", pr.BuildLink))
-				// Doing this because the lib we are using does not support folders :(
-				var jobNumber int64
-				var jobName string
-
-				parts := strings.Split(pr.BuildLink, "/")
-				// Doing this because the lib we are using does not support folders :(
-				if pr.RepoName == "mattermost-server" {
-					jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
-					jobName = parts[len(parts)-6]     //mattermost-server
-					subJobName := parts[len(parts)-4] //PR-XXXX
-
-					jobName = "mp/job/" + jobName + "/job/" + subJobName
-					mlog.Info("Job name for server", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
-				} else if pr.RepoName == "mattermost-mobile" {
-					jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
-					jobName = parts[len(parts)-3] //mattermost-mobile
-					jobName = "mm/job/" + jobName
-					mlog.Info("Job name for mobile", mlog.String("job", jobName), mlog.String("buidlink", pr.BuildLink))
-				} else {
-					mlog.Error("Did not know this repository. Aborting.", mlog.String("repo_name", pr.RepoName))
-					return pr, false
-				}
-
-				job, err := client.GetJob(jobName)
-				if err != nil {
-					mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
-					return pr, false
-				}
-
-				// Doing this because the lib we are using does not support folders :(
-				// This time is in the Jenkins job Name because it returns just the name
-				job.Name = jobName
-
-				build, err := client.GetBuild(job, int(jobNumber))
-				if err != nil {
-					LogErrorToMattermost("Failed to get build %v for PR %v in %v/%v: %v", build.Number, pr.Number, pr.RepoOwner, pr.RepoName, err)
-					return pr, false
-				}
-
-				if !build.Building && build.Result == "SUCCESS" {
-					mlog.Info("build for PR succeeded!", mlog.Int("jobnumber", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-					return pr, true
-				} else if build.Result == "FAILURE" || build.Result == "ABORTED" {
-					mlog.Error("build has status FAILURE/ABORTED. Aborting.", mlog.Int("build", build.Number), mlog.String("build_error", build.Result))
-					return pr, false
-				} else {
-					mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
-				}
-			} else {
-				mlog.Error("Unable to find build link for PR", mlog.Int("pr", pr.Number))
-				return pr, false
-			}
-		}
-
-		mlog.Info("Sleeping a bit....Will re-check the Jenkins Build or CircleCI checks...")
-		time.Sleep(30 * time.Second)
-	}
 }
 
 // Returns instance ID of instance created

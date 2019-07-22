@@ -5,7 +5,7 @@ PACKAGES=$(shell go list ./...)
 
 ## Checks the code style, tests, builds and bundles the plugin.
 .PHONY: all
-all: check-style
+all: check-style test
 
 ## Runs govet and gofmt against all packages.
 .PHONY: check-style
@@ -52,6 +52,11 @@ govet:
 	$(GO) vet $(PACKAGES)  || exit 1
 	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
 	@echo Govet success
+
+test:
+	@echo Running Go tests
+	$(GO) test $(PACKAGES)
+	@echo test success
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:

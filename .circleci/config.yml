@@ -3,7 +3,6 @@ jobs:
   lint:
     docker:
       - image: circleci/golang:1.12
-
     working_directory: /go/src/github.com/mattermost/mattermost-mattermod
     steps:
       - checkout
@@ -12,11 +11,18 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.12
-
     working_directory: /go/src/github.com/mattermost/mattermost-mattermod
     steps:
       - checkout
       - run: make build
+
+  test:
+    docker:
+      - image: circleci/golang:1.12
+    working_directory: /go/src/github.com/mattermost/mattermost-mattermod
+    steps:
+      - checkout
+      - run: make test
 
 workflows:
   version: 2
@@ -26,3 +32,6 @@ workflows:
       - build:
           requires:
             - lint
+      - test:
+          requires:
+            - build
