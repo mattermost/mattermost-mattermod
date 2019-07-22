@@ -112,7 +112,7 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 		return "", false, nil
 	}
 
-	mlog.Info("No SpinWick for this PR in the Database. Will create a new one.")
+	mlog.Info("No SpinWick for this PR in the database. Creating a new one.")
 
 	_, client, err := buildJenkinsClient(pr)
 	if err != nil {
@@ -316,7 +316,7 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 func handleDestroySpinWick(pr *model.PullRequest, instanceClusterID string) {
 	mlog.Info("Destroying SpinWick", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	sendMattermostLog, err := updateSpinWick(pr)
+	sendMattermostLog, err := destroyMMInstallation(instanceClusterID)
 	if err != nil {
 		mlog.Error("Failed to delete Mattermost installation", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
 		if sendMattermostLog {
@@ -327,7 +327,7 @@ func handleDestroySpinWick(pr *model.PullRequest, instanceClusterID string) {
 	removeSpinmintInfo(instanceClusterID)
 }
 
-// destroySpinWick destroys a SpinWick and returns an error as well as a bool
+// destroyMMInstallation destroys a SpinWick and returns an error as well as a bool
 // indicating if the error should be logged to Mattermost.
 func destroyMMInstallation(instanceClusterID string) (bool, error) {
 	url := fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, instanceClusterID)
@@ -676,9 +676,5 @@ func makeSpinWickID(repoName string, prNumber int) string {
 }
 
 func isSpinWickLabel(label string) bool {
-	if label == Config.SetupSpinWick || label == Config.SetupSpinWickHA {
-		return true
-	}
-
-	return false
+	return label == Config.SetupSpinWick || label == Config.SetupSpinWickHA
 }
