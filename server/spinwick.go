@@ -80,10 +80,13 @@ type Installation struct {
 func handleCreateSpinWick(pr *model.PullRequest, size string) {
 	installationID, sendMattermostLog, err := createSpinWick(pr, size)
 	if err != nil {
-		mlog.Error("Failed to create SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		mlog.Error("Failed to create SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		if sendMattermostLog {
-			logPrettyErrorToMattermost("[ SpinWick ] Creation Failed", pr, err)
+			additionalFields := map[string]string{
+				"Installation ID": installationID,
+			}
+			logPrettyErrorToMattermost("[ SpinWick ] Creation Failed", pr, err, additionalFields)
 		}
 
 		return
@@ -103,20 +106,22 @@ func handleCreateSpinWick(pr *model.PullRequest, size string) {
 // createSpinWick creates a SpinWick and returns an error as well as a bool
 // indicating if the error should be logged to Mattermost.
 func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
+	installationID := "n/a"
+
 	result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
 	if result.Err != nil {
-		return "", true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
+		return installationID, true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
 	}
 	if result.Data != nil {
 		mlog.Info("PR already has a SpinWick created", mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
-		return "", false, nil
+		return installationID, false, nil
 	}
 
 	mlog.Info("No SpinWick for this PR in the database. Creating a new one.")
 
 	_, client, err := buildJenkinsClient(pr)
 	if err != nil {
-		return "", true, errors.Wrap(err, "unable to build Jenkins client")
+		return installationID, true, errors.Wrap(err, "unable to build Jenkins client")
 	}
 
 	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
@@ -126,7 +131,7 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 
 	pr, err = waitForBuild(ctx, client, pr)
 	if err != nil {
-		return "", false, errors.Wrap(err, "error waiting for PR build to finish")
+		return installationID, false, errors.Wrap(err, "error waiting for PR build to finish")
 	}
 
 	// Check the mattermod store again just in case a separate process created
@@ -135,10 +140,10 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 	// TODO: this should be improved in the future.
 	result = <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
 	if result.Err != nil {
-		return "", true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
+		return installationID, true, errors.Wrap(result.Err, "unable to get the SpinWick information from database")
 	}
 	if result.Data != nil {
-		return "", true, errors.New("More than a single process was trying to create a SpinWick")
+		return installationID, true, errors.New("More than a single process was trying to create a SpinWick")
 	}
 
 	mlog.Info("Provisioning Server - Installation request")
@@ -154,22 +159,22 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 
 	b, err := json.Marshal(installationRequest)
 	if err != nil {
-		return "", true, errors.Wrap(err, "unable to marshal the installation request")
+		return installationID, true, errors.Wrap(err, "unable to marshal the installation request")
 	}
 
 	url := fmt.Sprintf("%s/api/installations", Config.ProvisionerServer)
 	respReqInstallation, err := makeRequest("POST", url, bytes.NewBuffer(b))
 	if err != nil {
-		return "", true, errors.Wrap(err, "unable to make the installation creation request to the provisioning server")
+		return installationID, true, errors.Wrap(err, "unable to make the installation creation request to the provisioning server")
 	}
 	defer respReqInstallation.Body.Close()
 
 	var installation Installation
 	err = json.NewDecoder(respReqInstallation.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
-		return "", true, errors.Wrap(err, "error decoding installation")
+		return installationID, true, errors.Wrap(err, "error decoding installation")
 	}
-	installationID := installation.ID
+	installationID = installation.ID
 	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", installationID))
 
 	time.Sleep(3 * time.Second)
@@ -182,18 +187,18 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 	url = fmt.Sprintf("%s/api/installation/%s", Config.ProvisionerServer, installationID)
 	resp, err := makeRequest("GET", url, nil)
 	if err != nil {
-		return "", true, errors.Wrap(err, "error getting the mattermost installation")
+		return installationID, true, errors.Wrap(err, "error getting the mattermost installation")
 	}
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&installation)
 	if err != nil && err != io.EOF {
-		return "", true, errors.Wrap(err, "error decoding installation")
+		return installationID, true, errors.Wrap(err, "error decoding installation")
 	}
 	if installation.State == "creation-no-compatible-clusters" {
 		err = requestK8sClusterCreation(pr)
 		if err != nil {
-			return "", true, errors.Wrap(err, "unable to create a new cluster to accommodate the installation")
+			return installationID, true, errors.Wrap(err, "unable to create a new cluster to accommodate the installation")
 		}
 	}
 
@@ -203,26 +208,30 @@ func createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
 	defer cancel()
 	err = waitMattermostInstallation(ctx, pr, installationID, false)
 	if err != nil {
-		return "", true, errors.Wrap(err, "error waiting for installation to become stable")
+		return installationID, true, errors.Wrap(err, "error waiting for installation to become stable")
 	}
 
 	return installationID, false, nil
 }
 
 func handleUpdateSpinWick(pr *model.PullRequest) {
-	sendMattermostLog, err := updateSpinWick(pr)
+	installationID, sendMattermostLog, err := updateSpinWick(pr)
 	if err != nil {
-		mlog.Error("Error trying to update SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		mlog.Error("Error trying to update SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
 		if sendMattermostLog {
-			logPrettyErrorToMattermost("[ SpinWick ] Update Failed", pr, err)
+			additionalFields := map[string]string{
+				"Installation ID": installationID,
+			}
+			logPrettyErrorToMattermost("[ SpinWick ] Update Failed", pr, err, additionalFields)
 		}
 	}
 }
 
 // udpateSpinWick updates a SpinWick and returns an error as well as a bool
 // indicating if the error should be logged to Mattermost.
-func updateSpinWick(pr *model.PullRequest) (bool, error) {
+func updateSpinWick(pr *model.PullRequest) (string, bool, error) {
+	installationID := "n/a"
 	foundLabel := false
 	for _, label := range pr.Labels {
 		if isSpinWickLabel(label) {
@@ -233,8 +242,17 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 	}
 
 	if !foundLabel {
-		return false, nil
+		return installationID, false, nil
 	}
+
+	result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if result.Err != nil {
+		return installationID, true, errors.Wrap(result.Err, "unable to get SpinWick information from the database")
+	}
+	if result.Data == nil {
+		return installationID, true, errors.New("no SpinWick database information found")
+	}
+	installationID = result.Data.(*model.Spinmint).InstanceId
 
 	// TODO: add a new column in the db to get the previous job and wait for the new one start
 	// for now will sleep some time
@@ -250,29 +268,20 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 	// is not updated and can be blank for some time
 	buildLink, err := checkBuildLink(ctx, pr)
 	if err != nil || buildLink == "" {
-		return true, errors.Wrap(err, "error waiting for build link")
+		return installationID, true, errors.Wrap(err, "error waiting for build link")
 	}
 	mlog.Info("Build Link updated", mlog.String("buildLink", buildLink), mlog.String("OldBuildLink", pr.BuildLink))
 	pr.BuildLink = buildLink
-	result := <-Srv.Store.PullRequest().Save(pr)
+	result = <-Srv.Store.PullRequest().Save(pr)
 	if result.Err != nil {
-		return true, errors.Wrap(result.Err, "unable to save updated PR to the database")
+		return installationID, true, errors.Wrap(result.Err, "unable to save updated PR to the database")
 	}
-
-	result = <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName)
-	if result.Err != nil {
-		return true, errors.Wrap(result.Err, "unable to get SpinWick information from the database")
-	}
-	if result.Data == nil {
-		return true, errors.New("no SpinWick database information found")
-	}
-	installationID := result.Data.(*model.Spinmint).InstanceId
 
 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
 
 	_, client, err := buildJenkinsClient(pr)
 	if err != nil {
-		return true, errors.Wrap(err, "unable to build Jenkins client")
+		return installationID, true, errors.Wrap(err, "unable to build Jenkins client")
 	}
 
 	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
@@ -282,7 +291,7 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 
 	pr, err = waitForBuild(ctx, client, pr)
 	if err != nil {
-		return false, errors.Wrap(err, "error waiting for PR build to finish")
+		return installationID, false, errors.Wrap(err, "error waiting for PR build to finish")
 	}
 
 	// TODO: remove this when we starting building the docker image in the sam build pipeline
@@ -295,11 +304,11 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 	url := fmt.Sprintf("%s/api/installation/%s/mattermost", Config.ProvisionerServer, installationID)
 	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
 	if err != nil {
-		return true, errors.Wrap(err, "encountered error making upgrade request to provisioning server")
+		return installationID, true, errors.Wrap(err, "encountered error making upgrade request to provisioning server")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 202 {
-		return true, fmt.Errorf("upgrade request not accepted by the provisioning server: status code %d", resp.StatusCode)
+		return installationID, true, fmt.Errorf("upgrade request not accepted by the provisioning server: status code %d", resp.StatusCode)
 	}
 
 	mlog.Info("Waiting for mattermost installation to become stable", mlog.Int("wait_seconds", wait))
@@ -307,24 +316,27 @@ func updateSpinWick(pr *model.PullRequest) (bool, error) {
 	defer cancel()
 	err = waitMattermostInstallation(ctx, pr, installationID, true)
 	if err != nil {
-		return true, errors.Wrap(err, "encountered error waiting for installation to become stable")
+		return installationID, true, errors.Wrap(err, "encountered error waiting for installation to become stable")
 	}
 
-	return false, nil
+	return installationID, false, nil
 }
 
-func handleDestroySpinWick(pr *model.PullRequest, instanceClusterID string) {
-	mlog.Info("Destroying SpinWick", mlog.String("instance", instanceClusterID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
+func handleDestroySpinWick(pr *model.PullRequest, installationID string) {
+	mlog.Info("Destroying SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("installation_id", installationID))
 
-	sendMattermostLog, err := destroyMMInstallation(instanceClusterID)
+	sendMattermostLog, err := destroyMMInstallation(installationID)
 	if err != nil {
-		mlog.Error("Failed to delete Mattermost installation", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number))
+		mlog.Error("Failed to delete Mattermost installation", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
 		if sendMattermostLog {
-			logPrettyErrorToMattermost("[ SpinWick ] Destroy Failed", pr, err)
+			additionalFields := map[string]string{
+				"Installation ID": installationID,
+			}
+			logPrettyErrorToMattermost("[ SpinWick ] Destroy Failed", pr, err, additionalFields)
 		}
 	}
 
-	removeSpinmintInfo(instanceClusterID)
+	removeSpinmintInfo(installationID)
 }
 
 // destroyMMInstallation destroys a SpinWick and returns an error as well as a bool
