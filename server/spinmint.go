@@ -357,7 +357,7 @@ func destroySpinmint(pr *model.PullRequest, instanceID string) {
 	}
 
 	// Remove from the local db
-	removeSpinmintInfo(instanceID)
+	removeTestServerFromDB(instanceID)
 }
 
 func getIPsForInstance(instance string) (publicIP string, privateIP string) {
@@ -440,7 +440,7 @@ func CheckTestServerLifeTime() {
 			} else {
 				go handleDestroySpinWick(pr, testServer.InstanceId)
 			}
-			removeSpinmintInfo(testServer.InstanceId)
+			removeTestServerFromDB(testServer.InstanceId)
 			commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
@@ -454,8 +454,12 @@ func storeSpinmintInfo(spinmint *model.Spinmint) {
 	}
 }
 
-func removeSpinmintInfo(instanceId string) {
+func removeTestServerFromDB(instanceId string) {
 	if result := <-Srv.Store.Spinmint().Delete(instanceId); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
+}
+
+func isSpinMintLabel(label string) bool {
+	return label == Config.SetupSpinmintTag || label == Config.SetupSpinmintUpgradeTag
 }

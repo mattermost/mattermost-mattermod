@@ -219,8 +219,9 @@ func handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		return
 	}
 
-	if (removedLabel == Config.SetupSpinmintTag || removedLabel == Config.SetupSpinmintUpgradeTag) &&
-		(messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) || messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage)) &&
+	if isSpinMintLabel(removedLabel) &&
+		(messageByUserContains(comments, Config.Username, Config.SetupSpinmintMessage) ||
+			messageByUserContains(comments, Config.Username, Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, Config.Username, Config.DestroyedSpinmintMessage) {
 
 		// Old comments created by Mattermod user will be deleted here.
