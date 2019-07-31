@@ -414,37 +414,38 @@ func updateRoute53Subdomain(name, target, action string) error {
 	return nil
 }
 
-func CheckSpinmintLifeTime() {
-	mlog.Info("Checking Spinmint lifetime...")
-	spinmints := []*model.Spinmint{}
+// CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
+func CheckTestServerLifeTime() {
+	mlog.Info("Checking Test Server lifetime...")
+	testServers := []*model.Spinmint{}
 	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
-		mlog.Error("Unable to get updated PR while waiting for spinmint", mlog.String("spinmint_error", result.Err.Error()))
+		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
 	} else {
-		spinmints = result.Data.([]*model.Spinmint)
+		testServers = result.Data.([]*model.Spinmint)
 	}
 
-	for _, spinmint := range spinmints {
-		mlog.Info("Check if need destroy spinmint for PR", mlog.String("instance", spinmint.InstanceId), mlog.Int("spinmint", spinmint.Number), mlog.String("repo_owner", spinmint.RepoOwner), mlog.String("repo_name", spinmint.RepoName))
-		spinmintCreated := time.Unix(spinmint.CreatedAt, 0)
-		duration := time.Since(spinmintCreated)
+	for _, testServer := range testServers {
+		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
+		testServerCreated := time.Unix(testServer.CreatedAt, 0)
+		duration := time.Since(testServerCreated)
 		if int(duration.Hours()) > Config.SpinmintExpirationHour {
-			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", spinmint.InstanceId), mlog.Int("spinmint", spinmint.Number), mlog.String("repo_owner", spinmint.RepoOwner), mlog.String("repo_name", spinmint.RepoName))
+			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 			pr := &model.PullRequest{
-				RepoOwner: spinmint.RepoOwner,
-				RepoName:  spinmint.RepoName,
-				Number:    spinmint.Number,
+				RepoOwner: testServer.RepoOwner,
+				RepoName:  testServer.RepoName,
+				Number:    testServer.Number,
 			}
-			if strings.Contains(spinmint.InstanceId, "i-") {
-				go destroySpinmint(pr, spinmint.InstanceId)
+			if strings.Contains(testServer.InstanceId, "i-") {
+				go destroySpinmint(pr, testServer.InstanceId)
 			} else {
-				go handleDestroySpinWick(pr, spinmint.InstanceId)
+				go handleDestroySpinWick(pr, testServer.InstanceId)
 			}
-			removeSpinmintInfo(spinmint.InstanceId)
-			commentOnIssue(spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, Config.DestroyedExpirationSpinmintMessage)
+			removeSpinmintInfo(testServer.InstanceId)
+			commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
 
-	mlog.Info("Done checking Spinmint lifetime.")
+	mlog.Info("Done checking Test Server lifetime.")
 }
 
 func storeSpinmintInfo(spinmint *model.Spinmint) {
