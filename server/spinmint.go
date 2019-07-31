@@ -434,7 +434,11 @@ func CheckSpinmintLifeTime() {
 				RepoName:  spinmint.RepoName,
 				Number:    spinmint.Number,
 			}
-			go destroySpinmint(pr, spinmint.InstanceId)
+			if strings.Contains(spinmint.InstanceId, "i-") {
+				go destroySpinmint(pr, spinmint.InstanceId)
+			} else {
+				go handleDestroySpinWick(pr, spinmint.InstanceId)
+			}
 			removeSpinmintInfo(spinmint.InstanceId)
 			commentOnIssue(spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, Config.DestroyedExpirationSpinmintMessage)
 		}
