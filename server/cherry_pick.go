@@ -109,11 +109,6 @@ func doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err 
 	if err != nil {
 		mlog.Error("cmd.Run() failed", mlog.Err(err), mlog.String("cmdOut", string(out)))
 		returnToMaster(repoFolder)
-		webhookMessage := fmt.Sprintf("Repo:%s\nError doing the Cherry pick, see the logs\n%s\n", pr.RepoName, string(out))
-		webhookRequest := &WebhookRequest{Username: "Mattermost-Build", Text: webhookMessage}
-		if errWebhook := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); errWebhook != nil {
-			mlog.Error("Unable to post to Mattermost webhook", mlog.Err(errWebhook))
-		}
 		return string(out), err
 	}
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
