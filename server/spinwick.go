@@ -336,7 +336,7 @@ func handleDestroySpinWick(pr *model.PullRequest, installationID string) {
 		}
 	}
 
-	removeSpinmintInfo(installationID)
+	removeTestServerFromDB(installationID)
 }
 
 // destroyMMInstallation destroys a SpinWick and returns an error as well as a bool
