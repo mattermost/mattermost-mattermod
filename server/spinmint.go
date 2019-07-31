@@ -27,17 +27,17 @@ import (
 
 // TODO FIXME
 // func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
-// 	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+// 	repo, ok := s.Config.GetRepository(pr.RepoOwner, pr.RepoName)
 // 	if !ok || repo.JenkinsServer == "" {
 // 		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
-// 	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+// 	credentials, ok := s.Config.JenkinsCredentials[repo.JenkinsServer]
 // 	if !ok {
 // 		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -58,13 +58,13 @@ import (
 // 		DBInstanceCount:       4,
 // 		LoadtestInstanceCount: 1,
 // 	}
-// 	config.WorkingDirectory = filepath.Join("./clusters/", config.Name)
+// 	s.Config.WorkingDirectory = filepath.Join("./clusters/", s.Config.Name)
 
 // 	LogInfo("Creating terraform cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	cluster, err := terraform.CreateCluster(config)
 // 	if err != nil {
 // 		LogError("Unable to setup cluster: " + err.Error())
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 	}
 // 	// Wait for the cluster to init
 // 	time.Sleep(time.Minute)
@@ -74,12 +74,12 @@ import (
 // 	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Deploy("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
 // 		LogError("Unable to deploy cluster: " + err.Error())
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 // 	if err := cluster.Loadtest("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
 // 		LogError("Unable to deploy loadtests to cluster: " + err.Error())
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -89,13 +89,13 @@ import (
 // 	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Loadtest(results); err != nil {
 // 		LogError("Unable to loadtest cluster: " + err.Error())
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 // 	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Destroy(); err != nil {
 // 		LogError("Unable to destroy cluster: " + err.Error())
-// 		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -109,17 +109,17 @@ import (
 
 // 	ltparse.ParseResults(&cfg)
 // 	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
-// 	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
+// 	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
 // }
 func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	return
 }
 
-func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
-	repo, client, err := buildJenkinsClient(pr)
+func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
+	repo, client, err := s.buildJenkinsClient(pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -128,23 +128,23 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = waitForBuild(ctx, client, pr)
+	pr, err = s.waitForBuild(ctx, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
 	var instance *ec2.Instance
-	if result := <-Srv.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
+	if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
 	} else if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = setupSpinmint(pr, repo, upgradeServer)
+		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
-			logErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+			s.logErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
 		spinmint := &model.Spinmint{
@@ -154,7 +154,7 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 			Number:     pr.Number,
 			CreatedAt:  time.Now().UTC().Unix(),
 		}
-		storeSpinmintInfo(spinmint)
+		s.storeSpinmintInfo(spinmint)
 	} else {
 		spinmint := result.Data.(*model.Spinmint)
 		instance.InstanceId = aws.String(spinmint.InstanceId)
@@ -162,16 +162,16 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicDNS, internalIP := getIPsForInstance(*instance.InstanceId)
+	publicDNS, internalIP := s.getIPsForInstance(*instance.InstanceId)
 
-	if err := updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
-		logErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
+		s.logErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
-	smLink := fmt.Sprintf("%v.%v", *instance.InstanceId, Config.AWSDnsSuffix)
-	if Config.SpinmintsUseHttps {
+	smLink := fmt.Sprintf("%v.%v", *instance.InstanceId, s.Config.AWSDnsSuffix)
+	if s.Config.SpinmintsUseHttps {
 		smLink = "https://" + smLink
 	} else {
 		smLink = "http://" + smLink
@@ -179,23 +179,23 @@ func waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 
 	var message string
 	if upgradeServer {
-		message = Config.SetupSpinmintUpgradeDoneMessage
+		message = s.Config.SetupSpinmintUpgradeDoneMessage
 	} else {
-		message = Config.SetupSpinmintDoneMessage
+		message = s.Config.SetupSpinmintDoneMessage
 	}
 
 	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
 	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
 
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
 
-func waitForMobileAppsBuild(pr *model.PullRequest) {
-	repo, client, err := buildJenkinsClient(pr)
+func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
+	repo, client, err := s.buildJenkinsClient(pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -204,10 +204,10 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = waitForBuild(ctx, client, pr)
+	pr, err = s.waitForBuild(ctx, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.SetupSpinmintFailedMessage)
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -240,7 +240,7 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 			break
 		} else if build.Result == "FAILURE" {
 			mlog.Error("build has status FAILURE aborting.", mlog.Int("build", build.Number), mlog.String("result", build.Result))
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, Config.BuildMobileAppFailedMessage)
+			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppFailedMessage)
 			return
 		} else {
 			mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
@@ -249,19 +249,19 @@ func waitForMobileAppsBuild(pr *model.PullRequest) {
 	}
 
 	prNumberStr := fmt.Sprintf("PR-%d", pr.Number)
-	msgMobile := Config.BuildMobileAppDoneMessage
+	msgMobile := s.Config.BuildMobileAppDoneMessage
 	msgMobile = strings.Replace(msgMobile, "PR_NUMBER", prNumberStr, 2)
 	msgMobile = strings.Replace(msgMobile, "ANDROID_APP", prNumberStr, 1)
 	msgMobile = strings.Replace(msgMobile, "IOS_APP", prNumberStr, 1)
-	commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
+	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
 	return
 }
 
 // Returns instance ID of instance created
-func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
+func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
-	svc := ec2.New(session.New(), Config.GetAwsConfig())
+	svc := ec2.New(session.New(), s.GetAwsConfig())
 
 	var setupScript string
 	if upgrade {
@@ -288,13 +288,13 @@ func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.
 
 	var one int64 = 1
 	params := &ec2.RunInstancesInput{
-		ImageId:          &Config.AWSImageId,
+		ImageId:          &s.Config.AWSImageId,
 		MaxCount:         &one,
 		MinCount:         &one,
-		InstanceType:     &Config.AWSInstanceType,
+		InstanceType:     &s.Config.AWSInstanceType,
 		UserData:         &sdata,
-		SecurityGroupIds: []*string{&Config.AWSSecurityGroup},
-		SubnetId:         &Config.AWSSubNetId,
+		SecurityGroupIds: []*string{&s.Config.AWSSecurityGroup},
+		SubnetId:         &s.Config.AWSSubNetId,
 	}
 
 	resp, err := svc.RunInstances(params)
@@ -332,10 +332,10 @@ func setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.
 	return resp.Instances[0], nil
 }
 
-func destroySpinmint(pr *model.PullRequest, instanceID string) {
+func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	svc := ec2.New(session.New(), Config.GetAwsConfig())
+	svc := ec2.New(session.New(), s.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
@@ -350,18 +350,17 @@ func destroySpinmint(pr *model.PullRequest, instanceID string) {
 	}
 
 	// Remove route53 entry
-	err = updateRoute53Subdomain(instanceID, "", "DELETE")
+	err = s.updateRoute53Subdomain(instanceID, "", "DELETE")
 	if err != nil {
 		mlog.Error("Error removing the Route53 entry", mlog.Err(err))
 		return
 	}
 
-	// Remove from the local db
-	removeTestServerFromDB(instanceID)
+	s.removeTestServerFromDB(instanceID)
 }
 
-func getIPsForInstance(instance string) (publicIP string, privateIP string) {
-	svc := ec2.New(session.New(), Config.GetAwsConfig())
+func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
+	svc := ec2.New(session.New(), s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
@@ -376,13 +375,13 @@ func getIPsForInstance(instance string) (publicIP string, privateIP string) {
 	return *resp.Reservations[0].Instances[0].PublicIpAddress, *resp.Reservations[0].Instances[0].PrivateIpAddress
 }
 
-func updateRoute53Subdomain(name, target, action string) error {
-	svc := route53.New(session.New(), Config.GetAwsConfig())
-	domainName := fmt.Sprintf("%v.%v", name, Config.AWSDnsSuffix)
+func (s *Server) updateRoute53Subdomain(name, target, action string) error {
+	svc := route53.New(session.New(), s.GetAwsConfig())
+	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target
 	if target == "" && action == "DELETE" {
-		targetServer, _ = getIPsForInstance(name)
+		targetServer, _ = s.getIPsForInstance(name)
 	}
 
 	params := &route53.ChangeResourceRecordSetsInput{
@@ -403,7 +402,7 @@ func updateRoute53Subdomain(name, target, action string) error {
 				},
 			},
 		},
-		HostedZoneId: &Config.AWSHostedZoneId,
+		HostedZoneId: &s.Config.AWSHostedZoneId,
 	}
 
 	_, err := svc.ChangeResourceRecordSets(params)
@@ -415,10 +414,10 @@ func updateRoute53Subdomain(name, target, action string) error {
 }
 
 // CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
-func CheckTestServerLifeTime() {
+func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
 	testServers := []*model.Spinmint{}
-	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
+	if result := <-s.Store.Spinmint().List(); result.Err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
 	} else {
 		testServers = result.Data.([]*model.Spinmint)
@@ -435,12 +434,8 @@ func CheckTestServerLifeTime() {
 				RepoName:  testServer.RepoName,
 				Number:    testServer.Number,
 			}
-			if strings.Contains(testServer.InstanceId, "i-") {
-				go destroySpinmint(pr, testServer.InstanceId)
-			} else {
-				go handleDestroySpinWick(pr, testServer.InstanceId)
-			}
-			removeTestServerFromDB(testServer.InstanceId)
+			go s.destroySpinmint(pr, testServer.InstanceId)
+			s.removeTestServerFromDB(testServer.InstanceId)
 			commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
@@ -448,18 +443,18 @@ func CheckTestServerLifeTime() {
 	mlog.Info("Done checking Test Server lifetime.")
 }
 
-func storeSpinmintInfo(spinmint *model.Spinmint) {
-	if result := <-Srv.Store.Spinmint().Save(spinmint); result.Err != nil {
+func (s *Server) storeSpinmintInfo(spinmint *model.Spinmint) {
+	if result := <-s.Store.Spinmint().Save(spinmint); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
 }
 
-func removeTestServerFromDB(instanceId string) {
-	if result := <-Srv.Store.Spinmint().Delete(instanceId); result.Err != nil {
+func (s *Server) removeTestServerFromDB(instanceId string) {
+	if result := <-s.Store.Spinmint().Delete(instanceId); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
 }
 
-func isSpinMintLabel(label string) bool {
-	return label == Config.SetupSpinmintTag || label == Config.SetupSpinmintUpgradeTag
+func (s *Server) isSpinMintLabel(label string) bool {
+	return label == s.Config.SetupSpinmintTag || label == s.Config.SetupSpinmintUpgradeTag
 }

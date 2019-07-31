@@ -19,18 +19,18 @@ import (
 	"github.com/google/go-github/github"
 )
 
-func handleCherryPick(eventIssueComment IssueComment) {
-	client := NewGithubClient()
+func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
-	pr, err := GetPullRequestFromGithub(prGitHub)
+	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
 	}
 
 	userComment := *eventIssueComment.Comment.User
-	if !checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
+	if !s.checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
 
@@ -41,17 +41,17 @@ func handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	cmdOut, err := doCherryPick(args[1], pr)
+	cmdOut, err := s.doCherryPick(args[1], pr)
 	if err != nil {
 		mlog.Error("Error doing the cherry pick", mlog.Err(err))
 		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-		commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 		return
 	}
 }
 
-func checkIfNeedCherryPick(pr *model.PullRequest) {
-	client := NewGithubClient()
+func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	prCherryCandidate, _, err := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
@@ -82,18 +82,18 @@ func checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := LabelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			cmdOut, err := doCherryPick(milestone, pr)
+			cmdOut, err := s.doCherryPick(milestone, pr)
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
 				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
-				commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 				return
 			}
 		}
 	}
 }
 
-func doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err error) {
+func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err error) {
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
 	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
 	cmd := exec.Command("/home/ubuntu/git/devops/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number))
@@ -102,8 +102,8 @@ func doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err 
 		os.Environ(),
 		os.Getenv("PATH"),
 		fmt.Sprintf("ORIGINAL_AUTHOR=%s", pr.Username),
-		fmt.Sprintf("GITHUB_USER=%s", Config.GithubUsername),
-		fmt.Sprintf("GITHUB_TOKEN=%s", Config.GithubAccessTokenCherryPick),
+		fmt.Sprintf("GITHUB_USER=%s", s.Config.GithubUsername),
+		fmt.Sprintf("GITHUB_TOKEN=%s", s.Config.GithubAccessTokenCherryPick),
 	)
 	out, err := cmd.Output()
 	if err != nil {
@@ -115,15 +115,15 @@ func doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err 
 	newPRURL := gitHubPR.FindString(string(out))
 	newPR := strings.Split(newPRURL, "/")
 	newPRNumber := newPR[len(newPR)-1]
-	updateCherryPickLabels(newPRNumber, pr)
-	addReviewers(newPRNumber, pr)
-	addAssignee(newPRNumber, pr)
+	s.updateCherryPickLabels(newPRNumber, pr)
+	s.addReviewers(newPRNumber, pr)
+	s.addAssignee(newPRNumber, pr)
 	returnToMaster(repoFolder)
 	return "", nil
 }
 
-func updateCherryPickLabels(newPR string, pr *model.PullRequest) {
-	client := NewGithubClient()
+func (s *Server) updateCherryPickLabels(newPR string, pr *model.PullRequest) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	// Add the AutomatedCherryPick/Done in the new pr
 	newPRNumner, _ := strconv.Atoi(newPR)
@@ -147,8 +147,8 @@ func updateCherryPickLabels(newPR string, pr *model.PullRequest) {
 	}
 }
 
-func addReviewers(newPR string, pr *model.PullRequest) {
-	client := NewGithubClient()
+func (s *Server) addReviewers(newPR string, pr *model.PullRequest) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	newPRNumber, _ := strconv.Atoi(newPR)
 	// Get the reviwers from the cherry pick PR
 	reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
@@ -171,8 +171,8 @@ func addReviewers(newPR string, pr *model.PullRequest) {
 	}
 }
 
-func addAssignee(newPR string, pr *model.PullRequest) {
-	client := NewGithubClient()
+func (s *Server) addAssignee(newPR string, pr *model.PullRequest) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	newPRNumber, _ := strconv.Atoi(newPR)
 
 	assignee := []string{pr.Username}

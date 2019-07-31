@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/pkg/errors"
 )
 
 type LabelResponse struct {
@@ -34,7 +35,7 @@ type JenkinsCredentials struct {
 	ApiToken string
 }
 
-type PRServerConfig struct {
+type ServerConfig struct {
 	ListenAddress               string
 	GithubAccessToken           string
 	GitHubTokenReserve          int
@@ -121,9 +122,7 @@ type PRServerConfig struct {
 	StaleComment      string
 }
 
-var Config *PRServerConfig = &PRServerConfig{}
-
-func FindConfigFile(fileName string) string {
+func findConfigFile(fileName string) string {
 	if _, err := os.Stat("/tmp/" + fileName); err == nil {
 		fileName, _ = filepath.Abs("/tmp/" + fileName)
 	} else if _, err := os.Stat("./config/" + fileName); err == nil {
@@ -137,26 +136,27 @@ func FindConfigFile(fileName string) string {
 	return fileName
 }
 
-func LoadConfig(fileName string) {
-	fileName = FindConfigFile(fileName)
+func getConfig(fileName string) (*ServerConfig, error) {
+	config := &ServerConfig{}
+	fileName = findConfigFile(fileName)
 	mlog.Info("Loading config", mlog.String("filename", fileName))
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		mlog.Critical("Error opening config file", mlog.String("filename", fileName), mlog.Err(err))
-		panic(err.Error())
+		return config, errors.Wrap(err, "unable to open config file")
 	}
 
 	decoder := json.NewDecoder(file)
-	err = decoder.Decode(Config)
+	err = decoder.Decode(config)
 	if err != nil {
-		mlog.Critical("Error decoding config file", mlog.String("filename", fileName), mlog.Err(err))
-		panic(err.Error())
+		return config, errors.Wrap(err, "unable to decode config file")
 	}
+
+	return config, nil
 }
 
-func (config *PRServerConfig) GetRepository(owner, name string) (*Repository, bool) {
-	for _, repo := range config.Repositories {
+func (s *Server) GetRepository(owner, name string) (*Repository, bool) {
+	for _, repo := range s.Config.Repositories {
 		if repo.Owner == owner && repo.Name == name {
 			return repo, true
 		}
@@ -165,18 +165,18 @@ func (config *PRServerConfig) GetRepository(owner, name string) (*Repository, bo
 	return nil, false
 }
 
-func (config *PRServerConfig) GetAwsConfig() *aws.Config {
+func (s *Server) GetAwsConfig() *aws.Config {
 	var creds *credentials.Credentials = nil
-	if config.AWSCredentials.Id != "" {
+	if s.Config.AWSCredentials.Id != "" {
 		creds = credentials.NewStaticCredentials(
-			config.AWSCredentials.Id,
-			config.AWSCredentials.Secret,
-			config.AWSCredentials.Token,
+			s.Config.AWSCredentials.Id,
+			s.Config.AWSCredentials.Secret,
+			s.Config.AWSCredentials.Token,
 		)
 	}
 
 	return &aws.Config{
 		Credentials: creds,
-		Region:      &config.AWSRegion,
+		Region:      &s.Config.AWSRegion,
 	}
 }

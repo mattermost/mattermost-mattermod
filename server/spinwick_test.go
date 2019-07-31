@@ -30,8 +30,12 @@ func TestMakeSpinWickID(t *testing.T) {
 func TestIsSpinWickLabel(t *testing.T) {
 	spinwickLabel := "spinwick"
 	spinwickHALabel := "spinwick ha"
-	Config.SetupSpinWick = spinwickLabel
-	Config.SetupSpinWickHA = spinwickHALabel
+	s := &Server{
+		Config: &ServerConfig{
+			SetupSpinWick:   spinwickLabel,
+			SetupSpinWickHA: spinwickHALabel,
+		},
+	}
 
 	tests := []struct {
 		label    string
@@ -44,7 +48,7 @@ func TestIsSpinWickLabel(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.label, func(t *testing.T) {
-			require.Equal(t, tc.expected, isSpinWickLabel(tc.label))
+			require.Equal(t, tc.expected, s.isSpinWickLabel(tc.label))
 		})
 	}
 }

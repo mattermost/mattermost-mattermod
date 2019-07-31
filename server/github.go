@@ -12,14 +12,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func NewGithubClient() *github.Client {
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: Config.GithubAccessToken})
+func NewGithubClient(token string) *github.Client {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
 	tc := oauth2.NewClient(oauth2.NoContext, ts)
 
 	return github.NewClient(tc)
 }
 
-func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
+func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
 		RepoName:  *pullRequest.Base.Repo.Name,
@@ -30,9 +30,9 @@ func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullReque
 		State:     *pullRequest.State,
 	}
 
-	client := NewGithubClient()
+	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+	repo, ok := s.GetRepository(pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
 		if combined, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
 			return nil, err
@@ -70,7 +70,7 @@ func GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullReque
 	return pr, nil
 }
 
-func GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.Issue) (*model.Issue, error) {
+func (s *Server) GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.Issue) (*model.Issue, error) {
 	issue := &model.Issue{
 		RepoOwner: repoOwner,
 		RepoName:  repoName,
@@ -79,7 +79,7 @@ func GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.Issue) (*mod
 		State:     *ghIssue.State,
 	}
 
-	if labels, _, err := NewGithubClient().Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
+	if labels, _, err := NewGithubClient(s.Config.GithubAccessToken).Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
 		return nil, err
 	} else {
 		issue.Labels = LabelsToStringArray(labels)
@@ -98,9 +98,9 @@ func LabelsToStringArray(labels []*github.Label) []string {
 	return out
 }
 
-func commentOnIssue(repoOwner, repoName string, number int, comment string) {
+func (s *Server) commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	mlog.Info("Commenting on issue", mlog.Int("issue", number), mlog.String("comment", comment))
-	client := NewGithubClient()
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, _, err := client.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
 		mlog.Error("Error", mlog.Err(err))
@@ -108,24 +108,24 @@ func commentOnIssue(repoOwner, repoName string, number int, comment string) {
 	mlog.Info("Finished commenting")
 }
 
-func GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
-	client := NewGithubClient()
+func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	prGitHub, _, err := client.PullRequests.Get(context.Background(), owner, repoName, prNumber)
-	pr, err := GetPullRequestFromGithub(prGitHub)
+	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return nil, err
 	}
 
-	if result := <-Srv.Store.PullRequest().Save(pr); result.Err != nil {
+	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
 
 	return pr, nil
 }
 
-func checkUserPermission(user, repoOwner string) bool {
-	client := NewGithubClient()
+func (s *Server) checkUserPermission(user, repoOwner string) bool {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	_, resp, err := client.Organizations.GetOrgMembership(context.Background(), user, repoOwner)
 	if resp.StatusCode == 404 {

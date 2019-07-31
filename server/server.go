@@ -24,11 +24,17 @@ import (
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/utils/fileutils"
+	"github.com/pkg/errors"
 )
 
 type Server struct {
+	Config *ServerConfig
 	Store  store.Store
 	Router *mux.Router
+
+	commentLock sync.Mutex
+
+	StartTime time.Time
 }
 
 const (
@@ -37,80 +43,89 @@ const (
 )
 
 var (
-	Srv *Server
-
-	commentLock sync.Mutex
-
 	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
 	INSTANCE_ID         = "INSTANCE_ID"
 	INTERNAL_IP         = "INTERNAL_IP"
 	SPINMINT_LINK       = "SPINMINT_LINK"
-
-	startTime time.Time
 )
 
-func Start() {
-	SetupLogging()
-	mlog.Info("Starting pr manager")
-	startTime = time.Now()
+// New returns a new server with the desired configuration
+func New(configLocation string) (*Server, error) {
+	config, err := getConfig(configLocation)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to load server config")
+	}
+
+	return &Server{
+		Config:    config,
+		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
+		Router:    mux.NewRouter(),
+		StartTime: time.Now(),
+	}, nil
+}
+
+// Start starts a server
+func (s *Server) Start() {
+	s.SetupLogging()
+	mlog.Info("Starting Mattermod")
 
 	rand.Seed(time.Now().Unix())
 
-	Srv = &Server{
-		Store:  store.NewSqlStore(Config.DriverName, Config.DataSource),
-		Router: mux.NewRouter(),
-	}
+	s.initializeRouter()
 
-	addApis(Srv.Router)
-
-	var handler http.Handler = Srv.Router
+	var handler http.Handler = s.Router
 	go func() {
-		mlog.Info("Listening on", mlog.String("address", Config.ListenAddress))
-		err := manners.ListenAndServe(Config.ListenAddress, handler)
+		mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
+		err := manners.ListenAndServe(s.Config.ListenAddress, handler)
 		if err != nil {
-			logErrorToMattermost(err.Error())
+			s.logErrorToMattermost(err.Error())
 			mlog.Critical("server_error", mlog.Err(err))
 			panic(err.Error())
 		}
 	}()
 }
 
-func Tick() {
+// Stop stops a server
+func (s *Server) Stop() {
+	mlog.Info("Stopping Mattermod")
+	manners.Close()
+}
+
+// Tick runs a check on objects in the database
+func (s *Server) Tick() {
 	mlog.Info("tick")
 
-	abortTick := CheckLimitRateAndAbortRequest()
-	if abortTick {
+	aboveLimit := s.CheckLimitRateAndAbortRequest()
+	if aboveLimit {
 		return
 	}
 
-	client := NewGithubClient()
+	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	for _, repository := range Config.Repositories {
+	for _, repository := range s.Config.Repositories {
 		ghPullRequests, _, err := client.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
-			mlog.Error("failed to get PRs", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			mlog.Error("pr_error", mlog.Err(err))
+			mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 			continue
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, errPR := GetPullRequestFromGithub(ghPullRequest)
+			pullRequest, errPR := s.GetPullRequestFromGithub(ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 				continue
 			}
 
-			checkPullRequestForChanges(pullRequest)
+			s.checkPullRequestForChanges(pullRequest)
 		}
 
 		issues, _, err := client.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
 			State: "open",
 		})
 		if err != nil {
-			mlog.Error("failed to get issues", mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			mlog.Error("issue_error", mlog.Err(err))
+			mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 			continue
 		}
 
@@ -120,60 +135,154 @@ func Tick() {
 				continue
 			}
 
-			issue, err := GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
+			issue, err := s.GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
 			if err != nil {
 				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 				continue
 			}
 
-			checkIssueForChanges(issue)
+			s.checkIssueForChanges(issue)
 		}
 	}
 }
 
-func Stop() {
-	mlog.Info("Stopping pr manager")
-	manners.Close()
+func (s *Server) initializeRouter() {
+	s.Router.HandleFunc("/", s.ping).Methods("GET")
+	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
+	s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
+	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
+	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
+	s.Router.HandleFunc("/delete_test_server", s.deleteTestServer).Methods("DELETE")
 }
 
-func addApis(r *mux.Router) {
-	r.HandleFunc("/", ping).Methods("GET")
-	r.HandleFunc("/pr_event", prEvent).Methods("POST")
-	r.HandleFunc("/list_prs", listPrs).Methods("GET")
-	r.HandleFunc("/list_issues", listIssues).Methods("GET")
-	r.HandleFunc("/list_spinmints", listSpinmints).Methods("GET")
-	r.HandleFunc("/delete_test_server", deleteTestServer).Methods("DELETE")
-}
-
-func ping(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(startTime))
+func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
+	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(msg))
 }
 
-func prEvent(w http.ResponseWriter, r *http.Request) {
+func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
+	overLimit := s.CheckLimitRateAndAbortRequest()
+	if overLimit {
+		return
+	}
+
 	buf, _ := ioutil.ReadAll(r.Body)
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
-	abortTick := CheckLimitRateAndAbortRequest()
-	if abortTick {
+	if event.PRNumber != 0 {
+		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
+		s.handlePullRequestEvent(event)
 		return
 	}
 
-	if event.PRNumber != 0 {
-		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-		handlePullRequestEvent(event)
-	} else if eventIssueComment != nil && eventIssueComment.Action == "created" {
+	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			handleCheckCLA(*eventIssueComment)
+			s.handleCheckCLA(*eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			handleCherryPick(*eventIssueComment)
+			s.handleCherryPick(*eventIssueComment)
 		}
-	} else {
-		handleIssueEvent(event)
+		return
 	}
+
+	s.handleIssueEvent(event)
+}
+
+func (s *Server) listPrs(w http.ResponseWriter, r *http.Request) {
+	result := <-s.Store.PullRequest().List()
+	if result.Err != nil {
+		mlog.Error("Error getting list of pull requests", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	prs := result.Data.([]*model.PullRequest)
+
+	b, err := json.Marshal(prs)
+	if err != nil {
+		mlog.Error("Error marshalling pull requests", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
+	result := <-s.Store.Issue().List()
+	if result.Err != nil {
+		mlog.Error("Error getting list of github issues", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	issues := result.Data.([]*model.Issue)
+
+	b, err := json.Marshal(issues)
+	if err != nil {
+		mlog.Error("Error marshalling github issues", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) listTestServers(w http.ResponseWriter, r *http.Request) {
+	result := <-s.Store.Spinmint().List()
+	if result.Err != nil {
+		mlog.Error("Error getting list of test servers", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	spinmints := result.Data.([]*model.Spinmint)
+
+	b, err := json.Marshal(spinmints)
+	if err != nil {
+		mlog.Error("spinmint_error", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) deleteTestServer(w http.ResponseWriter, r *http.Request) {
+	instance := r.FormValue("instance")
+	token := r.FormValue("token")
+
+	if token != s.Config.TokenToDeleteTestServers {
+		mlog.Error("Error deleting test server - invalid token")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	result := <-s.Store.Spinmint().GetTestServer(instance)
+	if result.Err != nil {
+		mlog.Error("Error deleting test server", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	testServer := result.Data.(*model.Spinmint)
+
+	result = <-s.Store.PullRequest().Get(testServer.RepoOwner, testServer.RepoName, testServer.Number)
+	if result.Err != nil {
+		mlog.Error("Error deleting test server", mlog.Err(result.Err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	pr := result.Data.(*model.PullRequest)
+
+	if strings.Contains(testServer.InstanceId, "i-") {
+		s.destroySpinmint(pr, testServer.InstanceId)
+	} else {
+		s.handleDestroySpinWick(pr, testServer.InstanceId)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {
@@ -186,98 +295,6 @@ func messageByUserContains(comments []*github.IssueComment, username string, tex
 	return false
 }
 
-func listPrs(w http.ResponseWriter, r *http.Request) {
-	var prs []*model.PullRequest
-	if result := <-Srv.Store.PullRequest().List(); result.Err != nil {
-		mlog.Error(result.Err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		prs = result.Data.([]*model.PullRequest)
-	}
-
-	if b, err := json.Marshal(prs); err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
-	}
-}
-
-func listIssues(w http.ResponseWriter, r *http.Request) {
-	var issues []*model.Issue
-	if result := <-Srv.Store.Issue().List(); result.Err != nil {
-		mlog.Error(result.Err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		issues = result.Data.([]*model.Issue)
-	}
-
-	if b, err := json.Marshal(issues); err != nil {
-		mlog.Error("issue_error", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
-	}
-}
-
-func listSpinmints(w http.ResponseWriter, r *http.Request) {
-	var spinmints []*model.Spinmint
-	if result := <-Srv.Store.Spinmint().List(); result.Err != nil {
-		mlog.Error(result.Err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		spinmints = result.Data.([]*model.Spinmint)
-	}
-
-	if b, err := json.Marshal(spinmints); err != nil {
-		mlog.Error("spinmint_error", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
-	}
-}
-
-func deleteTestServer(w http.ResponseWriter, r *http.Request) {
-	instance := r.FormValue("instance")
-	token := r.FormValue("token")
-
-	if strings.Compare(token, Config.TokenToDeleteTestServers) != 0 {
-		mlog.Error("Invalid Token")
-		w.WriteHeader(http.StatusBadRequest)
-	}
-
-	var testServer *model.Spinmint
-	if result := <-Srv.Store.Spinmint().GetTestServer(instance); result.Err != nil {
-		mlog.Error(result.Err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		testServer = result.Data.(*model.Spinmint)
-	}
-
-	var pr *model.PullRequest
-	result := <-Srv.Store.PullRequest().Get(testServer.RepoOwner, testServer.RepoName, testServer.Number)
-	if result.Err != nil {
-		mlog.Error("delete test server error ", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	// Update the PR in case the build link has changed because of a new commit
-	pr = result.Data.(*model.PullRequest)
-	if strings.Contains(testServer.InstanceId, "i-") {
-		destroySpinmint(pr, testServer.InstanceId)
-	} else {
-		handleDestroySpinWick(pr, testServer.InstanceId)
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func GetLogFileLocation(fileLocation string) string {
 	if fileLocation == "" {
 		fileLocation, _ = fileutils.FindDir("logs")
@@ -286,15 +303,15 @@ func GetLogFileLocation(fileLocation string) string {
 	return filepath.Join(fileLocation, LOG_FILENAME)
 }
 
-func SetupLogging() {
+func (s *Server) SetupLogging() {
 	loggingConfig := &mlog.LoggerConfiguration{
-		EnableConsole: Config.LogSettings.EnableConsole,
-		ConsoleJson:   Config.LogSettings.ConsoleJson,
-		ConsoleLevel:  strings.ToLower(Config.LogSettings.ConsoleLevel),
-		EnableFile:    Config.LogSettings.EnableFile,
-		FileJson:      Config.LogSettings.FileJson,
-		FileLevel:     strings.ToLower(Config.LogSettings.FileLevel),
-		FileLocation:  GetLogFileLocation(Config.LogSettings.FileLocation),
+		EnableConsole: s.Config.LogSettings.EnableConsole,
+		ConsoleJson:   s.Config.LogSettings.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(s.Config.LogSettings.ConsoleLevel),
+		EnableFile:    s.Config.LogSettings.EnableFile,
+		FileJson:      s.Config.LogSettings.FileJson,
+		FileLevel:     strings.ToLower(s.Config.LogSettings.FileLevel),
+		FileLocation:  GetLogFileLocation(s.Config.LogSettings.FileLocation),
 	}
 
 	logger := mlog.NewLogger(loggingConfig)
