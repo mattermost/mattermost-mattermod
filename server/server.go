@@ -278,9 +278,9 @@ func (s *Server) deleteTestServer(w http.ResponseWriter, r *http.Request) {
 
 	if strings.Contains(testServer.InstanceId, "i-") {
 		s.destroySpinmint(pr, testServer.InstanceId)
-	} else {
-		s.handleDestroySpinWick(pr, testServer.InstanceId)
 	}
+
+	s.handleDestroySpinWick(pr)
 
 	w.WriteHeader(http.StatusOK)
 }

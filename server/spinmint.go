@@ -427,7 +427,7 @@ func (s *Server) CheckTestServerLifeTime() {
 		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 		testServerCreated := time.Unix(testServer.CreatedAt, 0)
 		duration := time.Since(testServerCreated)
-		if int(duration.Hours()) > Config.SpinmintExpirationHour {
+		if int(duration.Hours()) > s.Config.SpinmintExpirationHour {
 			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 			pr := &model.PullRequest{
 				RepoOwner: testServer.RepoOwner,
@@ -436,7 +436,7 @@ func (s *Server) CheckTestServerLifeTime() {
 			}
 			go s.destroySpinmint(pr, testServer.InstanceId)
 			s.removeTestServerFromDB(testServer.InstanceId)
-			commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, Config.DestroyedExpirationSpinmintMessage)
+			s.commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
 

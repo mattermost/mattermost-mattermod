@@ -79,7 +79,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		mlog.Error("Error listing the labels for PR", mlog.Err(err))
 		return
 	}
-	prLabels := LabelsToStringArray(labels)
+	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
 			cmdOut, err := s.doCherryPick(milestone, pr)

@@ -15,6 +15,7 @@ import (
 )
 
 func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
+	mlog.Info("PR-Event", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 	pr, err := s.GetPullRequestFromGithub(event.PullRequest)
 	if err != nil {
 		mlog.Error("Unable to get PR from GitHub", mlog.Int("pr", event.PRNumber), mlog.Err(err))
@@ -22,12 +23,41 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	}
 
 	switch event.Action {
+	case "labeled":
+		if event.Label == nil {
+			mlog.Error("Label event received, but label object was empty")
+			return
+		}
+		if s.isSpinWickLabel(*event.Label.Name) {
+			mlog.Info("PR received SpinWick label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+			switch *event.Label.Name {
+			case s.Config.SetupSpinWick:
+				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
+				s.handleCreateSpinWick(pr, "100users")
+			case s.Config.SetupSpinWickHA:
+				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
+				s.handleCreateSpinWick(pr, "1000users")
+			default:
+				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
+			}
+		}
+	case "unlabeled":
+		if event.Label == nil {
+			mlog.Error("Unlabel event received, but label object was empty")
+			return
+		}
+		if s.isSpinWickLabel(*event.Label.Name) {
+			mlog.Info("PR SpinWick label was removed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+			s.handleDestroySpinWick(pr)
+		}
 	case "synchronize":
-		mlog.Info("PR has a new commit", mlog.Int("pr", pr.Number))
+		mlog.Info("PR has a new commit", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		s.checkCLA(pr)
-		s.handleUpdateSpinWick(pr)
+		if s.isSpinWickLabelInLabels(pr.Labels) {
+			s.handleUpdateSpinWick(pr)
+		}
 	case "closed":
-		mlog.Info("PR was closed", mlog.Int("pr", pr.Number))
+		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		go s.checkIfNeedCherryPick(pr)
 		if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
@@ -41,9 +71,11 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			if strings.Contains(spinmint.InstanceId, "i-") {
 				go s.destroySpinmint(pr, spinmint.InstanceId)
-			} else {
-				go s.handleDestroySpinWick(pr, spinmint.InstanceId)
 			}
+		}
+
+		if s.isSpinWickLabelInLabels(pr.Labels) {
+			s.handleDestroySpinWick(pr)
 		}
 	}
 
@@ -183,14 +215,6 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		mlog.Info("Label to spin a load test")
 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
-	} else if addedLabel == s.Config.SetupSpinWick && !messageByUserContains(comments, s.Config.Username, "Mattermost test server created!") {
-		mlog.Info("Label to create a SpinWick")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
-		go s.handleCreateSpinWick(pr, "100users")
-	} else if addedLabel == s.Config.SetupSpinWickHA && !messageByUserContains(comments, s.Config.Username, "Mattermost test server created!") {
-		mlog.Info("Label to create an HA SpinWick")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
-		go s.handleCreateSpinWick(pr, "1000users")
 	} else {
 		mlog.Info("looking for other labels")
 
@@ -241,24 +265,6 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 
 			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			go s.destroySpinmint(pr, spinmint.InstanceId)
-		}
-	}
-
-	if s.isSpinWickLabel(removedLabel) {
-		if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
-			mlog.Error("Unable to get the SpinWick information.", mlog.String("pr_error", result.Err.Error()))
-		} else if result.Data == nil {
-			mlog.Info("Nothing to do. There is not SpinWick for this PR", mlog.Int("pr", pr.Number))
-		} else {
-			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info("SpinWick instance", mlog.String("spinmint", spinmint.InstanceId))
-			mlog.Info("Will destroy the SpinWick for a merged/closed PR.")
-
-			// Old comments created by Mattermod user will be deleted here.
-			s.removeOldComments(comments, pr)
-
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
-			go s.handleDestroySpinWick(pr, spinmint.InstanceId)
 		}
 	}
 }
@@ -332,7 +338,7 @@ func (s *Server) CheckPRActivity() {
 				continue
 			}
 
-			prLabels = LabelsToStringArray(labels)
+			prLabels = labelsToStringArray(labels)
 			for _, prLabel := range prLabels {
 				for _, exemptStalelabel := range s.Config.ExemptStaleLabels {
 					if prLabel == exemptStalelabel {
