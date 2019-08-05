@@ -33,10 +33,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			switch *event.Label.Name {
 			case s.Config.SetupSpinWick:
 				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
-				s.handleCreateSpinWick(pr, "100users")
+				s.handleCreateSpinWick(pr, "miniSingleton")
 			case s.Config.SetupSpinWickHA:
 				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
-				s.handleCreateSpinWick(pr, "1000users")
+				s.handleCreateSpinWick(pr, "miniHA")
 			default:
 				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
 			}
