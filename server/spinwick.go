@@ -183,9 +183,6 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		return installationID, false, errors.Wrap(err, "error waiting for PR build to finish")
 	}
 
-	// TODO: remove this when we starting building the docker image in the same build pipeline
-	time.Sleep(60 * time.Second)
-
 	mlog.Info("Provisioning Server - Upgrade request", mlog.String("SHA", pr.Sha))
 	shortCommit := pr.Sha[0:7]
 	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
