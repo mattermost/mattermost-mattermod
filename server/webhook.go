@@ -16,14 +16,14 @@ type WebhookRequest struct {
 	Text     string `json:"text"`
 }
 
-func sendToWebhook(webhookRequest *WebhookRequest, url string) error {
+func (s *Server) sendToWebhook(webhookRequest *WebhookRequest, url string) error {
 	b, err := json.Marshal(webhookRequest)
 	if err != nil {
 		return err
 	}
 
 	client := http.Client{}
-	request, err := http.NewRequest("POST", Config.MattermostWebhookURL, bytes.NewReader(b))
+	request, err := http.NewRequest("POST", s.Config.MattermostWebhookURL, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

@@ -13,12 +13,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-func buildJenkinsClient(pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
-	repo, ok := Config.GetRepository(pr.RepoOwner, pr.RepoName)
+func (s *Server) buildJenkinsClient(pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
+	repo, ok := s.GetRepository(pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
 		return repo, nil, errors.New("jenkins server is not configured")
 	}
-	credentials, ok := Config.JenkinsCredentials[repo.JenkinsServer]
+	credentials, ok := s.Config.JenkinsCredentials[repo.JenkinsServer]
 	if !ok {
 		return repo, nil, errors.New("jenkins server credentials are not configured")
 	}
@@ -31,13 +31,13 @@ func buildJenkinsClient(pr *model.PullRequest) (*Repository, *jenkins.Jenkins, e
 	return repo, client, nil
 }
 
-func waitForBuild(ctx context.Context, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error) {
+func (s *Server) waitForBuild(ctx context.Context, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error) {
 	for {
 		select {
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for build to finish")
 		case <-time.After(30 * time.Second):
-			result := <-Srv.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 			if result.Err != nil {
 				return pr, errors.Wrap(result.Err, "unable to get updated PR from Mattermod database")
 			}
@@ -45,7 +45,7 @@ func waitForBuild(ctx context.Context, client *jenkins.Jenkins, pr *model.PullRe
 			// Update the PR in case the build link has changed because of a new commit
 			pr = result.Data.(*model.PullRequest)
 			var err error
-			pr, err = GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
+			pr, err = s.GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
 			if err != nil {
 				return pr, errors.Wrap(err, "unable to get updated PR from GitHub")
 			}
@@ -119,8 +119,8 @@ func waitForBuild(ctx context.Context, client *jenkins.Jenkins, pr *model.PullRe
 	}
 }
 
-func logErrorToMattermost(msg string, args ...interface{}) {
-	if Config.MattermostWebhookURL == "" {
+func (s *Server) logErrorToMattermost(msg string, args ...interface{}) {
+	if s.Config.MattermostWebhookURL == "" {
 		mlog.Warn("No Mattermost webhook URL set: unable to send message")
 		return
 	}
@@ -128,39 +128,40 @@ func logErrorToMattermost(msg string, args ...interface{}) {
 	webhookMessage := fmt.Sprintf(msg, args...)
 	mlog.Debug("Sending Mattermost message", mlog.String("message", webhookMessage))
 
-	if Config.MattermostWebhookFooter != "" {
-		webhookMessage += "\n---\n" + Config.MattermostWebhookFooter
+	if s.Config.MattermostWebhookFooter != "" {
+		webhookMessage += "\n---\n" + s.Config.MattermostWebhookFooter
 	}
 
 	webhookRequest := &WebhookRequest{Username: "Mattermod", Text: webhookMessage}
 
-	if err := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
+	if err := s.sendToWebhook(webhookRequest, s.Config.MattermostWebhookURL); err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 	}
 }
 
-func logPrettyErrorToMattermost(msg string, pr *model.PullRequest, err error, additionalFields map[string]string) {
-	if Config.MattermostWebhookURL == "" {
+func (s *Server) logPrettyErrorToMattermost(msg string, pr *model.PullRequest, err error, additionalFields map[string]string) {
+	if s.Config.MattermostWebhookURL == "" {
 		mlog.Warn("No Mattermost webhook URL set: unable to send message")
 		return
 	}
 
 	mlog.Debug("Sending Mattermost message", mlog.String("message", msg))
 
-	fullMessage := fmt.Sprintf("%s\n---\nError: %s\nRepository: %s/%s\nPull Request: %d [ %s ]\n",
+	fullMessage := fmt.Sprintf("%s\n---\nError: %s\nRepository: %s/%s\nPull Request: %d [ status=%s ]\nURL: %s\n",
 		msg,
 		err,
 		pr.RepoOwner, pr.RepoName,
 		pr.Number, pr.State,
+		pr.URL,
 	)
 	for key, value := range additionalFields {
 		fullMessage = fullMessage + fmt.Sprintf("%s: %s\n", key, value)
 	}
-	fullMessage = fullMessage + Config.MattermostWebhookFooter
+	fullMessage = fullMessage + s.Config.MattermostWebhookFooter
 
 	webhookRequest := &WebhookRequest{Username: "Mattermod", Text: fullMessage}
 
-	if err := sendToWebhook(webhookRequest, Config.MattermostWebhookURL); err != nil {
+	if err := s.sendToWebhook(webhookRequest, s.Config.MattermostWebhookURL); err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 	}
 }

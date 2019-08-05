@@ -14,28 +14,27 @@ import (
 )
 
 func main() {
-	var flagConfigFile string
-	flag.StringVar(&flagConfigFile, "config", "config-mattermod.json", "")
+	var configFile string
+	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
 	flag.Parse()
 
-	server.LoadConfig(flagConfigFile)
-	server.Start()
-
-	//server.CleanOutdatedPRs()
-	//server.CleanOutdatedIssues()
+	s, err := server.New(configFile)
+	if err != nil {
+		panic(err)
+	}
+	s.Start()
+	defer s.Stop()
 
 	c := cron.New()
-	c.AddFunc("@daily", server.CheckPRActivity)
-	c.AddFunc("@midnight", server.CleanOutdatedPRs)
-	c.AddFunc("@every 2h", server.CheckTestServerLifeTime)
+	c.AddFunc("@daily", s.CheckPRActivity)
+	c.AddFunc("@midnight", s.CleanOutdatedPRs)
+	c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
 
-	cronTicker := fmt.Sprintf("@every %dm", server.Config.TickRateMinutes)
-	c.AddFunc(cronTicker, server.Tick)
+	cronTicker := fmt.Sprintf("@every %dm", s.Config.TickRateMinutes)
+	c.AddFunc(cronTicker, s.Tick)
 
 	c.Start()
 	sig := make(chan os.Signal)
 	signal.Notify(sig, os.Interrupt, os.Kill)
 	<-sig
-
-	server.Stop()
 }

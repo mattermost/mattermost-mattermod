@@ -15,10 +15,10 @@ import (
 	"github.com/mattermost/mattermost-server/mlog"
 )
 
-func handleCheckCLA(eventIssueComment IssueComment) {
-	client := NewGithubClient()
+func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
-	pr, err := GetPullRequestFromGithub(prGitHub)
+	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
@@ -28,10 +28,10 @@ func handleCheckCLA(eventIssueComment IssueComment) {
 		return
 	}
 
-	checkCLA(pr)
+	s.checkCLA(pr)
 }
 
-func checkCLA(pr *model.PullRequest) {
+func (s *Server) checkCLA(pr *model.PullRequest) {
 	if pr.State == "closed" {
 		return
 	}
@@ -41,7 +41,7 @@ func checkCLA(pr *model.PullRequest) {
 		mlog.String("repo", pr.RepoOwner), mlog.String("reponame", pr.RepoName),
 		mlog.Int("pr n", pr.Number))
 
-	resp, err := http.Get(Config.SignedCLAURL)
+	resp, err := http.Get(s.Config.SignedCLAURL)
 	if err != nil {
 		mlog.Error("Unable to get CLA list", mlog.Err(err))
 		return
@@ -54,9 +54,9 @@ func checkCLA(pr *model.PullRequest) {
 		return
 	}
 
-	client := NewGithubClient()
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	claStatus := &github.RepoStatus{
-		TargetURL: github.String(Config.SignedCLAURL),
+		TargetURL: github.String(s.Config.SignedCLAURL),
 		Context:   github.String("cla/mattermost"),
 	}
 
@@ -69,9 +69,9 @@ func checkCLA(pr *model.PullRequest) {
 
 	lowerUsername := strings.ToLower(username)
 	if !strings.Contains(string(body), username) && !strings.Contains(string(body), lowerUsername) {
-		_, existComment := checkCLAComment(comments)
+		_, existComment := s.checkCLAComment(comments)
 		if !existComment {
-			commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 		}
 		claStatus.State = github.String("error")
 		userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
@@ -95,7 +95,7 @@ func checkCLA(pr *model.PullRequest) {
 		return
 	}
 	mlog.Info("will clean some comments regarding the CLA")
-	commentToRemove, existComment := checkCLAComment(comments)
+	commentToRemove, existComment := s.checkCLAComment(comments)
 	if existComment {
 		mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
 		_, err := client.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
@@ -105,9 +105,9 @@ func checkCLA(pr *model.PullRequest) {
 	}
 }
 
-func checkCLAComment(comments []*github.IssueComment) (int64, bool) {
+func (s *Server) checkCLAComment(comments []*github.IssueComment) (int64, bool) {
 	for _, comment := range comments {
-		if *comment.User.Login == Config.Username {
+		if *comment.User.Login == s.Config.Username {
 			if strings.Contains(*comment.Body, "Please help complete the Mattermost") {
 				return *comment.ID, true
 			}

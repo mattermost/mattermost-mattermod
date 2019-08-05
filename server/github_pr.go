@@ -15,6 +15,8 @@ type PullRequestEvent struct {
 	PRNumber      int                 `json:"number"`
 	PullRequest   *github.PullRequest `json:"pull_request"`
 	Issue         *github.Issue       `json:"issue"`
+	Label         *github.Label       `json:"label"`
+	Repo          *github.Repository  `json:"repository"`
 	RepositoryUrl string              `json:"repository_url"`
 }
 
@@ -31,6 +33,7 @@ func PullRequestEventFromJson(data io.Reader) *PullRequestEvent {
 	if err := decoder.Decode(&event); err != nil {
 		return nil
 	}
+
 	return &event
 }
 
@@ -40,5 +43,6 @@ func IssueCommentFromJson(data io.Reader) *IssueComment {
 	if err := decoder.Decode(&event); err != nil {
 		return nil
 	}
+
 	return &event
 }

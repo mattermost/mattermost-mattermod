@@ -25,6 +25,7 @@ type PullRequest struct {
 	BuildStatus     string
 	BuildConclusion string
 	BuildLink       string
+	URL             string
 }
 
 func (o *PullRequest) ToJson() (string, error) {
