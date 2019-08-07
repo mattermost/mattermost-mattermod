@@ -153,6 +153,7 @@ func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
 	s.Router.HandleFunc("/delete_test_server", s.deleteTestServer).Methods("DELETE")
+	s.Router.HandleFunc("/shrug_wick", s.serveShrugWick).Methods("GET")
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +184,9 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
 			s.handleCherryPick(*eventIssueComment)
+		}
+		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/shrugwick") {
+			s.handleShrugWick(*eventIssueComment)
 		}
 		return
 	}

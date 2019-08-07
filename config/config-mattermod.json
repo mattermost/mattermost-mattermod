@@ -1,5 +1,6 @@
 {
     "ListenAddress": "0.0.0.0:8087",
+    "MattermodURL": "",
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
     "Username": "",
