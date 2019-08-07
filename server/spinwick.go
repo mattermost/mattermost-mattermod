@@ -23,8 +23,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string) {
-	installationID, sendMattermostLog, err := s.createSpinWick(pr, size)
+func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string, withLicense bool) {
+	installationID, sendMattermostLog, err := s.createSpinWick(pr, size, withLicense)
 	if err != nil {
 		mlog.Error("Failed to create SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
 		comments, err := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
@@ -53,7 +53,7 @@ func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string) {
 // - no cloud installation found = installation is created
 // - cloud installation found = actual ID string and no error
 // - any errors = error is returned
-func (s *Server) createSpinWick(pr *model.PullRequest, size string) (string, bool, error) {
+func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense bool) (string, bool, error) {
 	installationID := "n/a"
 	ownerID := makeSpinWickID(pr.RepoName, pr.Number)
 	id, err := cloud.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, ownerID)
@@ -89,6 +89,10 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string) (string, boo
 		DNS:      fmt.Sprintf("%s.%s", ownerID, s.Config.DNSNameTestServer),
 		Size:     size,
 		Affinity: "multitenant",
+	}
+
+	if withLicense {
+		installationRequest.License = s.Config.SpinWickHALicense
 	}
 
 	b, err := json.Marshal(installationRequest)

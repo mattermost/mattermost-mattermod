@@ -30,6 +30,7 @@
 
     "SetupSpinWick": "",
     "SetupSpinWickHA": "",
+    "SpinWickHALicense": "",
     "ProvisionerServer": "",
     "DNSNameTestServer": "",
     "AWSEmailAccessKey": "",

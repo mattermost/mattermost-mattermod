@@ -37,6 +37,7 @@ type CreateInstallationRequest struct {
 	DNS      string
 	Size     string
 	Affinity string
+	License  string
 }
 
 // Installation represents a Mattermost installation.
