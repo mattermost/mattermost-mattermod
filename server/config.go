@@ -37,6 +37,7 @@ type JenkinsCredentials struct {
 
 type ServerConfig struct {
 	ListenAddress               string
+	MattermodURL                string
 	GithubAccessToken           string
 	GitHubTokenReserve          int
 	GithubUsername              string

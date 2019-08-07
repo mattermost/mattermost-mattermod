@@ -240,7 +240,7 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := NewGithubClient(s.Config.GithubAccessToken).Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, err := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
@@ -255,13 +255,13 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		s.removeOldComments(comments, pr)
 
 		if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
-			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
+			mlog.Error("Unable to get the test server information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
-			mlog.Info("Nothing to do. There is not Spinmint for this PR", mlog.Int("pr", pr.Number))
+			mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
 		} else {
 			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
-			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
+			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceId))
+			mlog.Info("Will destroy the test server for a merged/closed PR.")
 
 			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			go s.destroySpinmint(pr, spinmint.InstanceId)

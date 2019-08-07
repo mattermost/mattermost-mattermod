@@ -104,9 +104,29 @@ func (s *Server) commentOnIssue(repoOwner, repoName string, number int, comment 
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, _, err := client.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
-		mlog.Error("Error", mlog.Err(err))
+		mlog.Error("Error commenting", mlog.Err(err))
 	}
 	mlog.Info("Finished commenting")
+}
+
+func (s *Server) removeLabel(repoOwner, repoName string, number int, label string) {
+	mlog.Info("Removing label on issue", mlog.Int("issue", number), mlog.String("label", label))
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, err := client.Issues.RemoveLabelForIssue(context.Background(), repoOwner, repoName, number, label)
+	if err != nil {
+		mlog.Error("Error removing the label", mlog.Err(err))
+	}
+	mlog.Info("Finished removing the label")
+}
+
+func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	comments, _, err := client.Issues.ListComments(context.Background(), repoOwner, repoName, number, nil)
+	if err != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+		return nil, err
+	}
+	return comments, nil
 }
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
