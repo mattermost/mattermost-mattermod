@@ -27,7 +27,6 @@ func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string) {
 	installationID, sendMattermostLog, err := s.createSpinWick(pr, size)
 	if err != nil {
 		mlog.Error("Failed to create SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		comments, err := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			mlog.Error("Error getting comments", mlog.Err(err))
@@ -39,6 +38,7 @@ func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string) {
 				s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, label)
 			}
 		}
+		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 
 		if sendMattermostLog {
 			additionalFields := map[string]string{
