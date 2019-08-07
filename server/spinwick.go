@@ -34,7 +34,7 @@ func (s *Server) handleCreateSpinWick(pr *model.PullRequest, size string) {
 			s.removeOldComments(comments, pr)
 		}
 		for _, label := range pr.Labels {
-			if label == s.Config.SetupSpinWick || label == s.Config.SetupSpinWickHA {
+			if s.isSpinWickLabel(label) {
 				s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, label)
 			}
 		}
