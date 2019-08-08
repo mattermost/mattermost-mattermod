@@ -13,7 +13,7 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	reviewReq := github.ReviewersRequest{
-		Reviewers: []string{s.Config.AutoAssignerTeam},
+		TeamReviewers: []string{s.Config.AutoAssignerTeam},
 	}
 
 	_, _, err := client.PullRequests.RequestReviewers(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, reviewReq)
