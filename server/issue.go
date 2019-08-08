@@ -14,6 +14,9 @@ import (
 )
 
 func (s *Server) handleIssueEvent(event *PullRequestEvent) {
+	if event == nil {
+		return
+	}
 	parts := strings.Split(*event.Issue.HTMLURL, "/")
 
 	mlog.Info("handle issue event", mlog.String("repoUrl", *event.Issue.HTMLURL), mlog.String("Action", event.Action), mlog.Int("PRNumber", event.PRNumber))
