@@ -28,6 +28,7 @@
     "StaleLabel": "",
     "StaleComment": "",
     "AutoAssignerTeam": "",
+    "AutoAssignerTeamID": "",
 
     "SetupSpinWick": "",
     "SetupSpinWickHA": "",
