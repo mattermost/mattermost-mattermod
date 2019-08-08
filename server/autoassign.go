@@ -22,6 +22,7 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 	repoConfigured := false
 	for _, team := range teams {
 		if team.GetID() == s.Config.AutoAssignerTeamID {
+			mlog.Info("Team configured for this repo", mlog.String("RepoName", *eventIssueComment.Repository.Name))
 			repoConfigured = true
 			break
 		}
@@ -49,6 +50,6 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 }
 
 func (s *Server) autoAssignerPostError(repoOwner, repoName string, number int, requestCommentURL string) {
-	msg := fmt.Sprintf("In response to [this](%s)\n\n I'm was not able to request Pull Panda to add reviewers", requestCommentURL)
+	msg := fmt.Sprintf("In response to [this](%s)\n\n I'm not able to request Pull Panda to add reviewers", requestCommentURL)
 	s.commentOnIssue(repoOwner, repoName, number, msg)
 }
