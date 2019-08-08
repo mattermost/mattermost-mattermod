@@ -27,6 +27,7 @@
     "ExemptStaleLabels": [],
     "StaleLabel": "",
     "StaleComment": "",
+    "AutoAssignerTeam": "",
 
     "SetupSpinWick": "",
     "SetupSpinWickHA": "",

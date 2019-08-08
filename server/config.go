@@ -43,6 +43,7 @@ type ServerConfig struct {
 	GithubUsername              string
 	GithubAccessTokenCherryPick string
 	Username                    string
+	AutoAssignerTeam            string
 
 	TickRateMinutes        int
 	SpinmintExpirationHour int

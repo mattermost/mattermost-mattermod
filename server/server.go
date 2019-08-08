@@ -188,6 +188,9 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/shrugwick") {
 			s.handleShrugWick(*eventIssueComment)
 		}
+		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
+			s.handleAutoassign(*eventIssueComment)
+		}
 		return
 	}
 
