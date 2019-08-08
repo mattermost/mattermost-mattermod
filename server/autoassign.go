@@ -14,7 +14,7 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 
 	teams, _, err := client.Repositories.ListTeams(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, nil)
 	if err != nil {
-		mlog.Error("Error listing the teams to check", mlog.Err(err), mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
+		mlog.Error("Error listing the teams to check", mlog.Err(err), mlog.Int("RepoOwner", *eventIssueComment.Repository.Owner.Login) mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
 		s.autoAssignerPostError(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, eventIssueComment.Comment.GetHTMLURL())
 		return
 	}
