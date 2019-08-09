@@ -83,12 +83,17 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 
 	mlog.Info("Provisioning Server - Installation request")
 
+	affinity := "multitenant"
+	if size != "miniSingleton" && size != "100users" {
+		affinity = "isolated"
+	}
+
 	installationRequest := cloud.CreateInstallationRequest{
 		OwnerID:  ownerID,
 		Version:  pr.Sha[0:7],
 		DNS:      fmt.Sprintf("%s.%s", ownerID, s.Config.DNSNameTestServer),
 		Size:     size,
-		Affinity: "multitenant",
+		Affinity: affinity,
 	}
 
 	if withLicense {
