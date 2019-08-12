@@ -237,7 +237,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		return installationID, true, errors.Wrap(err, "encountered error waiting for installation to become stable")
 	}
 
-	// Remove old messate to reduce the amount of similar messages and avoid confusion
+	// Remove old message to reduce the amount of similar messages and avoid confusion
 	if errComments == nil {
 		serverUpdateMessage := []string{
 			"Mattermost test server updated",
