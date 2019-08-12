@@ -188,7 +188,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		return installationID, true, errors.Wrap(err, "error waiting for build link")
 	}
 
-	// Remove old messate to reduce the amount of similar messages and avoid confusion
+	// Remove old message to reduce the amount of similar messages and avoid confusion
 	serverNewCommitMessages := []string{
 		"New commit detected.",
 	}
