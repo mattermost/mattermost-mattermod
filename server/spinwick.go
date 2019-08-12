@@ -16,6 +16,7 @@ import (
 
 	"time"
 
+	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-mattermod/cloud"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
@@ -187,6 +188,16 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		return installationID, true, errors.Wrap(err, "error waiting for build link")
 	}
 
+	// Remove old message to reduce the amount of similar messages and avoid confusion
+	serverNewCommitMessages := []string{
+		"New commit detected.",
+	}
+	comments, errComments := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
+	if errComments != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+	} else {
+		s.removeCommentsWithSpecificMessages(comments, serverNewCommitMessages, pr)
+	}
 	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
 
 	_, client, err := s.buildJenkinsClient(pr)
@@ -226,8 +237,16 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		return installationID, true, errors.Wrap(err, "encountered error waiting for installation to become stable")
 	}
 
+	// Remove old message to reduce the amount of similar messages and avoid confusion
+	if errComments == nil {
+		serverUpdateMessage := []string{
+			"Mattermost test server updated",
+		}
+		s.removeCommentsWithSpecificMessages(comments, serverUpdateMessage, pr)
+	}
+
 	mmURL := fmt.Sprintf("https://%s.%s", makeSpinWickID(pr.RepoName, pr.Number), s.Config.DNSNameTestServer)
-	msg := fmt.Sprintf("Mattermost test server updated!\n\nAccess here: %s", mmURL)
+	msg := fmt.Sprintf("Mattermost test server updated with git commit `%s`.\n\nAccess here: %s", pr.Sha, mmURL)
 	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 
 	return installationID, false, nil
@@ -375,14 +394,14 @@ func (s *Server) waitK8sCluster(ctx context.Context, pr *model.PullRequest, clus
 			return nil
 		} else if clusterRequest.State == "creation-failed" {
 			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to create the k8s cluster.")
-			return fmt.Errorf("error creating k8s cluster")
+			return errors.New("error creating k8s cluster")
 		}
 		mlog.Info("Provisioner Server - cluster request creating... sleep", mlog.String("ClusterID", clusterRequest.ID), mlog.String("State", clusterRequest.State))
 		time.Sleep(20 * time.Second)
 		select {
 		case <-ctx.Done():
 			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for the kubernetes cluster. Please check the logs.")
-			return fmt.Errorf("timed out waiting for the cluster installation complete")
+			return errors.New("timed out waiting for the cluster installation complete")
 		case <-time.After(10 * time.Second):
 		}
 	}
@@ -605,4 +624,22 @@ func (s *Server) isSpinWickLabelInLabels(labels []string) bool {
 	}
 
 	return false
+}
+
+func (s *Server) removeCommentsWithSpecificMessages(comments []*github.IssueComment, serverMessages []string, pr *model.PullRequest) {
+	mlog.Info("Removing old spinwick Mattermod comments")
+	for _, comment := range comments {
+		if *comment.User.Login == s.Config.Username {
+			for _, message := range serverMessages {
+				if strings.Contains(*comment.Body, message) {
+					mlog.Info("Removing old spinwick comment with ID", mlog.Int64("ID", *comment.ID))
+					_, err := NewGithubClient(s.Config.GithubAccessToken).Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
+					if err != nil {
+						mlog.Error("Unable to remove old spinwick Mattermod comment", mlog.Err(err))
+					}
+					break
+				}
+			}
+		}
+	}
 }
