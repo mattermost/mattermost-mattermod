@@ -196,7 +196,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 	if errComments != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 	} else {
-		s.removeServerUpdateOldComments(comments, serverNewCommitMessages, pr)
+		s.removeCommentsWithSpecificMessages(comments, serverNewCommitMessages, pr)
 	}
 	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
 
@@ -242,7 +242,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 		serverUpdateMessage := []string{
 			"Mattermost test server updated",
 		}
-		s.removeServerUpdateOldComments(comments, serverUpdateMessage, pr)
+		s.removeCommentsWithSpecificMessages(comments, serverUpdateMessage, pr)
 	}
 
 	mmURL := fmt.Sprintf("https://%s.%s", makeSpinWickID(pr.RepoName, pr.Number), s.Config.DNSNameTestServer)
@@ -626,7 +626,7 @@ func (s *Server) isSpinWickLabelInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) removeServerUpdateOldComments(comments []*github.IssueComment, serverMessages []string, pr *model.PullRequest) {
+func (s *Server) removeCommentsWithSpecificMessages(comments []*github.IssueComment, serverMessages []string, pr *model.PullRequest) {
 	mlog.Info("Removing old spinwick Mattermod comments")
 	for _, comment := range comments {
 		if *comment.User.Login == s.Config.Username {
