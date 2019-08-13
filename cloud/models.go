@@ -55,3 +55,9 @@ type Installation struct {
 	LockAcquiredBy *string
 	LockAcquiredAt int64
 }
+
+// UpgradeInstallationRequest represents a Mattermost upgrade installation.
+type UpgradeInstallationRequest struct {
+	Version string
+	License string
+}

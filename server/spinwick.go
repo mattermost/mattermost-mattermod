@@ -142,8 +142,8 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 	return installationID, false, nil
 }
 
-func (s *Server) handleUpdateSpinWick(pr *model.PullRequest) {
-	installationID, sendMattermostLog, err := s.updateSpinWick(pr)
+func (s *Server) handleUpdateSpinWick(pr *model.PullRequest, withLicense bool) {
+	installationID, sendMattermostLog, err := s.updateSpinWick(pr, withLicense)
 	if err != nil {
 		mlog.Error("Error trying to update SpinWick", mlog.Err(err), mlog.String("repo_name", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("installation_id", installationID))
 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
@@ -160,7 +160,7 @@ func (s *Server) handleUpdateSpinWick(pr *model.PullRequest) {
 // - no cloud installation found = error is returned
 // - cloud installation found and updated = actual ID string and no error
 // - any errors = error is returned
-func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
+func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) (string, bool, error) {
 	installationID := "n/a"
 
 	ownerID := makeSpinWickID(pr.RepoName, pr.Number)
@@ -216,11 +216,19 @@ func (s *Server) updateSpinWick(pr *model.PullRequest) (string, bool, error) {
 	}
 
 	mlog.Info("Provisioning Server - Upgrade request", mlog.String("SHA", pr.Sha))
-	shortCommit := pr.Sha[0:7]
-	payload := fmt.Sprintf("{\n\"version\": \"%s\"}", shortCommit)
-	var mmStr = []byte(payload)
+	upgradeRequest := cloud.UpgradeInstallationRequest{
+		Version: pr.Sha[0:7],
+	}
+	if withLicense {
+		upgradeRequest.License = s.Config.SpinWickHALicense
+	}
+	b, err := json.Marshal(upgradeRequest)
+	if err != nil {
+		return installationID, true, errors.Wrap(err, "unable to marshal the installation upgrade request")
+	}
+
 	url := fmt.Sprintf("%s/api/installation/%s/mattermost", s.Config.ProvisionerServer, installationID)
-	resp, err := makeRequest("PUT", url, bytes.NewBuffer(mmStr))
+	resp, err := makeRequest("PUT", url, bytes.NewBuffer(b))
 	if err != nil {
 		return installationID, true, errors.Wrap(err, "encountered error making upgrade request to provisioning server")
 	}
@@ -623,6 +631,15 @@ func (s *Server) isSpinWickLabelInLabels(labels []string) bool {
 		}
 	}
 
+	return false
+}
+
+func (s *Server) isSpinWickHALabel(labels []string) bool {
+	for _, label := range labels {
+		if label == s.Config.SetupSpinWickHA {
+			return true
+		}
+	}
 	return false
 }
 

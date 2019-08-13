@@ -51,10 +51,16 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.handleDestroySpinWick(pr)
 		}
 	case "synchronize":
-		mlog.Info("PR has a new commit", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
+		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
 		if s.isSpinWickLabelInLabels(pr.Labels) {
-			s.handleUpdateSpinWick(pr)
+			mlog.Info("Pr have the spinWick label, starting the upgrade", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+			if s.isSpinWickHALabel(pr.Labels) {
+				s.handleUpdateSpinWick(pr, true)
+			} else {
+				// not ha mode
+				s.handleUpdateSpinWick(pr, false)
+			}
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
