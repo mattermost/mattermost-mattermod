@@ -71,7 +71,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	if !strings.Contains(string(body), username) && !strings.Contains(string(body), lowerUsername) {
 		_, existComment := s.checkCLAComment(comments)
 		if !existComment {
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 		}
 		claStatus.State = github.String("error")
 		userMsg := fmt.Sprintf("%s needs to sign the CLA", username)

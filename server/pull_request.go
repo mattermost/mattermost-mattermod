@@ -32,10 +32,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info("PR received SpinWick label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
 			switch *event.Label.Name {
 			case s.Config.SetupSpinWick:
-				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
 				s.handleCreateSpinWick(pr, "miniSingleton", false)
 			case s.Config.SetupSpinWickHA:
-				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
 				s.handleCreateSpinWick(pr, "miniHA", true)
 			default:
 				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
@@ -58,7 +58,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			if s.isSpinWickHALabel(pr.Labels) {
 				s.handleUpdateSpinWick(pr, true)
 			} else {
-				// not ha mode
 				s.handleUpdateSpinWick(pr, false)
 			}
 		}
@@ -74,7 +73,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
 			mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			if strings.Contains(spinmint.InstanceId, "i-") {
 				go s.destroySpinmint(pr, spinmint.InstanceId)
 			}
@@ -207,19 +206,19 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	if addedLabel == s.Config.SetupSpinmintTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintMessage) {
 		mlog.Info("Label to spin a test server")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
 		go s.waitForBuildAndSetupSpinmint(pr, false)
 	} else if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
 		mlog.Info("Label to spin a test server for upgrade")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
 		go s.waitForBuildAndSetupSpinmint(pr, true)
 	} else if addedLabel == s.Config.BuildMobileAppTag && !messageByUserContains(comments, s.Config.Username, s.Config.BuildMobileAppInitMessage) {
 		mlog.Info("Label to build the mobile app")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
 		go s.waitForMobileAppsBuild(pr)
 	} else if addedLabel == s.Config.StartLoadtestTag {
 		mlog.Info("Label to spin a load test")
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
 		go waitForBuildAndSetupLoadtest(pr)
 	} else {
 		mlog.Info("looking for other labels")
@@ -229,7 +228,7 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
-				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
 			}
 		}
 	}
@@ -269,7 +268,7 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceId))
 			mlog.Info("Will destroy the test server for a merged/closed PR.")
 
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			go s.destroySpinmint(pr, spinmint.InstanceId)
 		}
 	}
@@ -364,7 +363,7 @@ func (s *Server) CheckPRActivity() {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 					break
 				}
-				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
 			}
 		}
 	}

@@ -30,14 +30,14 @@ import (
 // 	repo, ok := s.Config.GetRepository(pr.RepoOwner, pr.RepoName)
 // 	if !ok || repo.JenkinsServer == "" {
 // 		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
 // 	credentials, ok := s.Config.JenkinsCredentials[repo.JenkinsServer]
 // 	if !ok {
 // 		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -64,7 +64,7 @@ import (
 // 	cluster, err := terraform.CreateCluster(config)
 // 	if err != nil {
 // 		LogError("Unable to setup cluster: " + err.Error())
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 	}
 // 	// Wait for the cluster to init
 // 	time.Sleep(time.Minute)
@@ -74,12 +74,12 @@ import (
 // 	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Deploy("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
 // 		LogError("Unable to deploy cluster: " + err.Error())
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 // 	if err := cluster.Loadtest("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
 // 		LogError("Unable to deploy loadtests to cluster: " + err.Error())
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -89,13 +89,13 @@ import (
 // 	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Loadtest(results); err != nil {
 // 		LogError("Unable to loadtest cluster: " + err.Error())
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 // 	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Destroy(); err != nil {
 // 		LogError("Unable to destroy cluster: " + err.Error())
-// 		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
+// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
 // 		return
 // 	}
 
@@ -109,17 +109,17 @@ import (
 
 // 	ltparse.ParseResults(&cfg)
 // 	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
-// 	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
+// 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
 // }
 func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
 	return
 }
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
-	repo, client, err := s.buildJenkinsClient(pr)
+	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -128,10 +128,10 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = s.waitForBuild(ctx, client, pr)
+	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
 			s.logErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
 		spinmint := &model.Spinmint{
@@ -166,7 +166,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 
 	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
 		s.logErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -188,14 +188,14 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
 	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
 
-	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, message)
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
 
 func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
-	repo, client, err := s.buildJenkinsClient(pr)
+	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -204,10 +204,10 @@ func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = s.waitForBuild(ctx, client, pr)
+	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -240,7 +240,7 @@ func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
 			break
 		} else if build.Result == "FAILURE" {
 			mlog.Error("build has status FAILURE aborting.", mlog.Int("build", build.Number), mlog.String("result", build.Result))
-			s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppFailedMessage)
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppFailedMessage)
 			return
 		} else {
 			mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
@@ -253,7 +253,7 @@ func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
 	msgMobile = strings.Replace(msgMobile, "PR_NUMBER", prNumberStr, 2)
 	msgMobile = strings.Replace(msgMobile, "ANDROID_APP", prNumberStr, 1)
 	msgMobile = strings.Replace(msgMobile, "IOS_APP", prNumberStr, 1)
-	s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
 	return
 }
 
@@ -436,7 +436,7 @@ func (s *Server) CheckTestServerLifeTime() {
 			}
 			go s.destroySpinmint(pr, testServer.InstanceId)
 			s.removeTestServerFromDB(testServer.InstanceId)
-			s.commentOnIssue(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
+			s.sendGitHubComment(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
 
