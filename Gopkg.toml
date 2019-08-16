@@ -17,3 +17,7 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/mattermost/mattermost-cloud"
+  version = "0.4.0"

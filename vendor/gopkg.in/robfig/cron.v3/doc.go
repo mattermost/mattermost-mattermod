@@ -1,16 +1,29 @@
 /*
 Package cron implements a cron spec parser and job runner.
 
+Installation
+
+To download the specific tagged release, run:
+
+	go get github.com/robfig/cron/v3@v3.0.0
+
+Import it in your program as:
+
+	import "github.com/robfig/cron/v3"
+
+It requires Go 1.11 or later due to usage of Go Modules.
+
 Usage
 
 Callers may register Funcs to be invoked on a given schedule.  Cron will run
 them in their own goroutines.
 
 	c := cron.New()
-	c.AddFunc("0 30 * * * *", func() { fmt.Println("Every hour on the half hour") })
+	c.AddFunc("30 * * * *", func() { fmt.Println("Every hour on the half hour") })
+	c.AddFunc("30 3-6,20-23 * * *", func() { fmt.Println(".. in the range 3-6am, 8-11pm") })
 	c.AddFunc("CRON_TZ=Asia/Tokyo 30 04 * * * *", func() { fmt.Println("Runs at 04:30 Tokyo time every day") })
-	c.AddFunc("@hourly",      func() { fmt.Println("Every hour") })
-	c.AddFunc("@every 1h30m", func() { fmt.Println("Every hour thirty") })
+	c.AddFunc("@hourly",      func() { fmt.Println("Every hour, starting an hour from now") })
+	c.AddFunc("@every 1h30m", func() { fmt.Println("Every hour thirty, starting an hour thirty from now") })
 	c.Start()
 	..
 	// Funcs are invoked in their own goroutine, asynchronously.
@@ -46,11 +59,18 @@ Alternative Formats
 Alternative Cron expression formats support other fields like seconds. You can
 implement that by creating a custom Parser as follows.
 
-      cron.New(
-          cron.WithParser(
-              cron.SecondOptional | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor))
+	cron.New(
+		cron.WithParser(
+			cron.NewParser(
+				cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)))
 
-The most popular alternative Cron expression format is Quartz:
+Since adding Seconds is the most common modification to the standard cron spec,
+cron provides a builtin function to do that, which is equivalent to the custom
+parser you saw earlier, except that its seconds field is REQUIRED:
+
+	cron.New(cron.WithSeconds())
+
+That emulates Quartz, the most popular alternative Cron schedule format:
 http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html
 
 Special Characters
@@ -91,11 +111,11 @@ You may use one of several pre-defined schedules in place of a cron expression.
 
 	Entry                  | Description                                | Equivalent To
 	-----                  | -----------                                | -------------
-	@yearly (or @annually) | Run once a year, midnight, Jan. 1st        | 0 0 0 1 1 *
-	@monthly               | Run once a month, midnight, first of month | 0 0 0 1 * *
-	@weekly                | Run once a week, midnight between Sat/Sun  | 0 0 0 * * 0
-	@daily (or @midnight)  | Run once a day, midnight                   | 0 0 0 * * *
-	@hourly                | Run once an hour, beginning of hour        | 0 0 * * * *
+	@yearly (or @annually) | Run once a year, midnight, Jan. 1st        | 0 0 1 1 *
+	@monthly               | Run once a month, midnight, first of month | 0 0 1 * *
+	@weekly                | Run once a week, midnight between Sat/Sun  | 0 0 * * 0
+	@daily (or @midnight)  | Run once a day, midnight                   | 0 0 * * *
+	@hourly                | Run once an hour, beginning of hour        | 0 * * * *
 
 Intervals
 
@@ -149,6 +169,29 @@ The prefix "TZ=(TIME ZONE)" is also supported for legacy compatibility.
 Be aware that jobs scheduled during daylight-savings leap-ahead transitions will
 not be run!
 
+Job Wrappers
+
+A Cron runner may be configured with a chain of job wrappers to add
+cross-cutting functionality to all submitted jobs. For example, they may be used
+to achieve the following effects:
+
+  - Recover any panics from jobs (activated by default)
+  - Delay a job's execution if the previous run hasn't completed yet
+  - Skip a job's execution if the previous run hasn't completed yet
+  - Log each job's invocations
+
+Install wrappers for all jobs added to a cron using the `cron.WithChain` option:
+
+	cron.New(cron.WithChain(
+		cron.SkipIfStillRunning(logger),
+	))
+
+Install wrappers for individual jobs by explicitly wrapping them:
+
+	job = cron.NewChain(
+		cron.SkipIfStillRunning(logger),
+	).Then(job)
+
 Thread safety
 
 Since the Cron service runs concurrently with the calling code, some amount of
@@ -156,6 +199,23 @@ care must be taken to ensure proper synchronization.
 
 All cron methods are designed to be correctly synchronized as long as the caller
 ensures that invocations have a clear happens-before ordering between them.
+
+Logging
+
+Cron defines a Logger interface that is a subset of the one defined in
+github.com/go-logr/logr. It has two logging levels (Info and Error), and
+parameters are key/value pairs. This makes it possible for cron logging to plug
+into structured logging systems. An adapter, [Verbose]PrintfLogger, is provided
+to wrap the standard library *log.Logger.
+
+For additional insight into Cron operations, verbose logging may be activated
+which will record job runs, scheduling decisions, and added or removed jobs.
+Activate it with a one-off logger as follows:
+
+	cron.New(
+		cron.WithLogger(
+			cron.VerbosePrintfLogger(log.New(os.Stdout, "cron: ", log.LstdFlags))))
+
 
 Implementation
 

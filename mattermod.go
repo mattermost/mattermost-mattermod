@@ -10,6 +10,8 @@ import (
 	"os/signal"
 
 	"github.com/mattermost/mattermost-mattermod/server"
+	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/pkg/errors"
 	"gopkg.in/robfig/cron.v3"
 )
 
@@ -18,10 +20,16 @@ func main() {
 	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
 	flag.Parse()
 
-	s, err := server.New(configFile)
+	config, err := server.GetConfig(configFile)
 	if err != nil {
-		panic(err)
+		errors.Wrap(err, "unable to load server config")
 	}
+	server.SetupLogging(config)
+
+	mlog.Info("Loaded config", mlog.String("filename", configFile))
+
+	s := server.New(config)
+
 	s.Start()
 	defer s.Stop()
 

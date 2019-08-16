@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -20,17 +21,23 @@ import (
 	"github.com/braintree/manners"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
+	cloudModel "github.com/mattermost/mattermost-cloud/model"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/utils/fileutils"
-	"github.com/pkg/errors"
 )
 
+// Server is the mattermod server.
 type Server struct {
 	Config *ServerConfig
 	Store  store.Store
 	Router *mux.Router
+
+	webhookChannelsLock sync.Mutex
+	webhookChannels     map[string]chan cloudModel.WebhookPayload
+
+	Builds buildsInterface
 
 	commentLock sync.Mutex
 
@@ -40,6 +47,10 @@ type Server struct {
 const (
 	INSTANCE_ID_MESSAGE = "Instance ID: "
 	LOG_FILENAME        = "mattermod.log"
+
+	// buildOverride overrides the buildsInterface of the server for development
+	// and testing.
+	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
 )
 
 var (
@@ -50,24 +61,29 @@ var (
 )
 
 // New returns a new server with the desired configuration
-func New(configLocation string) (*Server, error) {
-	config, err := getConfig(configLocation)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to load server config")
+func New(config *ServerConfig) *Server {
+	s := &Server{
+		Config:          config,
+		Store:           store.NewSqlStore(config.DriverName, config.DataSource),
+		Router:          mux.NewRouter(),
+		webhookChannels: make(map[string]chan cloudModel.WebhookPayload),
+		StartTime:       time.Now(),
 	}
 
-	return &Server{
-		Config:    config,
-		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
-		Router:    mux.NewRouter(),
-		StartTime: time.Now(),
-	}, nil
+	s.Builds = &Builds{}
+	if os.Getenv(buildOverride) != "" {
+		mlog.Warn("Using mocked build tools")
+		s.Builds = &MockedBuilds{
+			Version: os.Getenv(buildOverride),
+		}
+	}
+
+	return s
 }
 
 // Start starts a server
 func (s *Server) Start() {
-	s.SetupLogging()
-	mlog.Info("Starting Mattermod")
+	mlog.Info("Starting Mattermod Server")
 
 	rand.Seed(time.Now().Unix())
 
@@ -149,6 +165,7 @@ func (s *Server) Tick() {
 func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
+	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
 	s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
 	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
@@ -195,6 +212,29 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.handleIssueEvent(event)
+}
+
+func (s *Server) handleCloudWebhook(w http.ResponseWriter, r *http.Request) {
+	payload, err := cloudModel.WebhookPayloadFromReader(r.Body)
+	if err != nil {
+		mlog.Error("Received webhook event, but couldn't parse the payload")
+		return
+	}
+	defer r.Body.Close()
+
+	payloadClone := *payload
+
+	s.webhookChannelsLock.Lock()
+	mlog.Debug("Received cloud webhook payload", mlog.Int("channels", len(s.webhookChannels)), mlog.String("payload", fmt.Sprintf("%+v", payloadClone)))
+	for _, channel := range s.webhookChannels {
+		go func(ch chan cloudModel.WebhookPayload, p cloudModel.WebhookPayload) {
+			select {
+			case ch <- p:
+			case <-time.After(5 * time.Second):
+			}
+		}(channel, payloadClone)
+	}
+	s.webhookChannelsLock.Unlock()
 }
 
 func (s *Server) listPrs(w http.ResponseWriter, r *http.Request) {
@@ -310,15 +350,15 @@ func GetLogFileLocation(fileLocation string) string {
 	return filepath.Join(fileLocation, LOG_FILENAME)
 }
 
-func (s *Server) SetupLogging() {
+func SetupLogging(config *ServerConfig) {
 	loggingConfig := &mlog.LoggerConfiguration{
-		EnableConsole: s.Config.LogSettings.EnableConsole,
-		ConsoleJson:   s.Config.LogSettings.ConsoleJson,
-		ConsoleLevel:  strings.ToLower(s.Config.LogSettings.ConsoleLevel),
-		EnableFile:    s.Config.LogSettings.EnableFile,
-		FileJson:      s.Config.LogSettings.FileJson,
-		FileLevel:     strings.ToLower(s.Config.LogSettings.FileLevel),
-		FileLocation:  GetLogFileLocation(s.Config.LogSettings.FileLocation),
+		EnableConsole: config.LogSettings.EnableConsole,
+		ConsoleJson:   config.LogSettings.ConsoleJson,
+		ConsoleLevel:  strings.ToLower(config.LogSettings.ConsoleLevel),
+		EnableFile:    config.LogSettings.EnableFile,
+		FileJson:      config.LogSettings.FileJson,
+		FileLevel:     strings.ToLower(config.LogSettings.FileLevel),
+		FileLocation:  GetLogFileLocation(config.LogSettings.FileLocation),
 	}
 
 	logger := mlog.NewLogger(loggingConfig)
