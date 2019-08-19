@@ -1078,6 +1078,26 @@ func (c *Client4) UpdateUserPassword(userId, currentPassword, newPassword string
 	return CheckStatusOK(r), BuildResponse(r)
 }
 
+// PromoteGuestToUser convert a guest into a regular user
+func (c *Client4) PromoteGuestToUser(guestId string) (bool, *Response) {
+	r, err := c.DoApiPost(c.GetUserRoute(guestId)+"/promote", "")
+	if err != nil {
+		return false, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return CheckStatusOK(r), BuildResponse(r)
+}
+
+// DemoteUserToGuest convert a regular user into a guest
+func (c *Client4) DemoteUserToGuest(guestId string) (bool, *Response) {
+	r, err := c.DoApiPost(c.GetUserRoute(guestId)+"/demote", "")
+	if err != nil {
+		return false, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return CheckStatusOK(r), BuildResponse(r)
+}
+
 // UpdateUserRoles updates a user's roles in the system. A user can have "system_user" and "system_admin" roles.
 func (c *Client4) UpdateUserRoles(userId, roles string) (bool, *Response) {
 	requestBody := map[string]string{"roles": roles}
@@ -1159,6 +1179,16 @@ func (c *Client4) RevokeSession(userId, sessionId string) (bool, *Response) {
 // RevokeAllSessions revokes all sessions for the provided user id string.
 func (c *Client4) RevokeAllSessions(userId string) (bool, *Response) {
 	r, err := c.DoApiPost(c.GetUserRoute(userId)+"/sessions/revoke/all", "")
+	if err != nil {
+		return false, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return CheckStatusOK(r), BuildResponse(r)
+}
+
+// RevokeAllSessions revokes all sessions for all the users.
+func (c *Client4) RevokeSessionsFromAllUsers() (bool, *Response) {
+	r, err := c.DoApiPost(c.GetUsersRoute()+"/sessions/revoke/all", "")
 	if err != nil {
 		return false, BuildErrorResponse(r, err)
 	}
@@ -1485,6 +1515,72 @@ func (c *Client4) AssignBot(botUserId, newOwnerId string) (*Bot, *Response) {
 	}
 	defer closeBody(r)
 	return BotFromJson(r.Body), BuildResponse(r)
+}
+
+// SetBotIconImage sets LHS bot icon image.
+func (c *Client4) SetBotIconImage(botUserId string, data []byte) (bool, *Response) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("image", "icon.svg")
+	if err != nil {
+		return false, &Response{Error: NewAppError("SetBotIconImage", "model.client.set_bot_icon_image.no_file.app_error", nil, err.Error(), http.StatusBadRequest)}
+	}
+
+	if _, err = io.Copy(part, bytes.NewBuffer(data)); err != nil {
+		return false, &Response{Error: NewAppError("SetBotIconImage", "model.client.set_bot_icon_image.no_file.app_error", nil, err.Error(), http.StatusBadRequest)}
+	}
+
+	if err = writer.Close(); err != nil {
+		return false, &Response{Error: NewAppError("SetBotIconImage", "model.client.set_bot_icon_image.writer.app_error", nil, err.Error(), http.StatusBadRequest)}
+	}
+
+	rq, err := http.NewRequest("POST", c.ApiUrl+c.GetBotRoute(botUserId)+"/icon", bytes.NewReader(body.Bytes()))
+	if err != nil {
+		return false, &Response{Error: NewAppError("SetBotIconImage", "model.client.connecting.app_error", nil, err.Error(), http.StatusBadRequest)}
+	}
+	rq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	if len(c.AuthToken) > 0 {
+		rq.Header.Set(HEADER_AUTH, c.AuthType+" "+c.AuthToken)
+	}
+
+	rp, err := c.HttpClient.Do(rq)
+	if err != nil || rp == nil {
+		return false, &Response{StatusCode: http.StatusForbidden, Error: NewAppError(c.GetBotRoute(botUserId)+"/icon", "model.client.connecting.app_error", nil, err.Error(), http.StatusForbidden)}
+	}
+	defer closeBody(rp)
+
+	if rp.StatusCode >= 300 {
+		return false, BuildErrorResponse(rp, AppErrorFromJson(rp.Body))
+	}
+
+	return CheckStatusOK(rp), BuildResponse(rp)
+}
+
+// GetBotIconImage gets LHS bot icon image. Must be logged in.
+func (c *Client4) GetBotIconImage(botUserId string) ([]byte, *Response) {
+	r, appErr := c.DoApiGet(c.GetBotRoute(botUserId)+"/icon", "")
+	if appErr != nil {
+		return nil, BuildErrorResponse(r, appErr)
+	}
+	defer closeBody(r)
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return nil, BuildErrorResponse(r, NewAppError("GetBotIconImage", "model.client.read_file.app_error", nil, err.Error(), r.StatusCode))
+	}
+	return data, BuildResponse(r)
+}
+
+// DeleteBotIconImage deletes LHS bot icon image. Must be logged in.
+func (c *Client4) DeleteBotIconImage(botUserId string) (bool, *Response) {
+	r, appErr := c.DoApiDelete(c.GetBotRoute(botUserId) + "/icon")
+	if appErr != nil {
+		return false, BuildErrorResponse(r, appErr)
+	}
+	defer closeBody(r)
+	return CheckStatusOK(r), BuildResponse(r)
 }
 
 // Team Section
@@ -1821,6 +1917,21 @@ func (c *Client4) ImportTeam(data []byte, filesize int, importFrom, filename, te
 // InviteUsersToTeam invite users by email to the team.
 func (c *Client4) InviteUsersToTeam(teamId string, userEmails []string) (bool, *Response) {
 	r, err := c.DoApiPost(c.GetTeamRoute(teamId)+"/invite/email", ArrayToJson(userEmails))
+	if err != nil {
+		return false, BuildErrorResponse(r, err)
+	}
+	defer closeBody(r)
+	return CheckStatusOK(r), BuildResponse(r)
+}
+
+// InviteGuestsToTeam invite guest by email to some channels in a team.
+func (c *Client4) InviteGuestsToTeam(teamId string, userEmails []string, channels []string, message string) (bool, *Response) {
+	guestsInvite := GuestsInvite{
+		Emails:   userEmails,
+		Channels: channels,
+		Message:  message,
+	}
+	r, err := c.DoApiPost(c.GetTeamRoute(teamId)+"/invite-guests/email", guestsInvite.ToJson())
 	if err != nil {
 		return false, BuildErrorResponse(r, err)
 	}
@@ -2497,6 +2608,17 @@ func (c *Client4) GetPostsBefore(channelId, postId string, page, perPage int, et
 	}
 	defer closeBody(r)
 	return PostListFromJson(r.Body), BuildResponse(r)
+}
+
+// GetPostsAroundLastUnread gets a list of posts around last unread post by a user in a channel.
+func (c *Client4) GetPostsAroundLastUnread(userId, channelId string, limitBefore, limitAfter int) (*PostList, *Response) {
+	query := fmt.Sprintf("?limit_before=%v&limit_after=%v", limitBefore, limitAfter)
+	if r, err := c.DoApiGet(c.GetUserRoute(userId)+c.GetChannelRoute(channelId)+"/posts/unread"+query, ""); err != nil {
+		return nil, BuildErrorResponse(r, err)
+	} else {
+		defer closeBody(r)
+		return PostListFromJson(r.Body), BuildResponse(r)
+	}
 }
 
 // SearchPosts returns any posts with matching terms string.
@@ -3499,7 +3621,7 @@ func (c *Client4) GetBrandImage() ([]byte, *Response) {
 	return data, BuildResponse(r)
 }
 
-// DeleteBrandImage delets the brand image for the system.
+// DeleteBrandImage deletes the brand image for the system.
 func (c *Client4) DeleteBrandImage() *Response {
 	r, err := c.DoApiDelete(c.GetBrandRoute() + "/image")
 	if err != nil {

@@ -1538,5 +1538,5 @@ func (s *Server) serveShrugWick(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleShrugWick(eventIssueComment IssueComment) {
 	msg := fmt.Sprintf("In response to [this](%s)\n\n ![shrugWick](%s/shrug_wick)", eventIssueComment.Comment.GetHTMLURL(), s.Config.MattermodURL)
-	s.commentOnIssue(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, msg)
+	s.sendGitHubComment(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, msg)
 }

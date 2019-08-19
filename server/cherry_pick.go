@@ -30,7 +30,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 
 	userComment := *eventIssueComment.Comment.User
 	if !s.checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
 
@@ -45,7 +45,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 	if err != nil {
 		mlog.Error("Error doing the cherry pick", mlog.Err(err))
 		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-		s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 		return
 	}
 }
@@ -86,7 +86,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
 				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
-				s.commentOnIssue(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 				return
 			}
 		}

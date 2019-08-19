@@ -10,7 +10,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -140,10 +139,9 @@ func findConfigFile(fileName string) string {
 	return fileName
 }
 
-func getConfig(fileName string) (*ServerConfig, error) {
+func GetConfig(fileName string) (*ServerConfig, error) {
 	config := &ServerConfig{}
 	fileName = findConfigFile(fileName)
-	mlog.Info("Loading config", mlog.String("filename", fileName))
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -159,8 +157,8 @@ func getConfig(fileName string) (*ServerConfig, error) {
 	return config, nil
 }
 
-func (s *Server) GetRepository(owner, name string) (*Repository, bool) {
-	for _, repo := range s.Config.Repositories {
+func GetRepository(repositories []*Repository, owner, name string) (*Repository, bool) {
+	for _, repo := range repositories {
 		if repo.Owner == owner && repo.Name == name {
 			return repo, true
 		}

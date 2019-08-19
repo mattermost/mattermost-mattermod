@@ -33,7 +33,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	repo, ok := s.GetRepository(pr.RepoOwner, pr.RepoName)
+	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
 		if combined, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
 			return nil, err
@@ -99,14 +99,13 @@ func labelsToStringArray(labels []*github.Label) []string {
 	return out
 }
 
-func (s *Server) commentOnIssue(repoOwner, repoName string, number int, comment string) {
-	mlog.Info("Commenting on issue", mlog.Int("issue", number), mlog.String("comment", comment))
+func (s *Server) sendGitHubComment(repoOwner, repoName string, number int, comment string) {
+	mlog.Debug("Sending GitHub comment", mlog.Int("issue", number), mlog.String("comment", comment))
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, _, err := client.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
 		mlog.Error("Error commenting", mlog.Err(err))
 	}
-	mlog.Info("Finished commenting")
 }
 
 func (s *Server) removeLabel(repoOwner, repoName string, number int, label string) {
