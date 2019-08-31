@@ -187,7 +187,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	buf, _ := ioutil.ReadAll(r.Body)
 
-	pingEvent := PingEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	var pingEvent *github.PingEvent
+	if r.Header.Get("X-GitHub-Event") == "ping" {
+		pingEvent = PingEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	}
+
 	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
@@ -213,8 +217,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if pingEvent != nil && r.Header.Get("X-GitHub-Event") == "ping" {
-		mlog.Info("ping event", mlog.Int64("HookID", *pingEvent.HookID))
+	if pingEvent != nil {
+		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
 		return
 	}
 
