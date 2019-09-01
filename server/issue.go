@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) handleIssueEvent(event *PullRequestEvent) {
-	if event == nil {
+	if event == nil || event.Issue == nil {
 		return
 	}
 	parts := strings.Split(*event.Issue.HTMLURL, "/")
