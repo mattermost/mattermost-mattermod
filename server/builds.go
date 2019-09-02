@@ -3,11 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	jenkins "github.com/cpanato/golang-jenkins"
+	"github.com/heroku/docker-registry-client/registry"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/pkg/errors"
@@ -18,6 +20,7 @@ type Builds struct{}
 
 type buildsInterface interface {
 	getInstallationVersion(pr *model.PullRequest) string
+	dockerRegistryClient(s *Server) (*registry.Registry, error)
 	buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error)
 	waitForBuild(ctx context.Context, s *Server, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error)
 	checkBuildLink(ctx context.Context, s *Server, pr *model.PullRequest) (string, error)
@@ -25,6 +28,25 @@ type buildsInterface interface {
 
 func (b *Builds) getInstallationVersion(pr *model.PullRequest) string {
 	return pr.Sha[0:7]
+}
+
+func (b *Builds) dockerRegistryClient(s *Server) (*registry.Registry, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			return nil, errors.New("panicked while connecting to docker registry", r)
+		}
+	}()
+
+	if _, err := url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
+		return nil, errors.Wrap(err, "invalid url for docker registry")
+	}
+
+	hub, err := registry.New(s.Config.DockerRegistryURL, s.Config.DockerUsername, s.Config.DockerPassword)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to connect to docker registry")
+	}
+
+	return hub, nil
 }
 
 func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
