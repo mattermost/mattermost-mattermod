@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ type Builds struct{}
 type buildsInterface interface {
 	getInstallationVersion(pr *model.PullRequest) string
 	dockerRegistryClient(s *Server) (*registry.Registry, error)
+	waitForImage(ctx context.Context, s *Server, reg *registry.Registry, pr *model.PullRequest) (*model.PullRequest, error)
 	buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error)
 	waitForBuild(ctx context.Context, s *Server, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error)
 	checkBuildLink(ctx context.Context, s *Server, pr *model.PullRequest) (string, error)
@@ -65,6 +67,43 @@ func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Reposito
 	}, credentials.URL)
 
 	return repo, client, nil
+}
+
+func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Registry, pr *model.PullRequest) (*model.PullRequest, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			return pr, errors.New("timed out waiting for image to publish")
+		case <-time.After(30 * time.Second):
+			result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			if result.Err != nil {
+				return pr, errors.Wrap(result.Err, "unable to get updated PR from Mattermod database")
+			}
+
+			// Update the PR in case the build link has changed because of a new commit
+			pr = result.Data.(*model.PullRequest)
+
+			smallHash := pr.Sha[0:7] // first 7-digits
+			image := "mattermost/mattermost-enterprise-edition"
+
+			// fetch all the tags from docker registry
+			tags, err := reg.Tags(image)
+			if err != nil {
+				return pr, errors.Wrap(err, "unable to fetch tags from docker registry")
+			}
+
+			// search tags for the sha of this pr
+			sort.Strings(tags)
+			i := sort.SearchStrings(tags, smallHash)
+			if i == len(tags) {
+				mlog.Info("docker tag for the build not found")
+				continue
+			}
+
+			mlog.Info("docker tag found, image was uploaded")
+			return pr, nil
+		}
+	}
 }
 
 func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error) {
