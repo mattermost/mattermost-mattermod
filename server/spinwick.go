@@ -79,17 +79,17 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 
 	mlog.Info("No SpinWick found for this PR. Creating a new one.")
 
-	_, client, err := s.Builds.buildJenkinsClient(s, pr)
+	reg, err := s.Builds.dockerRegistryClient(s)
 	if err != nil {
-		return request.WithError(errors.Wrap(err, "unable to build Jenkins client")).ShouldReportError()
+		return request.WithError(errors.Wrap(err, "unable to get docker registry client")).ShouldReportError()
 	}
 
-	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+	mlog.Info("Waiting for docker image to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
+	pr, err = s.Builds.waitForImage(ctx, s, reg, pr)
 	if err != nil {
 		return request.WithError(errors.Wrap(err, "error waiting for PR build to finish. Aborting")).IntentionalAbort()
 	}
