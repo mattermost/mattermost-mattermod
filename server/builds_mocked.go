@@ -4,6 +4,7 @@ import (
 	"context"
 
 	jenkins "github.com/cpanato/golang-jenkins"
+	"github.com/heroku/docker-registry-client/registry"
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 
@@ -19,6 +20,10 @@ func (b *MockedBuilds) getInstallationVersion(pr *model.PullRequest) string {
 
 func (b *MockedBuilds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
 	return nil, nil, nil
+}
+
+func (b *MockedBuilds) dockerRegistryClient(s *Server) (*registry.Registry, error) {
+	return nil, nil
 }
 
 func (b *MockedBuilds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error) {
