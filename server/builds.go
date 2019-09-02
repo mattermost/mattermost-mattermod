@@ -30,23 +30,23 @@ func (b *Builds) getInstallationVersion(pr *model.PullRequest) string {
 	return pr.Sha[0:7]
 }
 
-func (b *Builds) dockerRegistryClient(s *Server) (*registry.Registry, error) {
+func (b *Builds) dockerRegistryClient(s *Server) (reg *registry.Registry, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			return nil, errors.New("panicked while connecting to docker registry", r)
+			err = errors.Errorf("panicked while connecting to docker registry: %s", r)
 		}
 	}()
 
-	if _, err := url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
+	if _, err = url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
 		return nil, errors.Wrap(err, "invalid url for docker registry")
 	}
 
-	hub, err := registry.New(s.Config.DockerRegistryURL, s.Config.DockerUsername, s.Config.DockerPassword)
+	reg, err = registry.New(s.Config.DockerRegistryURL, s.Config.DockerUsername, s.Config.DockerPassword)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect to docker registry")
 	}
 
-	return hub, nil
+	return reg, nil
 }
 
 func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
