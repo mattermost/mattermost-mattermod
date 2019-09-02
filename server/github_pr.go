@@ -46,3 +46,13 @@ func IssueCommentFromJson(data io.Reader) *IssueComment {
 
 	return &event
 }
+
+func PingEventFromJson(data io.Reader) *github.PingEvent {
+	decoder := json.NewDecoder(data)
+	var event github.PingEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil
+	}
+
+	return &event
+}
