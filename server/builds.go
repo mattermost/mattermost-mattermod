@@ -33,12 +33,6 @@ func (b *Builds) getInstallationVersion(pr *model.PullRequest) string {
 }
 
 func (b *Builds) dockerRegistryClient(s *Server) (reg *registry.Registry, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.Errorf("panicked while connecting to docker registry: %s", r)
-		}
-	}()
-
 	if _, err = url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
 		return nil, errors.Wrap(err, "invalid url for docker registry")
 	}
