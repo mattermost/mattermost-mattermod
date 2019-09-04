@@ -68,7 +68,7 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 		select {
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for image to publish")
-		case <-time.After(30 * time.Second):
+		case <-time.After(10 * time.Second):
 			result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 			if result.Err != nil {
 				return pr, errors.Wrap(result.Err, "unable to get updated PR from Mattermod database")
