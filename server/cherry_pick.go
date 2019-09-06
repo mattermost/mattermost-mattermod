@@ -114,22 +114,52 @@ func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput 
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
 	newPRURL := gitHubPR.FindString(string(out))
 	newPR := strings.Split(newPRURL, "/")
-	newPRNumber := newPR[len(newPR)-1]
+	newPRNumber, _ := strconv.Atoi(newPR[len(newPR)-1])
+	assignee := s.getAssignee(newPRNumber, pr)
+
 	s.updateCherryPickLabels(newPRNumber, pr)
-	s.addReviewers(newPRNumber, pr)
-	s.addAssignee(newPRNumber, pr)
+	s.addReviewers(newPRNumber, pr, assignee)
+	s.addAssignee(newPRNumber, pr, assignee)
 	returnToMaster(repoFolder)
 	return "", nil
 }
 
-func (s *Server) updateCherryPickLabels(newPR string, pr *model.PullRequest) {
+func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	isContributorOrgMember, err := s.isOrgMember("mattermost", pr.Username)
+	if err != nil {
+		mlog.Error("Error getting org membership for cherry pick PR", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
+		return ""
+	}
+
+	var assignee string
+	if isContributorOrgMember {
+		// He/She can review the PR herself/himself
+		assignee = pr.Username
+	} else {
+		// We have to get a random reviewer from the original PR
+		// Get the reviewers from the cherry pick PR
+		reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		if err != nil {
+			mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+			return ""
+		}
+
+		randonReviewer := rand.Intn(len(reviewersFromPR) - 1)
+		assignee = reviewersFromPR[randonReviewer].User.GetLogin()
+	}
+
+	return assignee
+}
+
+func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	// Add the AutomatedCherryPick/Done in the new pr
-	newPRNumner, _ := strconv.Atoi(newPR)
-	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumner, []string{"AutomatedCherryPick/Done"})
+	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, []string{"AutomatedCherryPick/Done"})
 	if err != nil {
-		mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", newPRNumner), mlog.String("Repo", pr.RepoName))
+		mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
@@ -147,40 +177,35 @@ func (s *Server) updateCherryPickLabels(newPR string, pr *model.PullRequest) {
 	}
 }
 
-func (s *Server) addReviewers(newPR string, pr *model.PullRequest) {
+func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewer string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	newPRNumber, _ := strconv.Atoi(newPR)
-	// Get the reviwers from the cherry pick PR
-	reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
-		return
-	}
-
-	var requestReviewers []string
-	randonReviewer := rand.Intn(len(reviewersFromPR) - 1)
-	requestReviewers = append(requestReviewers, reviewersFromPR[randonReviewer].User.GetLogin())
 
 	reviewReq := github.ReviewersRequest{
-		Reviewers: requestReviewers,
+		Reviewers: []string{reviewer},
 	}
-	_, _, err = client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
+	_, _, err := client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
 	if err != nil {
 		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
 	}
 }
 
-func (s *Server) addAssignee(newPR string, pr *model.PullRequest) {
+func (s *Server) addAssignee(newPRNumber int, pr *model.PullRequest, assignee string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	newPRNumber, _ := strconv.Atoi(newPR)
 
-	assignee := []string{pr.Username}
-	_, _, err := client.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignee)
+	assignees := []string{assignee}
+	_, _, err := client.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignees)
 	if err != nil {
 		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
 	}
+}
+
+func (s *Server) isOrgMember(org, user string) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	isOrgMember, _, err := client.Organizations.IsMember(context.Background(), org, user)
+	return isOrgMember, err
 }
 
 func returnToMaster(dir string) {
