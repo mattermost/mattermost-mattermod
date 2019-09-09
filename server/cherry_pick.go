@@ -125,16 +125,16 @@ func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput 
 func (s *Server) updateCherryPickLabels(newPR string, pr *model.PullRequest) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	// Add the AutomatedCherryPick/Done in the new pr
+	// Add the AutomatedCherryPick in the new pr
 	newPRNumner, _ := strconv.Atoi(newPR)
-	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumner, []string{"AutomatedCherryPick/Done"})
+	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumner, []string{"AutomatedCherryPick"})
 	if err != nil {
 		mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", newPRNumner), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
-	// remove the CherryPick/Approved and add the AutomatedCherryPick/Done
-	_, _, err = client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"AutomatedCherryPick/Done"})
+	// remove the CherryPick/Approved and add the CherryPick/Done
+	_, _, err = client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"CherryPick/Done"})
 	if err != nil {
 		mlog.Error("Error applying the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
