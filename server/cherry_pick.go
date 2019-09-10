@@ -118,8 +118,8 @@ func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput 
 	assignee := s.getAssignee(newPRNumber, pr)
 
 	s.updateCherryPickLabels(newPRNumber, pr)
-	s.addReviewers(newPRNumber, pr, assignee)
-	s.addAssignee(newPRNumber, pr, assignee)
+	s.addReviewers(newPRNumber, pr, []string{assignee})
+	s.addAssignee(newPRNumber, pr, []string{assignee})
 	returnToMaster(repoFolder)
 	return "", nil
 }
@@ -177,11 +177,11 @@ func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) 
 	}
 }
 
-func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewer string) {
+func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewers []string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	reviewReq := github.ReviewersRequest{
-		Reviewers: []string{reviewer},
+		Reviewers: reviewers,
 	}
 	_, _, err := client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
 	if err != nil {
@@ -190,10 +190,9 @@ func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewer s
 	}
 }
 
-func (s *Server) addAssignee(newPRNumber int, pr *model.PullRequest, assignee string) {
+func (s *Server) addAssignee(newPRNumber int, pr *model.PullRequest, assignees []string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	assignees := []string{assignee}
 	_, _, err := client.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignees)
 	if err != nil {
 		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
