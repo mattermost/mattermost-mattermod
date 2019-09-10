@@ -91,6 +91,10 @@ type ServerConfig struct {
 
 	JenkinsCredentials map[string]*JenkinsCredentials
 
+	DockerRegistryURL string
+	DockerUsername    string
+	DockerPassword    string
+
 	AWSCredentials struct {
 		Id     string
 		Secret string
