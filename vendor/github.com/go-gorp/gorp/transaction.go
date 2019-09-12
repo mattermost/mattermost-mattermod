@@ -12,7 +12,6 @@
 package gorp
 
 import (
-	"context"
 	"database/sql"
 	"time"
 )
@@ -22,17 +21,9 @@ import (
 // of that transaction.  Transactions should be terminated with
 // a call to Commit() or Rollback()
 type Transaction struct {
-	ctx    context.Context
 	dbmap  *DbMap
 	tx     *sql.Tx
 	closed bool
-}
-
-func (t *Transaction) WithContext(ctx context.Context) SqlExecutor {
-	copy := &Transaction{}
-	*copy = *t
-	copy.ctx = ctx
-	return copy
 }
 
 // Insert has the same behavior as DbMap.Insert(), but runs in a transaction.
@@ -146,7 +137,7 @@ func (t *Transaction) Savepoint(name string) error {
 		now := time.Now()
 		defer t.dbmap.trace(now, query, nil)
 	}
-	_, err := exec(t, query)
+	_, err := t.tx.Exec(query)
 	return err
 }
 
@@ -159,7 +150,7 @@ func (t *Transaction) RollbackToSavepoint(savepoint string) error {
 		now := time.Now()
 		defer t.dbmap.trace(now, query, nil)
 	}
-	_, err := exec(t, query)
+	_, err := t.tx.Exec(query)
 	return err
 }
 
@@ -172,7 +163,7 @@ func (t *Transaction) ReleaseSavepoint(savepoint string) error {
 		now := time.Now()
 		defer t.dbmap.trace(now, query, nil)
 	}
-	_, err := exec(t, query)
+	_, err := t.tx.Exec(query)
 	return err
 }
 
@@ -182,7 +173,7 @@ func (t *Transaction) Prepare(query string) (*sql.Stmt, error) {
 		now := time.Now()
 		defer t.dbmap.trace(now, query, nil)
 	}
-	return prepare(t, query)
+	return t.tx.Prepare(query)
 }
 
 func (t *Transaction) QueryRow(query string, args ...interface{}) *sql.Row {
@@ -190,13 +181,13 @@ func (t *Transaction) QueryRow(query string, args ...interface{}) *sql.Row {
 		now := time.Now()
 		defer t.dbmap.trace(now, query, args...)
 	}
-	return queryRow(t, query, args...)
+	return t.tx.QueryRow(query, args...)
 }
 
-func (t *Transaction) Query(q string, args ...interface{}) (*sql.Rows, error) {
+func (t *Transaction) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if t.dbmap.logger != nil {
 		now := time.Now()
-		defer t.dbmap.trace(now, q, args...)
+		defer t.dbmap.trace(now, query, args...)
 	}
-	return query(t, q, args...)
+	return t.tx.Query(query, args...)
 }

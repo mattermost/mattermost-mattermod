@@ -13,12 +13,10 @@ package gorp
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -35,8 +33,6 @@ import (
 //     dbmap := &gorp.DbMap{Db: db, Dialect: dialect}
 //
 type DbMap struct {
-	ctx context.Context
-
 	// Db handle to use with this map
 	Db *sql.DB
 
@@ -73,14 +69,8 @@ func (m *DbMap) dynamicTableMap() map[string]*TableMap {
 	return m.tablesDynamic
 }
 
-func (m *DbMap) WithContext(ctx context.Context) SqlExecutor {
-	copy := &DbMap{}
-	*copy = *m
-	copy.ctx = ctx
-	return copy
-}
-
 func (m *DbMap) CreateIndex() error {
+
 	var err error
 	dialect := reflect.TypeOf(m.Dialect)
 	for _, table := range m.tables {
@@ -324,9 +314,6 @@ func (m *DbMap) readStructColumns(t reflect.Type) (cols []*ColumnMap, primaryKey
 				}
 			}
 			if typer, ok := value.(SqlTyper); ok {
-				gotype = reflect.TypeOf(typer.SqlType())
-			} else if typer, ok := value.(legacySqlTyper); ok {
-				log.Printf("Deprecation Warning: update your SqlType methods to return a driver.Value")
 				gotype = reflect.TypeOf(typer.SqlType())
 			} else if valuer, ok := value.(driver.Valuer); ok {
 				// Only check for driver.Valuer if SqlTyper wasn't
@@ -615,7 +602,7 @@ func (m *DbMap) Exec(query string, args ...interface{}) (sql.Result, error) {
 		now := time.Now()
 		defer m.trace(now, query, args...)
 	}
-	return maybeExpandNamedQueryAndExec(m, query, args...)
+	return exec(m, query, args...)
 }
 
 // SelectInt is a convenience wrapper around the gorp.SelectInt function
@@ -659,15 +646,11 @@ func (m *DbMap) Begin() (*Transaction, error) {
 		now := time.Now()
 		defer m.trace(now, "begin;")
 	}
-	tx, err := begin(m)
+	tx, err := m.Db.Begin()
 	if err != nil {
 		return nil, err
 	}
-	return &Transaction{
-		dbmap:  m,
-		tx:     tx,
-		closed: false,
-	}, nil
+	return &Transaction{m, tx, false}, nil
 }
 
 // TableFor returns the *TableMap corresponding to the given Go Type
@@ -715,7 +698,7 @@ func (m *DbMap) Prepare(query string) (*sql.Stmt, error) {
 		now := time.Now()
 		defer m.trace(now, query, nil)
 	}
-	return prepare(m, query)
+	return m.Db.Prepare(query)
 }
 
 func tableOrNil(m *DbMap, t reflect.Type, name string) *TableMap {
@@ -768,15 +751,15 @@ func (m *DbMap) QueryRow(query string, args ...interface{}) *sql.Row {
 		now := time.Now()
 		defer m.trace(now, query, args...)
 	}
-	return queryRow(m, query, args...)
+	return m.Db.QueryRow(query, args...)
 }
 
-func (m *DbMap) Query(q string, args ...interface{}) (*sql.Rows, error) {
+func (m *DbMap) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	if m.logger != nil {
 		now := time.Now()
-		defer m.trace(now, q, args...)
+		defer m.trace(now, query, args...)
 	}
-	return query(m, q, args...)
+	return m.Db.Query(query, args...)
 }
 
 func (m *DbMap) trace(started time.Time, query string, args ...interface{}) {
