@@ -6,7 +6,7 @@ import (
 
 	"github.com/mattermost/mattermost-server/mlog"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 )
 
 func (s *Server) handleAutoassign(eventIssueComment IssueComment) {

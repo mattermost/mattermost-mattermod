@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/mlog"
 	"golang.org/x/oauth2"

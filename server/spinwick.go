@@ -16,7 +16,7 @@ import (
 
 	"time"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 	cloudModel "github.com/mattermost/mattermost-cloud/model"
 	"github.com/mattermost/mattermost-mattermod/internal/cloudtools"
 	"github.com/mattermost/mattermost-mattermod/internal/spinwick"

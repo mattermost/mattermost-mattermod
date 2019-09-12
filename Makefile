@@ -48,8 +48,8 @@ gofmt:
 .PHONY: govet
 govet:
 	@echo Running govet
-	$(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet $(PACKAGES)  || exit 1
+	env GO111MODULE=off $(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
+	$(GO) vet $(PACKAGES) || exit 1
 	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
 	@echo Govet success
 

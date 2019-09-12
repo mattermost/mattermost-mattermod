@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/pkg/errors"
-	"gopkg.in/robfig/cron.v3"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
