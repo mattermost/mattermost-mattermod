@@ -157,7 +157,8 @@ func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) 
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
 	// Add the AutomatedCherryPick/Done in the new pr
-	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, []string{"AutomatedCherryPick"})
+	labelsNewPR := []string{"AutomatedCherryPick", "Changelog/Not Needed", "Docs/Not Needed"}
+	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, labelsNewPR)
 	if err != nil {
 		mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
