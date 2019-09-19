@@ -41,7 +41,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	cmdOut, err := s.doCherryPick(args[1], pr)
+	cmdOut, err := s.doCherryPick(args[1], nil, pr)
 	if err != nil {
 		mlog.Error("Error doing the cherry pick", mlog.Err(err))
 		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
@@ -70,6 +70,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		return
 	}
 
+	milestoneNumber := prMilestone.GetNumber()
 	milestone := strings.TrimSpace(prMilestone.GetTitle())
 	milestone = strings.Trim(milestone, "v")
 	milestone = fmt.Sprintf("release-%s", strings.Trim(milestone, ".0"))
@@ -82,7 +83,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			cmdOut, err := s.doCherryPick(milestone, pr)
+			cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
 				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
@@ -93,7 +94,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	}
 }
 
-func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput string, err error) {
+func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.PullRequest) (cmdOutput string, err error) {
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
 	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
 	cmd := exec.Command("/home/ubuntu/git/devops/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number))
@@ -117,6 +118,9 @@ func (s *Server) doCherryPick(version string, pr *model.PullRequest) (cmdOutput 
 	newPRNumber, _ := strconv.Atoi(newPR[len(newPR)-1])
 	assignee := s.getAssignee(newPRNumber, pr)
 
+	if milestoneNumber != nil {
+		s.addMilestone(newPRNumber, pr, milestoneNumber)
+	}
 	s.updateCherryPickLabels(newPRNumber, pr)
 	s.addReviewers(newPRNumber, pr, []string{assignee})
 	s.addAssignee(newPRNumber, pr, []string{assignee})
@@ -175,6 +179,19 @@ func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) 
 	if err != nil {
 		mlog.Error("Error removing the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
+	}
+}
+
+func (s *Server) addMilestone(newPRNumber int, pr *model.PullRequest, milestoneNumber *int) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	// Add the milestone to the new PR
+	request := &github.IssueRequest{
+		Milestone: milestoneNumber,
+	}
+	_, _, err := client.Issues.Edit(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, request)
+	if err != nil {
+		mlog.Error("Error applying the milestone in the new pr", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 	}
 }
 
