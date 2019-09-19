@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/braintree/manners"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v28/github"
 	"github.com/gorilla/mux"
 	cloudModel "github.com/mattermost/mattermost-cloud/model"
 	"github.com/mattermost/mattermost-mattermod/model"

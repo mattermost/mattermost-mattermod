@@ -3,7 +3,6 @@ jobs:
   lint:
     docker:
       - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/mattermost/mattermost-mattermod
     steps:
       - checkout
       - run: make check-style
@@ -11,7 +10,6 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/mattermost/mattermost-mattermod
     steps:
       - checkout
       - run: make build
@@ -19,7 +17,6 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.12
-    working_directory: /go/src/github.com/mattermost/mattermost-mattermod
     steps:
       - checkout
       - run: make test

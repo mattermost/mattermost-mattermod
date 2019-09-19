@@ -169,9 +169,6 @@ func selectVal(e SqlExecutor, holder interface{}, query string, args ...interfac
 	defer rows.Close()
 
 	if !rows.Next() {
-		if err := rows.Err(); err != nil {
-			return err
-		}
 		return sql.ErrNoRows
 	}
 

@@ -15,12 +15,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 )
 
 type PostgresDialect struct {
-	suffix          string
-	LowercaseFields bool
+	suffix string
 }
 
 func (d PostgresDialect) QuerySuffix() string { return ";" }
@@ -100,10 +98,6 @@ func (d PostgresDialect) TruncateClause() string {
 	return "truncate"
 }
 
-func (d PostgresDialect) SleepClause(s time.Duration) string {
-	return fmt.Sprintf("pg_sleep(%f)", s.Seconds())
-}
-
 // Returns "$(i+1)"
 func (d PostgresDialect) BindVar(i int) string {
 	return fmt.Sprintf("$%d", i+1)
@@ -129,9 +123,6 @@ func (d PostgresDialect) InsertAutoIncrToTarget(exec SqlExecutor, insertSql stri
 }
 
 func (d PostgresDialect) QuoteField(f string) string {
-	if d.LowercaseFields {
-		return `"` + strings.ToLower(f) + `"`
-	}
 	return `"` + f + `"`
 }
 

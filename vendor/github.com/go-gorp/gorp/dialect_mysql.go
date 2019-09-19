@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
 )
 
 // Implementation of Dialect for MySQL databases.
@@ -126,20 +125,16 @@ func (d MySQLDialect) CreateTableSuffix() string {
 	return fmt.Sprintf(" engine=%s charset=%s", d.Engine, d.Encoding)
 }
 
-func (d MySQLDialect) CreateIndexSuffix() string {
+func (m MySQLDialect) CreateIndexSuffix() string {
 	return "using"
 }
 
-func (d MySQLDialect) DropIndexSuffix() string {
+func (m MySQLDialect) DropIndexSuffix() string {
 	return "on"
 }
 
-func (d MySQLDialect) TruncateClause() string {
+func (m MySQLDialect) TruncateClause() string {
 	return "truncate"
-}
-
-func (d MySQLDialect) SleepClause(s time.Duration) string {
-	return fmt.Sprintf("sleep(%f)", s.Seconds())
 }
 
 // Returns "?"
