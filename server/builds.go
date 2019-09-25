@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -77,7 +76,7 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 			// Update the PR in case the build link has changed because of a new commit
 			pr = result.Data.(*model.PullRequest)
 
-			smallHash := pr.Sha[0:7] // first 7-digits
+			desiredTag := b.getInstallationVersion(pr)
 			image := "mattermost/mattermost-enterprise-edition"
 
 			// fetch all the tags from docker registry
@@ -87,15 +86,14 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 			}
 
 			// search tags for the sha of this pr
-			sort.Strings(tags)
-			i := sort.SearchStrings(tags, smallHash)
-			if i == len(tags) {
-				mlog.Info("docker tag for the build not found")
-				continue
+			for _, tag := range tags {
+				if tag == desiredTag {
+					mlog.Info("docker tag found, image was uploaded", mlog.String("image", image), mlog.String("tag", desiredTag))
+					return pr, nil
+				}
 			}
 
-			mlog.Info("docker tag found, image was uploaded")
-			return pr, nil
+			mlog.Info("docker tag for the build not found. waiting a bit more....", mlog.String("image", image), mlog.String("tag", desiredTag))
 		}
 	}
 }
