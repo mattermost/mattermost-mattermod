@@ -204,13 +204,6 @@ func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
-	if err != nil {
-		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
-		return
-	}
-
 	//Job that will build the apps for a PR
 	jobName := fmt.Sprintf("mm/job/%s", repo.JobName)
 	job, err := client.GetJob(jobName)

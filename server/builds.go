@@ -150,10 +150,6 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						jobName = parts[len(parts)-6]     //mattermost-server
 						subJobName := parts[len(parts)-4] //PR-XXXX
 						jobName = "mp/job/" + jobName + "/job/" + subJobName
-					case "mattermost-mobile":
-						jobNumber, _ = strconv.ParseInt(parts[len(parts)-2], 10, 32)
-						jobName = parts[len(parts)-3] //mattermost-mobile
-						jobName = "mm/job/" + jobName
 					default:
 						return pr, fmt.Errorf("unsupported repository %s", pr.RepoName)
 					}
