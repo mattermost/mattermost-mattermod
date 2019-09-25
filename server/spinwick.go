@@ -190,7 +190,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 	} else {
 		s.removeCommentsWithSpecificMessages(comments, serverNewCommitMessages, pr)
 	}
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade if the updated docker image is available.")
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick will upgrade if the updated docker image is available.")
 
 	reg, err := s.Builds.dockerRegistryClient(s)
 	if err != nil {
