@@ -91,7 +91,7 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 
 	pr, err = s.Builds.waitForImage(ctx, s, reg, pr)
 	if err != nil {
-		return request.WithError(errors.Wrap(err, "error waiting for PR build to finish. Aborting")).IntentionalAbort()
+		return request.WithError(errors.Wrap(err, "error waiting for the docker image. Aborting")).IntentionalAbort()
 	}
 
 	mlog.Info("Provisioning Server - Installation request")
@@ -180,18 +180,6 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 	mlog.Info("Sleeping a bit to wait for the build process to start", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
 	time.Sleep(60 * time.Second)
 
-	wait := 480
-	mlog.Info("Waiting to get the up-to-date build link", mlog.Int("wait_seconds", wait))
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
-	defer cancel()
-
-	// need to do this workaroud here because when push a new commit the build link
-	// is not updated and can be blank for some time
-	buildLink, err := s.Builds.checkBuildLink(ctx, s, pr)
-	if err != nil || buildLink == "" {
-		return request.WithError(errors.Wrap(err, "error waiting for build link")).ShouldReportError()
-	}
-
 	// Remove old message to reduce the amount of similar messages and avoid confusion
 	serverNewCommitMessages := []string{
 		"New commit detected.",
@@ -202,21 +190,21 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 	} else {
 		s.removeCommentsWithSpecificMessages(comments, serverNewCommitMessages, pr)
 	}
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade will occur after the build is successful.")
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "New commit detected. SpinWick upgrade if the updated docker image is available.")
 
-	_, client, err := s.Builds.buildJenkinsClient(s, pr)
+	reg, err := s.Builds.dockerRegistryClient(s)
 	if err != nil {
-		return request.WithError(errors.Wrap(err, "unable to build Jenkins client")).ShouldReportError()
+		return request.WithError(errors.Wrap(err, "unable to get docker registry client")).ShouldReportError()
 	}
 
-	mlog.Info("Waiting for build to finish to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+	mlog.Info("Waiting for docker image to update SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ctx, cancel = context.WithTimeout(context.Background(), 45*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
 
-	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
+	pr, err = s.Builds.waitForImage(ctx, s, reg, pr)
 	if err != nil {
-		return request.WithError(errors.Wrap(err, "error waiting for PR build to finish. Aborting")).IntentionalAbort()
+		return request.WithError(errors.Wrap(err, "error waiting for the docker image. Aborting")).IntentionalAbort()
 	}
 
 	upgradeRequest := &cloudModel.UpgradeInstallationRequest{
@@ -245,6 +233,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 		return request.WithError(errors.Wrap(err, "unable to make upgrade request to provisioning server")).ShouldReportError()
 	}
 
+	wait := 600
 	mlog.Info("Waiting for mattermost installation to become stable", mlog.Int("wait_seconds", wait))
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
