@@ -40,6 +40,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			default:
 				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
 			}
+		} else if *event.Label.Name == s.Config.BuildMobileAppTag {
+			mlog.Info("Label to build the mobile app")
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
+			go s.waitForMobileAppsBuild(pr)
 		}
 	case "unlabeled":
 		if event.Label == nil {
@@ -212,14 +216,10 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		mlog.Info("Label to spin a test server for upgrade")
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
 		go s.waitForBuildAndSetupSpinmint(pr, true)
-	} else if addedLabel == s.Config.BuildMobileAppTag && !messageByUserContains(comments, s.Config.Username, s.Config.BuildMobileAppInitMessage) {
-		mlog.Info("Label to build the mobile app")
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
-		go s.waitForMobileAppsBuild(pr)
-	} else if addedLabel == s.Config.StartLoadtestTag {
-		mlog.Info("Label to spin a load test")
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
-		go waitForBuildAndSetupLoadtest(pr)
+		// } else if addedLabel == s.Config.StartLoadtestTag {
+		// 	mlog.Info("Label to spin a load test")
+		// 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
+		// 	go waitForBuildAndSetupLoadtest(pr)
 	} else {
 		mlog.Info("looking for other labels")
 
