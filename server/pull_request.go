@@ -23,6 +23,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	}
 
 	switch event.Action {
+	case "opened":
+		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		s.checkCLA(pr)
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
@@ -103,7 +106,6 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 			mlog.Error(resultSave.Err.Error())
 		}
 
-		s.handlePROpened(pr)
 		for _, label := range pr.Labels {
 			s.handlePRLabeled(pr, label)
 		}
@@ -177,10 +179,6 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 			return
 		}
 	}
-}
-
-func (s *Server) handlePROpened(pr *model.PullRequest) {
-	s.checkCLA(pr)
 }
 
 func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
