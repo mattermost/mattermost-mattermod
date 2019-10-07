@@ -30,7 +30,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	}
 	// if builds are 0 means no build ran for master and most problaby this is not setup, so skipping.
 	if len(builds) == 0 {
-		fmt.Println("looks like there is not circleci setup or master never ran. Skipping")
+		mlog.Debug("looks like there is not circleci setup or master never ran. Skipping")
 		return
 	}
 
