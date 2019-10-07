@@ -26,9 +26,11 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
+		s.triggerCircleCiIfNeeded(pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
+		s.triggerCircleCiIfNeeded(pr)
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
@@ -63,6 +65,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
+		s.triggerCircleCiIfNeeded(pr)
 		if s.isSpinWickLabelInLabels(pr.Labels) {
 			mlog.Info("PR has a SpinWick label, starting upgrade", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 			if s.isSpinWickHALabel(pr.Labels) {

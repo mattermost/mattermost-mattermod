@@ -22,6 +22,7 @@ func NewSqlPullRequestStore(sqlStore *SqlStore) PullRequestStore {
 		table.ColMap("RepoOwner").SetMaxSize(128)
 		table.ColMap("RepoName").SetMaxSize(128)
 		table.ColMap("Username").SetMaxSize(128)
+		table.ColMap("FullName").SetMaxSize(2083)
 		table.ColMap("Ref").SetMaxSize(128)
 		table.ColMap("Sha").SetMaxSize(48)
 		table.ColMap("State").SetMaxSize(8)
@@ -42,6 +43,7 @@ func (s SqlPullRequestStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("PullRequests", "BuildStatus", "varchar(20)", "varchar(20)", "")
 	s.CreateColumnIfNotExists("PullRequests", "BuildConclusion", "varchar(20)", "varchar(20)", "")
 	s.CreateColumnIfNotExists("PullRequests", "URL", "varchar(20)", "varchar(2083)", "")
+	s.CreateColumnIfNotExists("PullRequests", "FullName", "varchar(2083)", "varchar(2083)", "")
 }
 
 func (s SqlPullRequestStore) Save(pr *model.PullRequest) StoreChannel {

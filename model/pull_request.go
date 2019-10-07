@@ -16,6 +16,7 @@ const (
 type PullRequest struct {
 	RepoOwner       string
 	RepoName        string
+	FullName        string
 	Number          int
 	Username        string
 	Ref             string
