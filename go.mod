@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/aws/aws-sdk-go v1.23.2
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
+	github.com/cpanato/go-circleci v0.3.1-0.20191007122438-7eb36e67d0f1
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/go-gorp/gorp v2.0.0+incompatible
