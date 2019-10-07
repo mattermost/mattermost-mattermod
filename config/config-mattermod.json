@@ -4,6 +4,7 @@
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
     "Username": "",
+    "CircleCIToken": "",
 
     "DriverName": "mysql",
     "DataSource": "",

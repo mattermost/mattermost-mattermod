@@ -44,7 +44,7 @@ type ServerConfig struct {
 	Username                    string
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
-	CircleCiToken               string
+	CircleCIToken               string
 
 	TickRateMinutes        int
 	SpinmintExpirationHour int

@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
-	client := &circleci.Client{Token: s.Config.CircleCiToken}
+	client := &circleci.Client{Token: s.Config.CircleCIToken}
 
 	if strings.Contains(pr.FullName, "mattermost/") {
 		// It is from upstream mattermost repo dont need to trigger the circleci because org members
