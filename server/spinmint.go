@@ -86,7 +86,7 @@ import (
 // 	// Wait for the cluster restart after deploy
 // 	time.Sleep(time.Minute)
 
-// 	LogInfo("Runing loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
+// 	LogInfo("Running loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
 // 	if err := cluster.Loadtest(results); err != nil {
 // 		LogError("Unable to loadtest cluster: " + err.Error())
 // 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")

@@ -23,7 +23,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	}
 
 	// Checking if the repo have circleci setup
-	builds, err := client.ListRecentBuildsForProject("mattermost", "mattermost-selenium", "master", "", 5, 0)
+	builds, err := client.ListRecentBuildsForProject(pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
 		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
 		return
