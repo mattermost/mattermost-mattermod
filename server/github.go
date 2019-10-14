@@ -23,7 +23,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 	pr := &model.PullRequest{
 		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
 		RepoName:  *pullRequest.Base.Repo.Name,
-		FullName:  *pullRequest.Base.Repo.FullName,
+		FullName:  *pullRequest.Head.Repo.FullName,
 		Number:    *pullRequest.Number,
 		Username:  *pullRequest.User.Login,
 		Ref:       *pullRequest.Head.Ref,
