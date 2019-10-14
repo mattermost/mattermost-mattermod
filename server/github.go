@@ -23,13 +23,17 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 	pr := &model.PullRequest{
 		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
 		RepoName:  *pullRequest.Base.Repo.Name,
-		FullName:  *pullRequest.Head.Repo.FullName,
 		Number:    *pullRequest.Number,
 		Username:  *pullRequest.User.Login,
+		FullName:  "",
 		Ref:       *pullRequest.Head.Ref,
 		Sha:       *pullRequest.Head.SHA,
 		State:     *pullRequest.State,
 		URL:       *pullRequest.URL,
+	}
+
+	if pullRequest.Head.Repo != nil {
+		pr.FullName = *pullRequest.Head.Repo.FullName
 	}
 
 	client := NewGithubClient(s.Config.GithubAccessToken)
