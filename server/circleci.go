@@ -44,7 +44,8 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 
 	err = client.BuildByProject("github", pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
-		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
+		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+		return
 	}
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
