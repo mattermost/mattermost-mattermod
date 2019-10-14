@@ -66,8 +66,8 @@ github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7/go.mod h1:F5haX7
 github.com/coreos/go-systemd v0.0.0-20181012123002-c6f51f82210d/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/corpix/uarand v0.1.0/go.mod h1:SFKZvkcRoLqVRFZ4u25xPmp6m9ktANfbpXZ7SJ0/FNU=
-github.com/cpanato/go-circleci v0.3.1-0.20191007122438-7eb36e67d0f1 h1:2el3ri7lrBnG971BWkIh6x69O46PtJUu9GcadcYcJjM=
-github.com/cpanato/go-circleci v0.3.1-0.20191007122438-7eb36e67d0f1/go.mod h1:hWXsPeLT+IR9aac18H4fB4bNx5gf3jAkF197p5Z5/5o=
+github.com/cpanato/go-circleci v0.3.1-0.20191014144427-0c2173fc5c76 h1:oPsA4Voml7JqpEc7LyVL403uTGnvjIygm1tQjyg/0yQ=
+github.com/cpanato/go-circleci v0.3.1-0.20191014144427-0c2173fc5c76/go.mod h1:hWXsPeLT+IR9aac18H4fB4bNx5gf3jAkF197p5Z5/5o=
 github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d h1:lpvxq98+CdzxA1j7PntYAN7nNXjgypmuKAFv1gHewaw=
 github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d/go.mod h1:vlKFkXzX7tHVygN5u1ZI7HLD0wlzfCeYaWnbOfFmvfQ=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=

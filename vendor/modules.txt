@@ -38,7 +38,7 @@ github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
 github.com/blang/semver
 # github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
 github.com/braintree/manners
-# github.com/cpanato/go-circleci v0.3.1-0.20191007122438-7eb36e67d0f1
+# github.com/cpanato/go-circleci v0.3.1-0.20191014144427-0c2173fc5c76
 github.com/cpanato/go-circleci
 # github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 github.com/cpanato/golang-jenkins
