@@ -128,7 +128,6 @@ func (s *Server) Tick() {
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
-			mlog.Info("Processing PRs")
 			pullRequest, errPR := s.GetPullRequestFromGithub(ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))

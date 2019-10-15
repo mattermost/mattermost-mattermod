@@ -502,7 +502,8 @@ func (s *Server) initializeMattermostTestServer(mmURL string, prNumber int) erro
 	config.TeamSettings.ExperimentalViewArchivedChannels = NewBool(true)
 	config.PluginSettings.EnableUploads = NewBool(true)
 	config.ServiceSettings.EnableTesting = NewBool(true)
-	config.ServiceSettings.ExperimentalLdapGroupSync = NewBool(true)
+	// removed in 5.16
+	//config.ServiceSettings.ExperimentalLdapGroupSync = NewBool(true)
 	config.ServiceSettings.EnableDeveloper = NewBool(true)
 	config.LogSettings.FileLevel = NewString("INFO")
 	config.EmailSettings.FeedbackName = NewString("SpinWick Feedback")

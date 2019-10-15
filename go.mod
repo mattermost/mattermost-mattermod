@@ -14,22 +14,17 @@ require (
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
-	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/mattermost-cloud v0.4.0
 	github.com/mattermost/mattermost-operator v0.5.2 // indirect
-	github.com/mattermost/mattermost-server v0.0.0-20190815184412-135acbb0b001
+	github.com/mattermost/mattermost-server v0.0.0-20191015091631-441777a4e7b0
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/stretchr/testify v1.4.0
-	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7 // indirect
-	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20190911201528-7ad0cfa0b7b5 // indirect
-	google.golang.org/appengine v1.6.2 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	k8s.io/api v0.0.0-20190814101207-0772a1bdf941 // indirect
 )
