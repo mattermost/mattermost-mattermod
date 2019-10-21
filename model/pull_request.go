@@ -6,6 +6,7 @@ package model
 import (
 	"encoding/json"
 	"io"
+	"time"
 )
 
 const (
@@ -27,6 +28,7 @@ type PullRequest struct {
 	BuildConclusion string
 	BuildLink       string
 	URL             string
+	CreatedAt       time.Time
 }
 
 func (o *PullRequest) ToJson() (string, error) {

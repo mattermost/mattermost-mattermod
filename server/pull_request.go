@@ -27,6 +27,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
+		s.addHacktoberfestLabel(pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)

@@ -30,6 +30,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 		Sha:       *pullRequest.Head.SHA,
 		State:     *pullRequest.State,
 		URL:       *pullRequest.URL,
+		CreatedAt: pullRequest.GetCreatedAt(),
 	}
 
 	if pullRequest.Head.Repo != nil {
