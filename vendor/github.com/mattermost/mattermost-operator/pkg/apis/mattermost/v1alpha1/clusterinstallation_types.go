@@ -51,6 +51,13 @@ type ClusterInstallationSpec struct {
 	Minio Minio `json:"minio,omitempty"`
 
 	Database Database `json:"database,omitempty"`
+
+	// +optional
+	BlueGreen BlueGreen `json:"blueGreen,omitempty"`
+
+	// +optional
+	Canary Canary `json:"canary,omitempty"`
+
 	// +optional
 	ElasticSearch ElasticSearch `json:"elasticSearch,omitempty"`
 
@@ -62,6 +69,51 @@ type ClusterInstallationSpec struct {
 
 	// +optional
 	IngressAnnotations map[string]string `json:"ingressAnnotations,omitempty"`
+}
+
+// Canary defines the configuration of Canary deployment for a ClusterInstallation
+type Canary struct {
+	// Enable defines if a canary build will be deployed.
+	// +optional
+	Enable bool `json:"enable,omitempty"`
+	// Deployment defines the canary deployment.
+	// +optional
+	Deployment AppDeployment `json:"deployment,omitempty"`
+}
+
+// BlueGreen defines the configuration of BlueGreen deployment for a ClusterInstallation
+type BlueGreen struct {
+	// ProductionDeployment defines if the current production is blue or green.
+	// +optional
+	ProductionDeployment string `json:"productionDeployment,omitempty"`
+	// Enable defines if BlueGreen deployment will be applied.
+	// +optional
+	Enable bool `json:"enable,omitempty"`
+	// Blue defines the blue deployment.
+	// +optional
+	Blue AppDeployment `json:"blue,omitempty"`
+	// Green defines the green deployment.
+	// +optional
+	Green AppDeployment `json:"green,omitempty"`
+}
+
+// AppDeployment defines the configuration of deployment for a ClusterInstallation.
+type AppDeployment struct {
+	// Name defines the name of the deployment
+	// +optional
+	Name string `json:"name,omitempty"`
+	// IngressName defines the ingress name that will be used by the deployment.
+	// This option is not used for Canary builds.
+	// +optional
+	IngressName string `json:"ingressName,omitempty"`
+	// Image defines the base Docker image that will be used for the deployment.
+	// Required when BlueGreen or Canary is enabled.
+	// +optional
+	Image string `json:"image,omitempty"`
+	// Version defines the Docker image version that will be used for the deployment.
+	// Required when BlueGreen or Canary is enabled.
+	// +optional
+	Version string `json:"version,omitempty"`
 }
 
 // Minio defines the configuration of Minio for a ClusterInstallation.
@@ -81,6 +133,17 @@ type Minio struct {
 	// Defines the resource requests and limits for the Minio pods.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Set to use an external MinIO deployment or S3. Must also set 'Secret' and 'ExternalBucket'.
+	// +optional
+	ExternalURL string `json:"externalURL,omitempty"`
+	// Set to the bucket name of your external MinIO or S3.
+	// +optional
+	ExternalBucket string `json:"externalBucket,omitempty"`
+	// Optionally enter the name of already existing secret.
+	// Secret should have two values: "accesskey" and "secretkey".
+	// Required when "ExternalURL" is set.
+	// +optional
+	Secret string `json:"secret,omitempty"`
 }
 
 // Database defines the database configuration for a ClusterInstallation.
@@ -102,6 +165,22 @@ type Database struct {
 	// Defines the resource requests and limits for the database pods.
 	// +optional
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	// Defines the AWS S3 bucket where the Database Backup is stored.
+	// The operator will download the file to restore the data.
+	// +optional
+	InitBucketURL string `json:"initBucketURL,omitempty"`
+	// Defines the interval for backups in cron expression format.
+	// +optional
+	BackupSchedule string `json:"backupSchedule,omitempty"`
+	// Defines the object storage url for uploading backups.
+	// +optional
+	BackupURL string `json:"backupURL,omitempty"`
+	// Defines the backup retention policy.
+	// +optional
+	BackupRemoteDeletePolicy string `json:"backupRemoteDeletePolicy,omitempty"`
+	// Defines the secret to be used for uploading/restoring backup.
+	// +optional
+	BackupRestoreSecretName string `json:"backupRestoreSecretName,omitempty"`
 }
 
 // ElasticSearch defines the ElasticSearch configuration for a ClusterInstallation.
