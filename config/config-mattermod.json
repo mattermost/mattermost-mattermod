@@ -35,6 +35,7 @@
     "SetupSpinWickHA": "",
     "SpinWickHALicense": "",
     "ProvisionerServer": "",
+    "AwsAPIKey": "",
     "DNSNameTestServer": "",
     "AWSEmailAccessKey": "",
     "AWSEmailSecretKey": "",

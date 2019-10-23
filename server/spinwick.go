@@ -68,7 +68,7 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 		Aborted:        false,
 	}
 	ownerID := makeSpinWickID(pr.RepoName, pr.Number)
-	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, ownerID)
+	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, s.Config.AwsAPIKey, ownerID)
 	if err != nil {
 		return request.WithError(err).ShouldReportError()
 	}
@@ -107,7 +107,10 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 		installationRequest.License = s.Config.SpinWickHALicense
 	}
 
-	cloudClient := cloudModel.NewClient(s.Config.ProvisionerServer)
+	headers := map[string]string{
+		"x-api-key": s.Config.AwsAPIKey,
+	}
+	cloudClient := cloudModel.NewClientWithHeaders(s.Config.ProvisionerServer, headers)
 	installation, err := cloudClient.CreateInstallation(installationRequest)
 	if err != nil {
 		return request.WithError(errors.Wrap(err, "unable to make the installation creation request to the provisioning server")).ShouldReportError()
@@ -168,7 +171,7 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 	}
 
 	ownerID := makeSpinWickID(pr.RepoName, pr.Number)
-	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, ownerID)
+	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, s.Config.AwsAPIKey, ownerID)
 	if err != nil {
 		return request.WithError(err).ShouldReportError()
 	}
@@ -217,7 +220,10 @@ func (s *Server) updateSpinWick(pr *model.PullRequest, withLicense bool) *spinwi
 	// Final upgrade check
 	// Let's get the installation state one last time. If the version matches
 	// what we want then another process already updated it.
-	cloudClient := cloudModel.NewClient(s.Config.ProvisionerServer)
+	headers := map[string]string{
+		"x-api-key": s.Config.AwsAPIKey,
+	}
+	cloudClient := cloudModel.NewClientWithHeaders(s.Config.ProvisionerServer, headers)
 	installation, err := cloudClient.GetInstallation(request.InstallationID)
 	if err != nil {
 		return request.WithError(errors.Wrap(err, "unable to get installation")).ShouldReportError()
@@ -288,7 +294,7 @@ func (s *Server) destroySpinWick(pr *model.PullRequest) *spinwick.Request {
 	}
 
 	ownerID := makeSpinWickID(pr.RepoName, pr.Number)
-	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, ownerID)
+	id, err := cloudtools.GetInstallationIDFromOwnerID(s.Config.ProvisionerServer, s.Config.AwsAPIKey, ownerID)
 	if err != nil {
 		return request.WithError(err).ShouldReportError()
 	}
@@ -299,7 +305,10 @@ func (s *Server) destroySpinWick(pr *model.PullRequest) *spinwick.Request {
 
 	mlog.Info("Destroying SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("installation_id", request.InstallationID))
 
-	cloudClient := cloudModel.NewClient(s.Config.ProvisionerServer)
+	headers := map[string]string{
+		"x-api-key": s.Config.AwsAPIKey,
+	}
+	cloudClient := cloudModel.NewClientWithHeaders(s.Config.ProvisionerServer, headers)
 	err = cloudClient.DeleteInstallation(request.InstallationID)
 	if err != nil {
 		return request.WithError(errors.Wrap(err, "unable to make installation delete request to provisioning server")).ShouldReportError()
