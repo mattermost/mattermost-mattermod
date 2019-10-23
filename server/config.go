@@ -63,6 +63,7 @@ type ServerConfig struct {
 	AWSEmailSecretKey        string
 	AWSEmailEndpoint         string
 	TokenToDeleteTestServers string
+	BlockPRMergeLabel        string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string
