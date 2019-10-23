@@ -29,4 +29,4 @@ require (
 	k8s.io/api v0.0.0-20190814101207-0772a1bdf941 // indirect
 )
 
-replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
+// replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0
