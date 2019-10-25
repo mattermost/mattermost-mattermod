@@ -119,10 +119,10 @@ github.com/mattermost/go-i18n/i18n/language
 github.com/mattermost/go-i18n/i18n/translation
 # github.com/mattermost/ldap v3.0.4+incompatible
 github.com/mattermost/ldap
-# github.com/mattermost/mattermost-cloud v0.6.2-0.20191018130017-04565f8ae5b1
+# github.com/mattermost/mattermost-cloud v0.7.0
 github.com/mattermost/mattermost-cloud/internal/tools/aws
 github.com/mattermost/mattermost-cloud/model
-# github.com/mattermost/mattermost-operator v0.6.2-0.20191008142649-9408c34d584b
+# github.com/mattermost/mattermost-operator v0.7.0
 github.com/mattermost/mattermost-operator/pkg/apis/mattermost/v1alpha1
 # github.com/mattermost/mattermost-server v0.0.0-20191015091631-441777a4e7b0
 github.com/mattermost/mattermost-server/mlog
