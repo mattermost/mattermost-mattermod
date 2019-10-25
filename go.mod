@@ -1,9 +1,9 @@
 module github.com/mattermost/mattermost-mattermod
 
-go 1.12
+go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.23.2
+	github.com/aws/aws-sdk-go v1.25.6
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
 	github.com/cpanato/go-circleci v0.3.1-0.20191014150105-9a66b7901b51
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
@@ -15,8 +15,7 @@ require (
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
-	github.com/mattermost/mattermost-cloud v0.4.0
-	github.com/mattermost/mattermost-operator v0.5.2 // indirect
+	github.com/mattermost/mattermost-cloud v0.7.0
 	github.com/mattermost/mattermost-server v0.0.0-20191015091631-441777a4e7b0
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
@@ -26,7 +25,5 @@ require (
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	k8s.io/api v0.0.0-20190814101207-0772a1bdf941 // indirect
+	k8s.io/klog v0.4.0 // indirect
 )
-
-// replace git.apache.org/thrift.git => github.com/apache/thrift v0.12.0

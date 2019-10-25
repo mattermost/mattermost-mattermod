@@ -58,6 +58,7 @@ type ServerConfig struct {
 	SetupSpinWickHA          string
 	SpinWickHALicense        string
 	ProvisionerServer        string
+	AwsAPIKey                string
 	DNSNameTestServer        string
 	AWSEmailAccessKey        string
 	AWSEmailSecretKey        string
