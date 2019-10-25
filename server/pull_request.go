@@ -54,6 +54,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
 			go s.waitForMobileAppsBuild(pr)
 		}
+		if s.isBlockPRMerge(*event.Label.Name) {
+			s.blockPRMerge(pr)
+		}
 	case "unlabeled":
 		if event.Label == nil {
 			mlog.Error("Unlabel event received, but label object was empty")
@@ -62,6 +65,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if s.isSpinWickLabel(*event.Label.Name) {
 			mlog.Info("PR SpinWick label was removed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
 			s.handleDestroySpinWick(pr)
+		}
+		if s.isBlockPRMerge(*event.Label.Name) {
+			s.unblockPRMerge(pr)
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
@@ -74,6 +80,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			} else {
 				s.handleUpdateSpinWick(pr, false)
 			}
+		}
+		if s.isBlockPRMergeInLabels(pr.Labels) {
+			s.blockPRMerge(pr)
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
@@ -412,4 +421,22 @@ func (s *Server) CleanOutdatedPRs() {
 		time.Sleep(5 * time.Second)
 	}
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
+}
+
+func (s *Server) isBlockPRMerge(label string) bool {
+	for _, blocklabel := range s.Config.BlockPRMergeLabels {
+		if label == blocklabel {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
+	for _, label := range labels {
+		if s.isBlockPRMerge(label) {
+			return true
+		}
+	}
+	return false
 }
