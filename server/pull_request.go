@@ -424,7 +424,12 @@ func (s *Server) CleanOutdatedPRs() {
 }
 
 func (s *Server) isBlockPRMerge(label string) bool {
-	return label == s.Config.BlockPRMergeLabel
+	for _, blocklabel := range s.Config.BlockPRMergeLabels {
+		if label == blocklabel {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) isBlockPRMergeInLabels(labels []string) bool {

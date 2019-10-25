@@ -24,7 +24,7 @@
         }
     ],
 
-    "BlockPRMergeLabel": "",
+    "BlockPRMergeLabels": [],
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],

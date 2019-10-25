@@ -20,7 +20,7 @@ func (s *Server) blockPRMerge(pr *model.PullRequest) {
 	mergeStatus := &github.RepoStatus{
 		Context:     github.String("merge/blocked"),
 		State:       github.String("pending"),
-		Description: github.String(fmt.Sprintf("Merge blocked due %s label", s.Config.BlockPRMergeLabel)),
+		Description: github.String(fmt.Sprintf("Merge blocked due %s label", s.getBlockLabelFromPR(pr.Labels))),
 		TargetURL:   github.String(""),
 	}
 
@@ -31,7 +31,17 @@ func (s *Server) blockPRMerge(pr *model.PullRequest) {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
 	}
+}
 
+func (s *Server) getBlockLabelFromPR(prLabels []string) string {
+	for _, blockLabel := range s.Config.BlockPRMergeLabels {
+		for _, prLabel := range prLabels {
+			if prLabel == blockLabel {
+				return prLabel
+			}
+		}
+	}
+	return ""
 }
 
 func (s *Server) unblockPRMerge(pr *model.PullRequest) {
@@ -53,5 +63,4 @@ func (s *Server) unblockPRMerge(pr *model.PullRequest) {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
 	}
-
 }
