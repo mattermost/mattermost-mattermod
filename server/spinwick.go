@@ -446,8 +446,8 @@ func makeRequest(method, url string, payload io.Reader) (*http.Response, error) 
 func (s *Server) initializeMattermostTestServer(mmURL string, prNumber int) error {
 	mlog.Info("Initializing Mattermost installation")
 
-	wait := 300
-	mlog.Info("Waiting up to 300 seconds for DNS to propagate")
+	wait := 600
+	mlog.Info("Waiting up to 600 seconds for DNS to propagate")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
 
