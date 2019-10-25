@@ -83,6 +83,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
+		} else {
+			s.unblockPRMerge(pr)
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
