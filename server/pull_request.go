@@ -28,10 +28,20 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
+		if s.isBlockPRMergeInLabels(pr.Labels) {
+			s.blockPRMerge(pr)
+		} else {
+			s.unblockPRMerge(pr)
+		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
+		if s.isBlockPRMergeInLabels(pr.Labels) {
+			s.blockPRMerge(pr)
+		} else {
+			s.unblockPRMerge(pr)
+		}
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
