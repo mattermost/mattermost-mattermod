@@ -79,26 +79,32 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 
 	mlog.Info("No SpinWick found for this PR. Creating a new one.")
 
-	reg, err := s.Builds.dockerRegistryClient(s)
-	if err != nil {
-		return request.WithError(errors.Wrap(err, "unable to get docker registry client")).ShouldReportError()
-	}
-
-	mlog.Info("Waiting for docker image to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
-
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 	defer cancel()
+	// set the version to master
+	version := "master"
+	// if is server or webapp then set version to the PR git commit hash
+	if pr.RepoName == "mattermost-server" || pr.RepoName == "mattermost-webapp" {
+		reg, errDocker := s.Builds.dockerRegistryClient(s)
+		if errDocker != nil {
+			return request.WithError(errors.Wrap(errDocker, "unable to get docker registry client")).ShouldReportError()
+		}
 
-	pr, err = s.Builds.waitForImage(ctx, s, reg, pr)
-	if err != nil {
-		return request.WithError(errors.Wrap(err, "error waiting for the docker image. Aborting")).IntentionalAbort()
+		mlog.Info("Waiting for docker image to set up SpinWick", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName), mlog.String("build_link", pr.BuildLink))
+
+		prNew, errImage := s.Builds.waitForImage(ctx, s, reg, pr)
+		if errImage != nil {
+			return request.WithError(errors.Wrap(errImage, "error waiting for the docker image. Aborting")).IntentionalAbort()
+		}
+
+		version = s.Builds.getInstallationVersion(prNew)
 	}
 
 	mlog.Info("Provisioning Server - Installation request")
 
 	installationRequest := &cloudModel.CreateInstallationRequest{
 		OwnerID:  ownerID,
-		Version:  s.Builds.getInstallationVersion(pr),
+		Version:  version,
 		DNS:      fmt.Sprintf("%s.%s", ownerID, s.Config.DNSNameTestServer),
 		Size:     size,
 		Affinity: "multitenant",
@@ -138,6 +144,11 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 }
 
 func (s *Server) handleUpdateSpinWick(pr *model.PullRequest, withLicense bool) {
+	// other repos we are not updating
+	if pr.RepoName != "mattermost-server" && pr.RepoName != "mattermost-webapp" {
+		return
+	}
+
 	request := s.updateSpinWick(pr, withLicense)
 	if request.Error != nil {
 		if request.Aborted {
