@@ -359,6 +359,16 @@ func (s *Server) CheckPRActivity() {
 			continue
 		}
 
+		// Only mark community contributions as stale
+		isContributorOrgMember, err := s.isOrgMember(pr.RepoOwner, pr.Username)
+		if err != nil {
+			mlog.Error("Error getting org membership", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+			break
+		}
+		if isContributorOrgMember {
+			continue
+		}
+
 		timeToStale := time.Now().AddDate(0, 0, -s.Config.DaysUntilStale)
 		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
 			var prLabels []string
