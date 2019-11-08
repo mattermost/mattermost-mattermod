@@ -65,6 +65,7 @@ type ServerConfig struct {
 	AWSEmailEndpoint         string
 	TokenToDeleteTestServers string
 	BlockPRMergeLabels       []string
+	AutoPRMergeLabel         string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string

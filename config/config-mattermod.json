@@ -25,6 +25,7 @@
     ],
 
     "BlockPRMergeLabels": [],
+    "AutoPRMergeLabel": "",
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],
