@@ -70,7 +70,8 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	lowerUsername := strings.ToLower(username)
 	tempCLA := strings.Split(string(body), "\n")
 	for _, item := range tempCLA {
-		if strings.Contains(item, username) || strings.Contains(item, lowerUsername) || strings.Contains(strings.ToLower(item), lowerUsername) {
+		itemCLA := strings.TrimSpace(item)
+		if strings.Compare(itemCLA, username) == 0 || strings.Compare(itemCLA, lowerUsername) == 0 || strings.Compare(strings.ToLower(itemCLA), lowerUsername) == 0 {
 			mlog.Info("will post success on CLA", mlog.String("user", username))
 			claStatus.State = github.String("success")
 			userMsg := fmt.Sprintf("%s authorized", username)
