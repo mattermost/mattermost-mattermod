@@ -17,7 +17,7 @@ build:
 
 	rm -rf dist/
 	mkdir -p dist/mattermod
-	go build -mod=vendor
+	$(GO) build -mod=vendor
 	mv mattermost-mattermod dist/mattermod/
 	cp config/config-mattermost.default.json dist/mattermod/config-mattermod.json
 
