@@ -79,7 +79,7 @@ func (s *Server) AutoMergePR() {
 		// All good to merge
 		opt := &github.PullRequestOptions{
 			SHA:         prToMerge.Head.GetSHA(),
-			MergeMethod: "merge",
+			MergeMethod: "squash",
 		}
 
 		merged, _, err := client.PullRequests.Merge(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
