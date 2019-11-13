@@ -13,6 +13,7 @@ import (
 )
 
 func (s *Server) AutoMergePR() {
+	mlog.Info("Starting the process to auto merge PRs")
 	var prs []*model.PullRequest
 	result := <-s.Store.PullRequest().ListOpen()
 	if result.Err != nil {
@@ -91,8 +92,10 @@ func (s *Server) AutoMergePR() {
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 	}
 
+	mlog.Info("Done the process to auto merge PRs")
 }
 
 func (s *Server) isAutoMergeLabelInLabels(labels []string) bool {
