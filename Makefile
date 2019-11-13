@@ -34,7 +34,7 @@ gofmt:
 		echo "Checking "$$package; \
 		files=$$(go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' $$package); \
 		if [ "$$files" ]; then \
-			gofmt_output=$$(gofmt -d -s -mod=vendor $$files 2>&1); \
+			gofmt_output=$$(gofmt -d -s $$files 2>&1); \
 			if [ "$$gofmt_output" ]; then \
 				echo "$$gofmt_output"; \
 				echo "gofmt failure"; \
