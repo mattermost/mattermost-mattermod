@@ -17,7 +17,7 @@ build:
 
 	rm -rf dist/
 	mkdir -p dist/mattermod
-	go build
+	$(GO) build -mod=vendor
 	mv mattermost-mattermod dist/mattermod/
 	cp config/config-mattermost.default.json dist/mattermod/config-mattermod.json
 
@@ -49,13 +49,13 @@ gofmt:
 govet:
 	@echo Running govet
 	env GO111MODULE=off $(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet $(PACKAGES) || exit 1
-	$(GO) vet -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
+	$(GO) vet -mod=vendor $(PACKAGES) || exit 1
+	$(GO) vet -mod=vendor -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
 	@echo Govet success
 
 test:
 	@echo Running Go tests
-	$(GO) test $(PACKAGES)
+	$(GO) test -mod=vendor $(PACKAGES)
 	@echo test success
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
