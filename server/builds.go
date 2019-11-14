@@ -93,7 +93,7 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 				}
 			}
 
-			mlog.Info("docker tag for the build not found. waiting a bit more....", mlog.String("image", image), mlog.String("tag", desiredTag))
+			mlog.Info("docker tag for the build not found. waiting a bit more...", mlog.String("image", image), mlog.String("tag", desiredTag), mlog.String("repo", pr.RepoName), mlog.String("number", pr.Number))
 		}
 	}
 }
