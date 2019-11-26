@@ -73,7 +73,7 @@ func (s *Server) AutoMergePR() {
 			continue
 		}
 
-		msg := "Will try to auto merge this PR"
+		msg := "Trying to auto merge this PR."
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 
 		// All good to merge
