@@ -60,9 +60,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
 			}
 		} else if *event.Label.Name == s.Config.BuildMobileAppTag {
-			mlog.Info("Label to build the mobile app")
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
-			go s.waitForMobileAppsBuild(pr)
+			mlog.Info("PR received Build mobile app label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+			mobileRepoOwner, mobileRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
+
+			s.sendGitHubComment(mobileRepoOwner, mobileRepoName, prNumber, s.Config.BuildMobileAppInitMessage)
+			go s.buildMobileApp(pr)
+			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
 		// TODO: remove the old test server code
 		if event.Label.GetName() == s.Config.SetupSpinmintTag {

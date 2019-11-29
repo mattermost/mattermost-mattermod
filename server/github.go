@@ -5,6 +5,9 @@ package server
 
 import (
 	"context"
+	"net/http"
+	"regexp"
+	"strconv"
 
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -167,4 +170,55 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	}
 
 	return true
+}
+
+func (s *Server) createRefWithPrefixFromPr(pr *model.PullRequest, prefix string) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, _, err := client.Git.CreateRef(
+		context.Background(),
+		pr.RepoOwner,
+		pr.RepoName,
+		&github.Reference{
+			Ref: github.String("refs/heads/" + prefix + strconv.Itoa(pr.Number)),
+			Object: &github.GitObject{
+				SHA: github.String(pr.Sha),
+			},
+		})
+
+	if err != nil {
+		mlog.Error("Error creating reference", mlog.Err(err))
+	}
+}
+
+func (s *Server) deleteRefsWithPrefixWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, prefix string) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	branches, _, err := client.Repositories.ListBranches(context.Background(), repoOwner, repoName, nil)
+	if err != nil {
+		mlog.Error("Error listing branches", mlog.Err(err))
+	}
+
+	regexBranchPrefix := regexp.MustCompile(`^` + prefix + `[0-9]+$`)
+
+	for _, branch := range branches {
+		if isBranchPrefix(regexBranchPrefix, branch.GetName()) {
+			cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, branch.GetName(), nil)
+			if cStatus.GetState() == "success" {
+				r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+branch.GetName())
+				if err != nil {
+					mlog.Error("Error deleting branch", mlog.String("branch", branch.GetName()), mlog.Err(err))
+				}
+				if r.StatusCode == http.StatusNoContent {
+					mlog.Info("Successfully deleted branch", mlog.String("branch", branch.GetName()))
+				}
+			}
+		}
+	}
+}
+
+func isBranchPrefix(regexp *regexp.Regexp, branchName string) bool {
+	if regexp.MatchString(branchName) {
+		return true
+	}
+	return false
 }
