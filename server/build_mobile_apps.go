@@ -8,7 +8,15 @@ import (
 )
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {
-	s.createRefWithPrefixFromPr(pr, s.Config.BuildMobileAppBranchPrefix)
+	if s.isCombinedStatusSuccessForPR(pr) {
+		s.createRefWithPrefixFromPr(pr, s.Config.BuildMobileAppBranchPrefix)
+	} else {
+		s.sendGitHubComment(pr.RepoOwner,
+			pr.RepoName,
+			pr.Number,
+			"Not triggering the mobile app build workflow, because PR checks are not successful. ",
+		)
+	}
 }
 
 func (s *Server) cleanupBuiltMobileAppBranches() {
