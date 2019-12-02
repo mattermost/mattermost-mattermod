@@ -62,6 +62,7 @@
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
+    "BlacklistPaths": [],
 
     "PrLabels": [
     ],
