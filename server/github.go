@@ -216,7 +216,7 @@ func (s *Server) deleteRefsWithPrefixWhereCombinedStateEqualsSuccess(repoOwner s
 	}
 }
 
-func (s *Server) isCombinedStatusSuccessForPR(pr *model.PullRequest) bool{
+func (s *Server) isCombinedStatusSuccessForPR(pr *model.PullRequest) bool {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
 	if cStatus.GetState() == "success" {
