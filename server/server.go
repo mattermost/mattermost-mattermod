@@ -187,13 +187,13 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	buf, _ := ioutil.ReadAll(r.Body)
 
-	recievedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
-	if recievedHash[0] != "sha1" {
+	receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
+	if receivedHash[0] != "sha1" {
 		mlog.Error("Invalid webhook hash signature: SHA1")
 		return
 	}
 
-	err := validateSignature(recievedHash, buf, s.Config.GitHubWebhookSecret)
+	err := ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 	if err != nil {
 		mlog.Error(err.Error())
 		return
