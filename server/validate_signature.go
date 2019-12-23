@@ -8,8 +8,10 @@ import (
 	"fmt"
 )
 
-func ValidateSignature(receivedHash []string, bodyBuffer []byte, key string) error {
-	hash := hmac.New(sha1.New, []byte(key))
+// ValidateSignature function used for validation of webhook requests based on
+// config secret.
+func ValidateSignature(receivedHash []string, bodyBuffer []byte, secretKey string) error {
+	hash := hmac.New(sha1.New, []byte(secretKey))
 	if _, err := hash.Write(bodyBuffer); err != nil {
 		msg := fmt.Sprintf("Cannot compute the HMAC for request: %s\n", err)
 		return errors.New(msg)
