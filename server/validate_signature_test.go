@@ -9,8 +9,8 @@ func TestValidateSignatureWithIncorrectSignature(t *testing.T) {
 	EmptyPayload := []byte("")
 	secretKey := "SECRET_KEY_1234"
 	err := ValidateSignature(InvalidHash, EmptyPayload, secretKey)
-	if err.Error() != "Expected Hash does not match the recieved hash: 15c6569d43f1515fa36c69f32955196177e0d117\n" {
-		t.Errorf("Test or ValidSignature should return error: got %s expected %s", err.Error(), "Expected Hash does not match the recieved hash: 15c6569d43f1515fa36c69f32955196177e0d117")
+	if err.Error() != "Expected Hash does not match the received hash: 15c6569d43f1515fa36c69f32955196177e0d117\n" {
+		t.Errorf("Test or ValidSignature should return error: got %s expected %s", err.Error(), "Expected Hash does not match the received hash: 15c6569d43f1515fa36c69f32955196177e0d117")
 	}
 }
 

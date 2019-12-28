@@ -19,7 +19,7 @@ func ValidateSignature(receivedHash []string, bodyBuffer []byte, secretKey strin
 
 	expectedHash := hex.EncodeToString(hash.Sum(nil))
 	if receivedHash[1] != expectedHash {
-		msg := fmt.Sprintf("Expected Hash does not match the recieved hash: %s\n", expectedHash)
+		msg := fmt.Sprintf("Expected Hash does not match the received hash: %s\n", expectedHash)
 		return errors.New(msg)
 	}
 
