@@ -76,6 +76,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.blockPRMerge(pr)
 		}
+		if s.isAutoMergeLabelInLabels(pr.Labels) {
+			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		}
 	case "unlabeled":
 		if event.Label == nil {
 			mlog.Error("Unlabel event received, but label object was empty")

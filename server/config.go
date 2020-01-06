@@ -104,6 +104,8 @@ type ServerConfig struct {
 	DockerUsername    string
 	DockerPassword    string
 
+	BlacklistPaths []string
+
 	AWSCredentials struct {
 		Id     string
 		Secret string
