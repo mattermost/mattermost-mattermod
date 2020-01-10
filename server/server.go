@@ -174,7 +174,7 @@ func (s *Server) initializeRouter() {
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("{\"break\": \"%v\"}", time.Since(s.StartTime))
+	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(msg))
 }
