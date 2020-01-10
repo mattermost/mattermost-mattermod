@@ -18,6 +18,11 @@ jobs:
     docker:
       - image: circleci/golang:1.13
       - image: circleci/mysql:5.7
+        environment:
+          MYSQL_ROOT_PASSWORD: mattermod
+          MYSQL_DATABASE: mattermod
+          MYSQL_USER: mattermod
+          MYSQL_PASSWORD: mattermod
     steps:
       - checkout
       - run:
