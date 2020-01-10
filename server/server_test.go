@@ -24,7 +24,7 @@ var s *Server
 
 func TestMain(m *testing.M) {
 	var configFile string
-	flag.StringVar(&configFile, "config", "config-mattermod.test.json", "")
+	flag.StringVar(&configFile, "config", "config-mattermod.circeci-test.json", "")
 	flag.Parse()
 	config, err = GetConfig(configFile)
 	if err != nil {

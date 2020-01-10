@@ -7,7 +7,7 @@
     "CircleCIToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "mattermod:mattermod@tcp(172.17.0.2:3306)/mattermod",
+    "DataSource": "root@tcp(127.0.0.1:3306)/circleci_test",
 
     "TickRateMinutes": 15,
     "SpinmintExpirationHour": 72,
