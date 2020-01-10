@@ -68,41 +68,47 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	}
 
 	lowerUsername := strings.ToLower(username)
-	if !strings.Contains(string(body), username) && !strings.Contains(string(body), lowerUsername) {
-		_, existComment := s.checkCLAComment(comments)
-		if !existComment {
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
-		}
-		claStatus.State = github.String("error")
-		userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
-		claStatus.Description = github.String(userMsg)
-		mlog.Info("will post error on CLA", mlog.String("user", username))
-		_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
-		if errStatus != nil {
-			mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
+	tempCLA := strings.Split(string(body), "\n")
+	for _, item := range tempCLA {
+		itemCLA := strings.TrimSpace(item)
+		if strings.Compare(itemCLA, username) == 0 || strings.Compare(itemCLA, lowerUsername) == 0 || strings.Compare(strings.ToLower(itemCLA), lowerUsername) == 0 {
+			mlog.Info("will post success on CLA", mlog.String("user", username))
+			claStatus.State = github.String("success")
+			userMsg := fmt.Sprintf("%s authorized", username)
+			claStatus.Description = github.String(userMsg)
+			_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
+			if errStatus != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
+				return
+			}
+			mlog.Info("will clean some comments regarding the CLA")
+			commentToRemove, existComment := s.checkCLAComment(comments)
+			if existComment {
+				mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
+				_, err := client.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
+				if err != nil {
+					mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
+				}
+			}
 			return
 		}
-		return
 	}
 
-	mlog.Info("will post success on CLA", mlog.String("user", username))
-	claStatus.State = github.String("success")
-	userMsg := fmt.Sprintf("%s authorized", username)
+	_, existComment := s.checkCLAComment(comments)
+	if !existComment {
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+	}
+	claStatus.State = github.String("error")
+	userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
 	claStatus.Description = github.String(userMsg)
+	mlog.Info("will post error on CLA", mlog.String("user", username))
 	_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
 	if errStatus != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
 	}
-	mlog.Info("will clean some comments regarding the CLA")
-	commentToRemove, existComment := s.checkCLAComment(comments)
-	if existComment {
-		mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
-		_, err := client.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
-		if err != nil {
-			mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
-		}
-	}
+	return
+
 }
 
 func (s *Server) checkCLAComment(comments []*github.IssueComment) (int64, bool) {

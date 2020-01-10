@@ -25,6 +25,7 @@
     ],
 
     "BlockPRMergeLabels": [],
+    "AutoPRMergeLabel": "",
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],
@@ -61,6 +62,7 @@
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
+    "BlacklistPaths": [],
 
     "PrLabels": [
     ],

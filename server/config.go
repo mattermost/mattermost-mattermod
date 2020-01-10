@@ -65,6 +65,7 @@ type ServerConfig struct {
 	AWSEmailEndpoint         string
 	TokenToDeleteTestServers string
 	BlockPRMergeLabels       []string
+	AutoPRMergeLabel         string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string
@@ -97,6 +98,8 @@ type ServerConfig struct {
 	DockerRegistryURL string
 	DockerUsername    string
 	DockerPassword    string
+
+	BlacklistPaths []string
 
 	AWSCredentials struct {
 		Id     string

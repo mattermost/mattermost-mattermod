@@ -64,8 +64,18 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppInitMessage)
 			go s.waitForMobileAppsBuild(pr)
 		}
+		// TODO: remove the old test server code
+		if event.Label.GetName() == s.Config.SetupSpinmintTag {
+			mlog.Info("Label to spin a old test server")
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
+			go s.waitForBuildAndSetupSpinmint(pr, false)
+		}
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.blockPRMerge(pr)
+		}
+		if s.isAutoMergeLabelInLabels(pr.Labels) {
+			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
 	case "unlabeled":
 		if event.Label == nil {
@@ -75,6 +85,20 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if s.isSpinWickLabel(*event.Label.Name) {
 			mlog.Info("PR SpinWick label was removed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
 			s.handleDestroySpinWick(pr)
+		}
+		// TODO: remove the old test server code
+		if s.isSpinMintLabel(*event.Label.Name) {
+			if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
+				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", result.Err.Error()))
+			} else if result.Data == nil {
+				mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
+			} else {
+				spinmint := result.Data.(*model.Spinmint)
+				mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceId))
+				mlog.Info("Will destroy the test server for a merged/closed PR.")
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+				go s.destroySpinmint(pr, spinmint.InstanceId)
+			}
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.unblockPRMerge(pr)
@@ -234,11 +258,7 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		}
 	}
 
-	if addedLabel == s.Config.SetupSpinmintTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintMessage) {
-		mlog.Info("Label to spin a test server")
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
-		go s.waitForBuildAndSetupSpinmint(pr, false)
-	} else if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
+	if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
 		mlog.Info("Label to spin a test server for upgrade")
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
 		go s.waitForBuildAndSetupSpinmint(pr, true)
