@@ -22,7 +22,7 @@ var s *Server
 
 func TestMain(m *testing.M) {
 	var configFile string
-	flag.StringVar(&configFile, "config", "config-mattermod.test-local.json", "")
+	flag.StringVar(&configFile, "config", "config-mattermod.test-circleci.json", "")
 	flag.Parse()
 	config, err = GetConfig(configFile)
 	if err != nil {
