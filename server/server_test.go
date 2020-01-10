@@ -4,18 +4,16 @@
 package server
 
 import (
-	"encoding/json"
 	"flag"
-	"fmt"
 	"github.com/mattermost/mattermost-server/mlog"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/qri-io/jsonschema"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 var config *ServerConfig
@@ -24,11 +22,11 @@ var s *Server
 
 func TestMain(m *testing.M) {
 	var configFile string
-	flag.StringVar(&configFile, "config", "config-mattermod.circeci-test.json", "")
+	flag.StringVar(&configFile, "config", "config-mattermod.test-local.json", "")
 	flag.Parse()
 	config, err = GetConfig(configFile)
 	if err != nil {
-		errors.Wrap(err, "unable to load server config")
+		mlog.Err(err)
 	}
 	SetupLogging(config)
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
@@ -46,20 +44,30 @@ func TestPing(t *testing.T) {
 	req, _ := http.NewRequest("GET", config.ListenAddress, nil)
 	w := httptest.NewRecorder()
 	s.ping(w, req)
+
 	var body []byte
 	var err error
 	if body, err = ioutil.ReadAll(w.Result().Body); err != nil {
-		panic("no body returned. 500. " + err.Error())
+		mlog.Err(err)
 	}
+	bytesLoader := gojsonschema.NewBytesLoader(body)
 
-	schemaData, _ := ioutil.ReadFile("./schema/ping.schema.json")
-	rs := &jsonschema.RootSchema{}
-	if err := json.Unmarshal(schemaData, rs); err != nil {
-		panic("unmarshal schema: " + err.Error())
+	dir, err := filepath.Abs(filepath.Dir(""))
+	if err != nil {
+		mlog.Error("unable to find project path")
 	}
+	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/schema/ping.schema.json")
 
-	if valErr, _ := rs.ValidateBytes(body); len(valErr) > 0 {
-		fmt.Println(valErr[0].Error())
+	result, err := gojsonschema.Validate(jsonLoader, bytesLoader)
+	if err != nil {
+		mlog.Err(err)
+	}
+	if result.Valid() {
+		mlog.Info("json is valid")
+	} else {
+		for _, err := range result.Errors() {
+			mlog.Error(err.Description())
+		}
 		t.FailNow()
 	}
 }

@@ -53,9 +53,11 @@ govet:
 	$(GO) vet -mod=vendor -vettool=$(GOPATH)/bin/shadow $(PACKAGES) || exit 1
 	@echo Govet success
 
+## Runs tests. For local usage, run `make test CONFIG_TEST="-config=config-mattermod.test-local.json"`
 test:
 	@echo Running Go tests
-	$(GO) test -mod=vendor $(PACKAGES)
+	make test CONFIG_TEST="-config=config-mattermod.local.json"
+	$(GO) test -mod=vendor $(PACKAGES) $(CONFIG_TEST)
 	@echo test success
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html

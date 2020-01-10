@@ -30,7 +30,7 @@ jobs:
               sleep 1
             done
             echo Failed waiting for MySQL && exit 1
-      - run: make test -config=config-mattermod.circleci-test.json
+      - run: make test
 
 workflows:
   version: 2
