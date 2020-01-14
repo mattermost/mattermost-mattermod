@@ -10,7 +10,7 @@ import (
 	"os/signal"
 
 	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )

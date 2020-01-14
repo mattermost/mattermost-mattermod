@@ -11,7 +11,7 @@ import (
 	jenkins "github.com/cpanato/golang-jenkins"
 	"github.com/heroku/docker-registry-client/registry"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 

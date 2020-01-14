@@ -16,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/mattermost-cloud v0.7.0
-	github.com/mattermost/mattermost-server v0.0.0-20191015091631-441777a4e7b0
+	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
