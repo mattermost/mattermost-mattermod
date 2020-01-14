@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
