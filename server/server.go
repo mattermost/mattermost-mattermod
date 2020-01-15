@@ -160,8 +160,6 @@ func (s *Server) Tick() {
 			s.checkIssueForChanges(issue)
 		}
 	}
-
-	s.cleanupBuiltMobileAppBranches()
 }
 
 func (s *Server) initializeRouter() {

@@ -37,10 +37,6 @@
   "BuildMobileAppDoneMessage": "",
   "BuildMobileAppFailedMessage": "",
   "BuildMobileAppBranchPrefix": "",
-  "BuildMobileAppCleanupRepo": {
-    "Owner": "",
-    "Name": ""
-  },
   "StartLoadtestTag": "",
   "StartLoadtestMessage": "",
   "SignedCLAURL": "",

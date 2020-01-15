@@ -84,10 +84,6 @@ type ServerConfig struct {
 	BuildMobileAppDoneMessage   string
 	BuildMobileAppFailedMessage string
 	BuildMobileAppBranchPrefix  string
-	BuildMobileAppCleanupRepo   struct {
-		Owner string
-		Name  string
-	}
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

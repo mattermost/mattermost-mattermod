@@ -172,6 +172,25 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	return true
 }
 
+func (s *Server) checkIfRefExists(pr *model.PullRequest, ref string) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, response, err := client.Git.GetRef(context.Background(), pr.RepoOwner, pr.RepoName, ref)
+	if err != nil {
+		mlog.Error("Unable to check if reference exists. ", mlog.Err(err))
+	}
+
+	if response.StatusCode == 200 {
+		mlog.Info("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		return true, nil
+	} else if response.StatusCode == 404 {
+		mlog.Info("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		return false, nil
+	} else {
+		mlog.Info("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
+		return false, nil
+	}
+}
+
 func (s *Server) createRefWithPrefixFromPr(pr *model.PullRequest, prefix string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, _, err := client.Git.CreateRef(
@@ -190,36 +209,40 @@ func (s *Server) createRefWithPrefixFromPr(pr *model.PullRequest, prefix string)
 	}
 }
 
-func (s *Server) deleteRefsWithPrefixWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, prefix string) {
+func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	branches, _, err := client.Repositories.ListBranches(context.Background(), repoOwner, repoName, nil)
-	if err != nil {
-		mlog.Error("Error listing branches", mlog.Err(err))
-	}
-
-	regexBranchPrefix := regexp.MustCompile(`^` + prefix + `[0-9]+$`)
-
-	for _, branch := range branches {
-		if isBranchPrefix(regexBranchPrefix, branch.GetName()) {
-			cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, branch.GetName(), nil)
-			if cStatus.GetState() == "success" {
-				r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+branch.GetName())
-				if err != nil {
-					mlog.Error("Error deleting branch", mlog.String("branch", branch.GetName()), mlog.Err(err))
-				}
-				if r.StatusCode == http.StatusNoContent {
-					mlog.Info("Successfully deleted branch", mlog.String("branch", branch.GetName()))
-				}
-			}
+	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	if cStatus.GetState() == "success" {
+		r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+ref)
+		if err != nil {
+			mlog.Error("Error deleting branch", mlog.String("branch", ref), mlog.Err(err))
+		}
+		if r.StatusCode == http.StatusNoContent {
+			mlog.Info("Successfully deleted branch", mlog.String("branch", ref))
 		}
 	}
+}
+
+func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+ref)
+	if err != nil {
+		mlog.Error("Error deleting branch", mlog.String("branch", ref), mlog.Err(err))
+		return err
+	}
+	if r.StatusCode == http.StatusNoContent {
+		mlog.Info("Successfully deleted branch", mlog.String("branch", ref))
+	}
+	return nil
 }
 
 func (s *Server) isCombinedStatusSuccessForPR(pr *model.PullRequest) bool {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
-	if cStatus.GetState() == "success" {
+	mlog.Info(cStatus.GetState())
+	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
 		return true
 	}
 	return false
