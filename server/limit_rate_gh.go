@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 func (s *Server) CheckLimitRateAndSleep() {

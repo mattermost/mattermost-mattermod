@@ -21,8 +21,8 @@ import (
 	"github.com/mattermost/mattermost-mattermod/internal/cloudtools"
 	"github.com/mattermost/mattermost-mattermod/internal/spinwick"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/mlog"
-	mattermostModel "github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	mattermostModel "github.com/mattermost/mattermost-server/v5/model"
 	"github.com/pkg/errors"
 )
 

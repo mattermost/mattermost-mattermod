@@ -19,7 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	// "github.com/mattermost/mattermost-load-test/ltops"
 	// "github.com/mattermost/mattermost-load-test/ltparse"
 	// "github.com/mattermost/mattermost-load-test/terraform"
