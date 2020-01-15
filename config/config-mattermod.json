@@ -3,6 +3,7 @@
     "MattermodURL": "",
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
+    "GitHubWebhookSecret": "",
     "Username": "",
     "CircleCIToken": "",
 
@@ -64,8 +65,8 @@
     "NeedsToSignCLAMessage": "",
     "BlacklistPaths": [],
 
-    "PrLabels": [
-    ],
+    "PrLabels": [],
+
     "IssueLabels": [
         {
             "Label": "",
