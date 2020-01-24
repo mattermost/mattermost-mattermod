@@ -124,7 +124,7 @@ func (s *Server) createSpinWick(pr *model.PullRequest, size string, withLicense 
 	request.InstallationID = installation.ID
 	mlog.Info("Provisioner Server - installation request", mlog.String("InstallationID", request.InstallationID))
 
-	wait := 600
+	wait := 1200
 	mlog.Info("Waiting for mattermost installation to become stable", mlog.Int("wait_seconds", wait))
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(wait)*time.Second)
 	defer cancel()
