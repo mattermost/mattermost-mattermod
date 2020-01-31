@@ -34,6 +34,14 @@ type JenkinsCredentials struct {
 	ApiToken string
 }
 
+type Integration struct {
+	RepositoryOwner string
+	RepositoryName string
+	Files []string
+	IntegrationLink string
+	Message string
+}
+
 type ServerConfig struct {
 	ListenAddress               string
 	MattermodURL                string
@@ -101,6 +109,7 @@ type ServerConfig struct {
 	DockerPassword    string
 
 	BlacklistPaths []string
+	Integrations   []*Integration
 
 	AWSCredentials struct {
 		Id     string

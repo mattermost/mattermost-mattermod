@@ -15,7 +15,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
+func (s *Server) handleChecks(eventIssueComment IssueComment) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
@@ -29,6 +29,7 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 	}
 
 	s.checkCLA(pr)
+	s.checkForIntegrationCriticalFiles(pr)
 }
 
 func (s *Server) checkCLA(pr *model.PullRequest) {
@@ -120,4 +121,58 @@ func (s *Server) checkCLAComment(comments []*github.IssueComment) (int64, bool) 
 		}
 	}
 	return 0, false
+}
+
+func (s *Server) checkForIntegrationCriticalFiles(pr *model.PullRequest) {
+	integrationConfigs := s.Config.Integrations
+	relevantIntegrationConfigs := getRelevantIntegrationsForPR(pr, integrationConfigs)
+	if len(relevantIntegrationConfigs) > 0 {
+		prFilenames, err := s.getFilenamesInPullRequest(pr)
+		if err != nil {
+			mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+			return
+		}
+
+		for _, config := range relevantIntegrationConfigs {
+			filenames := getMatchingFilenames(prFilenames, config.Files)
+
+			if len(filenames) > 0 {
+				affectedFiles := strings.Join(filenames, ", ")
+				mlog.Info("Files could affect server client integration", mlog.String("filenames", affectedFiles), mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
+				msg := fmt.Sprintf(config.Message, affectedFiles, config.IntegrationLink)
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+				return
+			}
+		}
+	}
+}
+
+func getRelevantIntegrationsForPR(pr *model.PullRequest, integrations []*Integration) []*Integration {
+	var relevantIntegrations []*Integration
+	for _, integration := range integrations {
+		if pr.RepoName == integration.RepositoryName && pr.RepoOwner == integration.RepositoryOwner {
+			relevantIntegrations = append(relevantIntegrations, integration)
+		}
+	}
+
+	if len(relevantIntegrations) > 0 {
+		return relevantIntegrations
+	}
+	return nil
+}
+
+func getMatchingFilenames(toMatchNames []string, givenNames []string) []string {
+	var matches []string
+	for _, aName := range toMatchNames {
+		for _, bName := range givenNames {
+			if aName == bName {
+				matches = append(matches, bName)
+			}
+		}
+	}
+
+	if len(matches) > 0 {
+		return matches
+	}
+	return nil
 }

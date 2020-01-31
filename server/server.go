@@ -215,7 +215,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			s.handleCheckCLA(*eventIssueComment)
+			s.handleChecks(*eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
 			s.handleCherryPick(*eventIssueComment)
