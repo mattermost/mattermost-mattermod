@@ -79,18 +79,14 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 			desiredTag := b.getInstallationVersion(pr)
 			image := "mattermost/mattermost-enterprise-edition"
 
-			// fetch all the tags from docker registry
-			tags, err := reg.Tags(image)
-			if err != nil {
-				return pr, errors.Wrap(err, "unable to fetch tags from docker registry")
+			_, err := reg.ManifestDigest(image, desiredTag)
+			if err != nil && !strings.Contains(err.Error(), "status=404") {
+				return pr, errors.Wrap(err, "unable to fetch tag from docker registry")
 			}
 
-			// search tags for the sha of this pr
-			for _, tag := range tags {
-				if tag == desiredTag {
-					mlog.Info("docker tag found, image was uploaded", mlog.String("image", image), mlog.String("tag", desiredTag))
-					return pr, nil
-				}
+			if err == nil {
+				mlog.Info("docker tag found, image was uploaded", mlog.String("image", image), mlog.String("tag", desiredTag))
+				return pr, nil
 			}
 
 			mlog.Info("docker tag for the build not found. waiting a bit more...", mlog.String("image", image), mlog.String("tag", desiredTag), mlog.String("repo", pr.RepoName), mlog.Int("number", pr.Number))
