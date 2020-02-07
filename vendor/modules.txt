@@ -126,6 +126,8 @@ github.com/mattermost/mattermost-cloud/internal/tools/aws
 github.com/mattermost/mattermost-cloud/model
 # github.com/mattermost/mattermost-operator v0.7.0
 github.com/mattermost/mattermost-operator/pkg/apis/mattermost/v1alpha1
+# github.com/mattermost/mattermost-server v5.11.1+incompatible
+github.com/mattermost/mattermost-server/mlog
 # github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb
 github.com/mattermost/mattermost-server/v5/mlog
 github.com/mattermost/mattermost-server/v5/model
