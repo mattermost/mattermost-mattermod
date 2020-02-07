@@ -360,6 +360,8 @@ github.com/mattermost/mattermost-cloud v0.7.0 h1:j/xeQwHDk5M6L3VKpDYiJySWrRQlrbi
 github.com/mattermost/mattermost-cloud v0.7.0/go.mod h1:TzhAhUGe+uCg1sZia7p2qosqHMkYJ3kGOm4PY3ZCOWg=
 github.com/mattermost/mattermost-operator v0.7.0 h1:RM6CNuRgcGnRkuk72jr4rWO3zXMb6Iof/XHEUzaxbXg=
 github.com/mattermost/mattermost-operator v0.7.0/go.mod h1:Rinpkr6ordw53vU23itYjIaypS117QJwCGKr3YiriNI=
+github.com/mattermost/mattermost-server v5.11.1+incompatible h1:LPzKY0+2Tic/ik67qIg6VrydRCgxNXZQXOeaiJ2rMBY=
+github.com/mattermost/mattermost-server v5.11.1+incompatible/go.mod h1:5L6MjAec+XXQwMIt791Ganu45GKsSiM+I0tLR9wUj8Y=
 github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb h1:t0W2BLT8mctUknYKKBigoKutPkjPyCmGpd13Re1TnP4=
 github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb/go.mod h1:iHxE3tuUDvC+JrnmM9c4aZZEOrUtnvln9VQFlDGzhzk=
 github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0/go.mod h1:nV5bfVpT//+B1RPD2JvRnxbkLmJEYXmRaaVl15fsXjs=
