@@ -61,7 +61,14 @@
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-
+    "BlacklistPaths": [],
+    "Integrations": [
+        {
+            "RepositoryName": "",
+            "Files": [],
+            "Message": ""
+        }
+    ],
     "PrLabels": [
     ],
     "IssueLabels": [

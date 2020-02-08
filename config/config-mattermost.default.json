@@ -42,14 +42,13 @@
   "SignedCLAURL": "",
   "NeedsToSignCLAMessage": "",
   "BlacklistPaths": [],
-  "IntegrationCriticalFiles": [{
-    "RepositoryOwner": "",
-    "RepositoryName": "",
-    "Files": [
-      ""
-    ],
-    "Message": ""
-  }],
+  "Integrations": [
+    {
+      "RepositoryName": "",
+      "Files": [],
+      "Message": ""
+    }
+  ],
   "PrLabels": [],
   "IssueLabels": [
     {

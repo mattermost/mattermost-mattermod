@@ -25,7 +25,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.checks(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -35,7 +35,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.checks(pr)
+		s.checkForIntegrations(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
@@ -105,7 +106,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.checks(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		if s.isSpinWickLabelInLabels(pr.Labels) {
 			mlog.Info("PR has a SpinWick label, starting upgrade", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
