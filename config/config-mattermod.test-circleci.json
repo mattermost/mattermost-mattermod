@@ -1,14 +1,13 @@
 {
-    "ListenAddress": "0.0.0.0:8087",
+    "ListenAddress": "0.0.0.0:8086",
     "MattermodURL": "",
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
-    "GitHubWebhookSecret": "",
     "Username": "",
     "CircleCIToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "",
+    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true",
 
     "TickRateMinutes": 15,
     "SpinmintExpirationHour": 72,
@@ -26,7 +25,6 @@
     ],
 
     "BlockPRMergeLabels": [],
-    "AutoPRMergeLabel": "",
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],
@@ -59,15 +57,13 @@
     "BuildMobileAppInitMessage": "",
     "BuildMobileAppDoneMessage": "",
     "BuildMobileAppFailedMessage": "",
-    "BuildMobileAppBranchPrefix": "",
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-    "BlacklistPaths": [],
 
-    "PrLabels": [],
-
+    "PrLabels": [
+    ],
     "IssueLabels": [
         {
             "Label": "",
