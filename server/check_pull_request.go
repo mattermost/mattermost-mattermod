@@ -161,10 +161,10 @@ func getRelevantIntegrationsForPR(pr *model.PullRequest, integrations []*Integra
 	return nil
 }
 
-func getMatchingFilenames(toMatchNames []string, givenNames []string) []string {
+func getMatchingFilenames(a []string, b []string) []string {
 	var matches []string
-	for _, aName := range toMatchNames {
-		for _, bName := range givenNames {
+	for _, aName := range a {
+		for _, bName := range b {
 			if aName == bName {
 				matches = append(matches, bName)
 			}

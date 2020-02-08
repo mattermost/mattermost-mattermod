@@ -9,16 +9,20 @@ import (
 )
 
 func TestGetRelevantIntegrationsForPR(t *testing.T) {
+	owner := "mattermost"
+	repoServer := "mattermost-server"
+	repoClient := "mmmctl"
+
 	aIntegration := &Integration{
-		RepositoryOwner: "mattermost",
-		RepositoryName:  "mattermost-server",
+		RepositoryOwner: owner,
+		RepositoryName:  repoServer,
 		Files:           nil,
 		IntegrationLink: "",
 		Message:         "First",
 	}
 	bIntegration := &Integration{
-		RepositoryOwner: "mattermost",
-		RepositoryName:  "mattermost-server",
+		RepositoryOwner: owner,
+		RepositoryName:  repoServer,
 		Files:           nil,
 		IntegrationLink: "",
 		Message:         "Second",
@@ -26,8 +30,8 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	integrations := []*Integration{aIntegration, bIntegration}
 
 	pr := &model.PullRequest{
-		RepoOwner:       "mattermost",
-		RepoName:        "mattermost-server",
+		RepoOwner:       owner,
+		RepoName:        repoServer,
 		FullName:        "",
 		Number:          0,
 		Username:        "",
@@ -43,22 +47,22 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	}
 	configs := getRelevantIntegrationsForPR(pr, integrations)
 	assert.Equal(t, 2, len(configs))
-	assert.Equal(t, "mattermost", configs[0].RepositoryOwner)
-	assert.Equal(t, "mattermost", configs[1].RepositoryOwner)
-	assert.Equal(t, "mattermost-server", configs[0].RepositoryName)
-	assert.Equal(t, "mattermost-server", configs[1].RepositoryName)
+	assert.Equal(t, owner, configs[0].RepositoryOwner)
+	assert.Equal(t, owner, configs[1].RepositoryOwner)
+	assert.Equal(t, repoServer, configs[0].RepositoryName)
+	assert.Equal(t, repoServer, configs[1].RepositoryName)
 	assert.Equal(t, "First", configs[0].Message)
 	assert.Equal(t, "Second", configs[1].Message)
 
 	aIntegration = &Integration{
-		RepositoryOwner: "mattermost",
-		RepositoryName:  "mattermost-server",
+		RepositoryOwner: owner,
+		RepositoryName:  repoServer,
 		Files:           nil,
 		IntegrationLink: "",
 		Message:         "",
 	}
 	bIntegration = &Integration{
-		RepositoryOwner: "mattermost",
+		RepositoryOwner: owner,
 		RepositoryName:  "mmctl",
 		Files:           nil,
 		IntegrationLink: "",
@@ -67,8 +71,8 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	integrations = []*Integration{aIntegration, bIntegration}
 
 	pr = &model.PullRequest{
-		RepoOwner:       "mattermost",
-		RepoName:        "mattermost-server",
+		RepoOwner:       owner,
+		RepoName:        repoServer,
 		FullName:        "",
 		Number:          0,
 		Username:        "",
@@ -84,19 +88,19 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	}
 	configs = getRelevantIntegrationsForPR(pr, integrations)
 	assert.Equal(t, 1, len(configs))
-	assert.Equal(t, "mattermost", configs[0].RepositoryOwner)
-	assert.Equal(t, "mattermost-server", configs[0].RepositoryName)
+	assert.Equal(t, owner, configs[0].RepositoryOwner)
+	assert.Equal(t, repoServer, configs[0].RepositoryName)
 
 	aIntegration = &Integration{
-		RepositoryOwner: "mattermost",
-		RepositoryName:  "mmctl",
+		RepositoryOwner: owner,
+		RepositoryName:  repoClient,
 		Files:           nil,
 		IntegrationLink: "",
 		Message:         "",
 	}
 	bIntegration = &Integration{
-		RepositoryOwner: "mattermost",
-		RepositoryName:  "mmctl",
+		RepositoryOwner: owner,
+		RepositoryName:  repoClient,
 		Files:           nil,
 		IntegrationLink: "",
 		Message:         "",
@@ -104,8 +108,8 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	integrations = []*Integration{aIntegration, bIntegration}
 
 	pr = &model.PullRequest{
-		RepoOwner:       "mattermost",
-		RepoName:        "mattermost-server",
+		RepoOwner:       owner,
+		RepoName:        repoServer,
 		FullName:        "",
 		Number:          0,
 		Username:        "",
@@ -124,18 +128,18 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 }
 
 func TestGetMatchingFilenames(t *testing.T) {
-	aNames := []string{"config.yaml", "config.yml"}
-	bNames := []string{"config.yaml", "config.yml"}
-	matches := getMatchingFilenames(aNames, bNames)
+	a := []string{"config.yaml", "config.yml"}
+	b := []string{"config.yaml", "config.yml"}
+	matches := getMatchingFilenames(a, b)
 	assert.Equal(t, 2, len(matches))
 
-	aNames = []string{"config.yaml"}
-	bNames = []string{"config.yaml", "config.yml"}
-	matches = getMatchingFilenames(aNames, bNames)
+	a = []string{"config.yaml"}
+	b = []string{"config.yaml", "config.yml"}
+	matches = getMatchingFilenames(a, b)
 	assert.Equal(t, 1, len(matches))
 
-	aNames = []string{}
-	bNames = []string{"config.yaml", "config.yml"}
-	matches = getMatchingFilenames(aNames, bNames)
+	a = []string{}
+	b = []string{"config.yaml", "config.yml"}
+	matches = getMatchingFilenames(a, b)
 	assert.Equal(t, 0, len(matches))
 }

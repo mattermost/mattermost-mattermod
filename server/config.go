@@ -36,10 +36,10 @@ type JenkinsCredentials struct {
 
 type Integration struct {
 	RepositoryOwner string
-	RepositoryName string
-	Files []string
+	RepositoryName  string
+	Files           []string
 	IntegrationLink string
-	Message string
+	Message         string
 }
 
 type ServerConfig struct {
