@@ -1,0 +1,110 @@
+{
+    "ListenAddress": "0.0.0.0:8086",
+    "MattermodURL": "",
+    "GithubAccessToken": "",
+    "GitHubTokenReserve": 50,
+    "Username": "",
+    "CircleCIToken": "",
+
+    "DriverName": "mysql",
+    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true",
+
+    "TickRateMinutes": 15,
+    "SpinmintExpirationHour": 72,
+
+    "Repositories": [
+        {
+            "Owner": "",
+            "Name": "",
+            "BuildStatusContext": "",
+            "JenkinsServer": "jenkins",
+            "JobName": "",
+            "InstanceSetupUpgradeScript": "",
+            "InstanceSetupScript": ""
+        }
+    ],
+
+    "BlockPRMergeLabels": [],
+
+    "DaysUntilStale": 14,
+    "ExemptStaleLabels": [],
+    "StaleLabel": "",
+    "StaleComment": "",
+    "AutoAssignerTeam": "",
+    "AutoAssignerTeamID": "",
+
+    "SetupSpinWick": "",
+    "SetupSpinWickHA": "",
+    "SpinWickHALicense": "",
+    "ProvisionerServer": "",
+    "AwsAPIKey": "",
+    "DNSNameTestServer": "",
+    "AWSEmailAccessKey": "",
+    "AWSEmailSecretKey": "",
+    "AWSEmailEndpoint": "",
+
+    "SetupSpinmintTag": "",
+    "SetupSpinmintMessage": "",
+    "SetupSpinmintDoneMessage": "",
+    "SetupSpinmintFailedMessage": "",
+    "DestroyedSpinmintMessage": "",
+    "DestroyedExpirationSpinmintMessage": "",
+    "SpinmintsUseHttps": false,
+    "SetupSpinmintUpgradeTag": "",
+    "SetupSpinmintUpgradeMessage": "",
+    "SetupSpinmintUpgradeDoneMessage": "",
+    "BuildMobileAppTag": "",
+    "BuildMobileAppInitMessage": "",
+    "BuildMobileAppDoneMessage": "",
+    "BuildMobileAppFailedMessage": "",
+    "StartLoadtestTag": "",
+    "StartLoadtestMessage": "",
+    "SignedCLAURL": "",
+    "NeedsToSignCLAMessage": "",
+
+    "PrLabels": [
+    ],
+    "IssueLabels": [
+        {
+            "Label": "",
+            "Message": ""
+        }
+    ],
+
+    "JenkinsCredentials": {
+        "jenkins": {
+            "URL": "",
+            "Username": "",
+            "ApiToken": ""
+        }
+    },
+
+    "AWSCredentials": {
+        "Id": "",
+        "Secret": "",
+        "Token": ""
+    },
+
+    "AWSRegion": "",
+    "AWSImageId": "",
+    "AWSKeyName": "",
+    "AWSInstanceType": "",
+    "AWSHostedZoneId": "",
+    "AWSSecurityGroup": "",
+    "AWSSubNetId": "",
+    "AWSDnsSuffix": "",
+
+    "MattermostWebhookURL": "",
+    "MattermostWebhookFooter": "",
+
+    "LogSettings": {
+        "EnableConsole": true,
+        "ConsoleLevel": "DEBUG",
+        "ConsoleJson": true,
+        "EnableFile": true,
+        "FileLevel": "INFO",
+        "FileJson": true,
+        "FileFormat": "",
+        "FileLocation": ""
+    }
+}

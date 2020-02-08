@@ -71,9 +71,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	}
 
 	milestoneNumber := prMilestone.GetNumber()
-	milestone := strings.TrimSpace(prMilestone.GetTitle())
-	milestone = strings.Trim(milestone, "v")
-	milestone = fmt.Sprintf("release-%s", strings.Trim(milestone, ".0"))
+	milestone := getMilestone(prMilestone.GetTitle())
 
 	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
@@ -92,6 +90,14 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			}
 		}
 	}
+}
+
+func getMilestone(title string) string {
+	milestone := strings.TrimSpace(title)
+	milestone = strings.Trim(milestone, "v")
+	milestone = strings.TrimSuffix(milestone, ".0")
+	milestone = fmt.Sprintf("release-%s", milestone)
+	return milestone
 }
 
 func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.PullRequest) (cmdOutput string, err error) {
