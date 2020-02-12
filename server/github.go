@@ -9,7 +9,6 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"golang.org/x/oauth2"
-	"regexp"
 )
 
 func NewGithubClient(token string) *github.Client {
@@ -240,11 +239,4 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest) (bool, error) {
 		return true, nil
 	}
 	return false, nil
-}
-
-func isBranchPrefix(regexp *regexp.Regexp, branchName string) bool {
-	if regexp.MatchString(branchName) {
-		return true
-	}
-	return false
 }
