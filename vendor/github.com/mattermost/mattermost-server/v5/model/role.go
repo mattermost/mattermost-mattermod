@@ -1,5 +1,5 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
 
 package model
 
@@ -49,15 +49,15 @@ type RolePatch struct {
 	Permissions *[]string `json:"permissions"`
 }
 
-func (r *Role) ToJson() string {
-	b, _ := json.Marshal(r)
+func (role *Role) ToJson() string {
+	b, _ := json.Marshal(role)
 	return string(b)
 }
 
 func RoleFromJson(data io.Reader) *Role {
-	var r *Role
-	json.NewDecoder(data).Decode(&r)
-	return r
+	var role *Role
+	json.NewDecoder(data).Decode(&role)
+	return role
 }
 
 func RoleListToJson(r []*Role) string {
@@ -82,9 +82,9 @@ func RolePatchFromJson(data io.Reader) *RolePatch {
 	return rolePatch
 }
 
-func (r *Role) Patch(patch *RolePatch) {
+func (o *Role) Patch(patch *RolePatch) {
 	if patch.Permissions != nil {
-		r.Permissions = *patch.Permissions
+		o.Permissions = *patch.Permissions
 	}
 }
 
@@ -123,28 +123,28 @@ func PermissionsChangedByPatch(role *Role, patch *RolePatch) []string {
 	return result
 }
 
-func (r *Role) IsValid() bool {
-	if len(r.Id) != 26 {
+func (role *Role) IsValid() bool {
+	if len(role.Id) != 26 {
 		return false
 	}
 
-	return r.IsValidWithoutId()
+	return role.IsValidWithoutId()
 }
 
-func (r *Role) IsValidWithoutId() bool {
-	if !IsValidRoleName(r.Name) {
+func (role *Role) IsValidWithoutId() bool {
+	if !IsValidRoleName(role.Name) {
 		return false
 	}
 
-	if len(r.DisplayName) == 0 || len(r.DisplayName) > ROLE_DISPLAY_NAME_MAX_LENGTH {
+	if len(role.DisplayName) == 0 || len(role.DisplayName) > ROLE_DISPLAY_NAME_MAX_LENGTH {
 		return false
 	}
 
-	if len(r.Description) > ROLE_DESCRIPTION_MAX_LENGTH {
+	if len(role.Description) > ROLE_DESCRIPTION_MAX_LENGTH {
 		return false
 	}
 
-	for _, permission := range r.Permissions {
+	for _, permission := range role.Permissions {
 		permissionValidated := false
 		for _, p := range ALL_PERMISSIONS {
 			if permission == p.Id {

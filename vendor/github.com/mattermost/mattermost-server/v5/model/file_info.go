@@ -1,5 +1,5 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// See License.txt for license information.
 
 package model
 
@@ -34,19 +34,19 @@ type FileInfo struct {
 	HasPreviewImage bool   `json:"has_preview_image,omitempty"`
 }
 
-func (fi *FileInfo) ToJson() string {
-	b, _ := json.Marshal(fi)
+func (info *FileInfo) ToJson() string {
+	b, _ := json.Marshal(info)
 	return string(b)
 }
 
 func FileInfoFromJson(data io.Reader) *FileInfo {
 	decoder := json.NewDecoder(data)
 
-	var fi FileInfo
-	if err := decoder.Decode(&fi); err != nil {
+	var info FileInfo
+	if err := decoder.Decode(&info); err != nil {
 		return nil
 	} else {
-		return &fi
+		return &info
 	}
 }
 
@@ -66,50 +66,50 @@ func FileInfosFromJson(data io.Reader) []*FileInfo {
 	}
 }
 
-func (fi *FileInfo) PreSave() {
-	if fi.Id == "" {
-		fi.Id = NewId()
+func (o *FileInfo) PreSave() {
+	if o.Id == "" {
+		o.Id = NewId()
 	}
 
-	if fi.CreateAt == 0 {
-		fi.CreateAt = GetMillis()
+	if o.CreateAt == 0 {
+		o.CreateAt = GetMillis()
 	}
 
-	if fi.UpdateAt < fi.CreateAt {
-		fi.UpdateAt = fi.CreateAt
+	if o.UpdateAt < o.CreateAt {
+		o.UpdateAt = o.CreateAt
 	}
 }
 
-func (fi *FileInfo) IsValid() *AppError {
-	if len(fi.Id) != 26 {
+func (o *FileInfo) IsValid() *AppError {
+	if len(o.Id) != 26 {
 		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.id.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if len(fi.CreatorId) != 26 && fi.CreatorId != "nouser" {
-		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.user_id.app_error", nil, "id="+fi.Id, http.StatusBadRequest)
+	if len(o.CreatorId) != 26 && o.CreatorId != "nouser" {
+		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.user_id.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
-	if len(fi.PostId) != 0 && len(fi.PostId) != 26 {
-		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.post_id.app_error", nil, "id="+fi.Id, http.StatusBadRequest)
+	if len(o.PostId) != 0 && len(o.PostId) != 26 {
+		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.post_id.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
-	if fi.CreateAt == 0 {
-		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.create_at.app_error", nil, "id="+fi.Id, http.StatusBadRequest)
+	if o.CreateAt == 0 {
+		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.create_at.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
-	if fi.UpdateAt == 0 {
-		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.update_at.app_error", nil, "id="+fi.Id, http.StatusBadRequest)
+	if o.UpdateAt == 0 {
+		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.update_at.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
-	if fi.Path == "" {
-		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.path.app_error", nil, "id="+fi.Id, http.StatusBadRequest)
+	if o.Path == "" {
+		return NewAppError("FileInfo.IsValid", "model.file_info.is_valid.path.app_error", nil, "id="+o.Id, http.StatusBadRequest)
 	}
 
 	return nil
 }
 
-func (fi *FileInfo) IsImage() bool {
-	return strings.HasPrefix(fi.MimeType, "image")
+func (o *FileInfo) IsImage() bool {
+	return strings.HasPrefix(o.MimeType, "image")
 }
 
 func NewInfo(name string) *FileInfo {

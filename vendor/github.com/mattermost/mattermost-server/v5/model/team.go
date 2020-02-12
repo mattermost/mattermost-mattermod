@@ -1,5 +1,5 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// See License.txt for license information.
 
 package model
 
@@ -271,34 +271,34 @@ func (o *Team) Sanitize() {
 	o.InviteId = ""
 }
 
-func (o *Team) Patch(patch *TeamPatch) {
+func (t *Team) Patch(patch *TeamPatch) {
 	if patch.DisplayName != nil {
-		o.DisplayName = *patch.DisplayName
+		t.DisplayName = *patch.DisplayName
 	}
 
 	if patch.Description != nil {
-		o.Description = *patch.Description
+		t.Description = *patch.Description
 	}
 
 	if patch.CompanyName != nil {
-		o.CompanyName = *patch.CompanyName
+		t.CompanyName = *patch.CompanyName
 	}
 
 	if patch.AllowedDomains != nil {
-		o.AllowedDomains = *patch.AllowedDomains
+		t.AllowedDomains = *patch.AllowedDomains
 	}
 
 	if patch.AllowOpenInvite != nil {
-		o.AllowOpenInvite = *patch.AllowOpenInvite
+		t.AllowOpenInvite = *patch.AllowOpenInvite
 	}
 
 	if patch.GroupConstrained != nil {
-		o.GroupConstrained = patch.GroupConstrained
+		t.GroupConstrained = patch.GroupConstrained
 	}
 }
 
-func (o *Team) IsGroupConstrained() bool {
-	return o.GroupConstrained != nil && *o.GroupConstrained
+func (t *Team) IsGroupConstrained() bool {
+	return t.GroupConstrained != nil && *t.GroupConstrained
 }
 
 func (t *TeamPatch) ToJson() string {

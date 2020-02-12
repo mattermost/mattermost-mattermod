@@ -1,5 +1,5 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
 
 package model
 
@@ -59,7 +59,6 @@ type Features struct {
 	MessageExport             *bool `json:"message_export"`
 	CustomPermissionsSchemes  *bool `json:"custom_permissions_schemes"`
 	CustomTermsOfService      *bool `json:"custom_terms_of_service"`
-	GuestAccounts             *bool `json:"guest_accounts"`
 	GuestAccountsPermissions  *bool `json:"guest_accounts_permissions"`
 	IDLoadedPushNotifications *bool `json:"id_loaded"`
 	LockTeammateNameDisplay   *bool `json:"lock_teammate_name_display"`
@@ -85,7 +84,6 @@ func (f *Features) ToMap() map[string]interface{} {
 		"data_retention":              *f.DataRetention,
 		"message_export":              *f.MessageExport,
 		"custom_permissions_schemes":  *f.CustomPermissionsSchemes,
-		"guest_accounts":              *f.GuestAccounts,
 		"guest_accounts_permissions":  *f.GuestAccountsPermissions,
 		"id_loaded":                   *f.IDLoadedPushNotifications,
 		"lock_teammate_name_display":  *f.LockTeammateNameDisplay,
@@ -168,10 +166,6 @@ func (f *Features) SetDefaults() {
 
 	if f.CustomPermissionsSchemes == nil {
 		f.CustomPermissionsSchemes = NewBool(*f.FutureFeatures)
-	}
-
-	if f.GuestAccounts == nil {
-		f.GuestAccounts = NewBool(*f.FutureFeatures)
 	}
 
 	if f.GuestAccountsPermissions == nil {

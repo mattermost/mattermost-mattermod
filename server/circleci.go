@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cpanato/go-circleci"
+	"github.com/metanerd/go-circleci"
 )
 
 func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
@@ -93,7 +93,7 @@ func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, or
 			buildUrl := builds[0].BuildURL
 			buildNumber := builds[0].BuildNum
 
-			mlog.Info("Started building", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName))
+			mlog.Debug("Started building", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName))
 
 			return buildUrl, buildNumber, nil
 		}
@@ -107,8 +107,8 @@ func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest
 			return "", errors.New("timed out waiting for links to artifacts")
 		case <-time.After(30 * time.Second):
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
-			mlog.Info("Trying to fetch artifacts", mlog.String("org", orgUsername), mlog.String("repoName", pr.RepoName), mlog.Int("build", buildNumber))
-			artifacts, err := client.ListBuildArtifacts(orgUsername, pr.RepoName, buildNumber)
+			mlog.Debug("Trying to fetch artifacts", mlog.String("org", orgUsername), mlog.String("repoName", pr.RepoName), mlog.Int("build", buildNumber))
+			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, orgUsername, pr.RepoName, buildNumber)
 			if err != nil {
 				return "", err
 			}
@@ -121,7 +121,7 @@ func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest
 			for _, artifact := range artifacts {
 				artifactLinks += artifact.URL + "  \n"
 			}
-			mlog.Info("Successfully retrieved artifacts links", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName), mlog.String("artifactLinks", artifactLinks))
+			mlog.Debug("Successfully retrieved artifacts links", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName), mlog.String("artifactLinks", artifactLinks))
 
 			return artifactLinks, nil
 		}

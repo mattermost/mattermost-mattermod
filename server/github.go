@@ -9,7 +9,6 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"golang.org/x/oauth2"
-	"net/http"
 	"regexp"
 )
 
@@ -178,13 +177,13 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, orgUsername string, ref
 	}
 
 	if response.StatusCode == 200 {
-		mlog.Info("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return true, nil
 	} else if response.StatusCode == 404 {
-		mlog.Info("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return false, nil
 	} else {
-		mlog.Info("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
+		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
 		return false, nil
 	}
 }
@@ -207,44 +206,36 @@ func (s *Server) createRef(pr *model.PullRequest, ref string) {
 	}
 }
 
-func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) {
+func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
 	if cStatus.GetState() == "success" {
-		r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+		_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
-			mlog.Error("Error deleting branch", mlog.String("branch", ref), mlog.Err(err))
-		}
-		if r.StatusCode == http.StatusNoContent {
-			mlog.Info("Successfully deleted branch", mlog.String("branch", ref))
+			return err
 		}
 	}
+	return nil
 }
 
 func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+	_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 	if err != nil {
-		mlog.Error("Error deleting branch", mlog.String("ref", ref), mlog.Err(err))
 		return err
-	}
-	if r.StatusCode == http.StatusNoContent {
-		mlog.Info("Successfully deleted ref", mlog.String("ref", ref))
 	}
 	return nil
 }
 
 func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	mlog.Info("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
+	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
 	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.Username, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err
 	}
-	mlog.Info("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
+	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
 	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
 		return true, nil
 	}

@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"strconv"
 	"time"
 )
@@ -22,12 +22,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	}
 
 	if isReadyToBeBuilt {
-		exists, err := s.checkIfRefExists(pr, s.Config.Username, ref)
-		if err != nil {
-			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed checking for existing reference. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```",)
-			return
-		}
-
+		exists, _ := s.checkIfRefExists(pr, s.Config.Username, ref)
 		if exists {
 			err := s.deleteRef(s.Config.Username, prRepoName, ref)
 			if err != nil {
@@ -57,8 +52,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		}
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links: " + artifactLinks,)
 
-		s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Username, prRepoName, ref,)
-
+		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Username, prRepoName, ref,)
 	} else {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Not triggering the mobile app build workflow, because PR checks are failing. ",)
 	}

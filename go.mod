@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.25.6
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
-	github.com/cpanato/go-circleci v0.3.1-0.20191014150105-9a66b7901b51
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/go-gorp/gorp v2.0.0+incompatible
@@ -16,8 +15,8 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/mattermost-cloud v0.7.0
-	github.com/mattermost/mattermost-server v5.11.1+incompatible
-	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb
+	github.com/mattermost/mattermost-server/v5 v5.19.1
+	github.com/metanerd/go-circleci v0.3.1
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
