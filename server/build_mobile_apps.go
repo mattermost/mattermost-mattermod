@@ -4,79 +4,62 @@
 package server
 
 import (
+	"context"
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/mlog"
 	"strconv"
+	"time"
 )
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {
-	if s.isCombinedStatusSuccessForPR(pr) {
-		ref := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
-		exists, err := s.checkIfRefExists(pr, ref)
-		if err != nil {
-			s.sendGitHubComment(
-				pr.RepoOwner,
-				pr.RepoName,
-				pr.Number,
-				"Failed checking for existing reference. @mattermost/core-build-engineers have been notified. ",
-			)
+	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
+	ref := "refs/heads/"+s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(prNumber)
 
+	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(pr)
+	if err != nil {
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed to retrieve the status of the PR. Error:  \n```"+err.Error()+"```",)
+		return
+	}
+
+	if isReadyToBeBuilt {
+		exists, err := s.checkIfRefExists(pr, s.Config.Username, ref)
+		if err != nil {
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed checking for existing reference. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```",)
 			return
 		}
 
 		if exists {
-
+			err := s.deleteRef(s.Config.Username, prRepoName, ref)
+			if err != nil {
+				s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed to delete already existing build branch. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```",)
+				return
+			}
 		}
 
-		s.createRefWithPrefixFromPr(pr, s.Config.BuildMobileAppBranchPrefix)
+		s.createRef(pr, ref)
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage,)
 
-		buildLink, buildNumber, err := s.waitForBuildLink(pr)
+		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+		defer cancel()
+
+		buildLink, buildNumber, err := s.waitForBuildLink(ctx, pr, s.Config.Username)
 		if err != nil {
-			s.sendGitHubComment(
-				pr.RepoOwner,
-				pr.RepoName,
-				pr.Number,
-				"Failed building. @mattermost/core-build-engineers have been notified. ",
-			)
-
+			mlog.Err(err)
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed retrieving build link. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```",)
 			return
 		}
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Successfully building: " + buildLink,)
 
-		s.sendGitHubComment(
-			pr.RepoOwner,
-			pr.RepoName,
-			pr.Number,
-			"Successfully building: " + buildLink,
-		)
-
-		artifactLinks, err := s.waitForArtifactLinks(pr, buildNumber)
+		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Username, buildNumber)
 		if err != nil {
-			s.sendGitHubComment(
-				pr.RepoOwner,
-				pr.RepoName,
-				pr.Number,
-				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. ",
-			)
-
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```",)
 			return
 		}
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links: " + artifactLinks,)
 
-		s.sendGitHubComment(
-			pr.RepoOwner,
-			pr.RepoName,
-			pr.Number,
-			"Artifact links: " + artifactLinks,
-		)
-
-		s.deleteRefWhereCombinedStateEqualsSuccess(
-			 pr.RepoOwner, pr.RepoName, ref,
-		)
+		s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Username, prRepoName, ref,)
 
 	} else {
-		s.sendGitHubComment(
-			pr.RepoOwner,
-			pr.RepoName,
-			pr.Number,
-			"Not triggering the mobile app build workflow, because PR checks are not successful. ",
-		)
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,"Not triggering the mobile app build workflow, because PR checks are failing. ",)
 	}
 }

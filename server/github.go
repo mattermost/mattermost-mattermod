@@ -5,14 +5,12 @@ package server
 
 import (
 	"context"
-	"net/http"
-	"regexp"
-	"strconv"
-
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"golang.org/x/oauth2"
+	"net/http"
+	"regexp"
 )
 
 func NewGithubClient(token string) *github.Client {
@@ -172,11 +170,11 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	return true
 }
 
-func (s *Server) checkIfRefExists(pr *model.PullRequest, ref string) (bool, error) {
+func (s *Server) checkIfRefExists(pr *model.PullRequest, orgUsername string, ref string) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, response, err := client.Git.GetRef(context.Background(), pr.RepoOwner, pr.RepoName, ref)
+	_, response, err := client.Git.GetRef(context.Background(), orgUsername, pr.RepoName, ref)
 	if err != nil {
-		mlog.Error("Unable to check if reference exists. ", mlog.Err(err))
+		return false, err
 	}
 
 	if response.StatusCode == 200 {
@@ -191,14 +189,14 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, ref string) (bool, erro
 	}
 }
 
-func (s *Server) createRefWithPrefixFromPr(pr *model.PullRequest, prefix string) {
+func (s *Server) createRef(pr *model.PullRequest, ref string) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, _, err := client.Git.CreateRef(
 		context.Background(),
 		pr.RepoOwner,
 		pr.RepoName,
 		&github.Reference{
-			Ref: github.String("refs/heads/" + prefix + strconv.Itoa(pr.Number)),
+			Ref: github.String(ref),
 			Object: &github.GitObject{
 				SHA: github.String(pr.Sha),
 			},
@@ -214,7 +212,7 @@ func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repo
 
 	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
 	if cStatus.GetState() == "success" {
-		r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+ref)
+		r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
 			mlog.Error("Error deleting branch", mlog.String("branch", ref), mlog.Err(err))
 		}
@@ -227,25 +225,30 @@ func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repo
 func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, "refs/heads/"+ref)
+	r, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 	if err != nil {
-		mlog.Error("Error deleting branch", mlog.String("branch", ref), mlog.Err(err))
+		mlog.Error("Error deleting branch", mlog.String("ref", ref), mlog.Err(err))
 		return err
 	}
 	if r.StatusCode == http.StatusNoContent {
-		mlog.Info("Successfully deleted branch", mlog.String("branch", ref))
+		mlog.Info("Successfully deleted ref", mlog.String("ref", ref))
 	}
 	return nil
 }
 
-func (s *Server) isCombinedStatusSuccessForPR(pr *model.PullRequest) bool {
+func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
-	mlog.Info(cStatus.GetState())
-	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
-		return true
+	mlog.Info("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
+	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.Username, pr.RepoName, pr.Sha, nil)
+	if err != nil {
+		mlog.Err(err)
+		return false, err
 	}
-	return false
+	mlog.Info("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
+	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
+		return true, nil
+	}
+	return false, nil
 }
 
 func isBranchPrefix(regexp *regexp.Regexp, branchName string) bool {

@@ -61,9 +61,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			}
 		} else if *event.Label.Name == s.Config.BuildMobileAppTag {
 			mlog.Info("PR received Build mobile app label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
-			mobileRepoOwner, mobileRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-
-			s.sendGitHubComment(mobileRepoOwner, mobileRepoName, prNumber, s.Config.BuildMobileAppInitMessage)
+			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
 			go s.buildMobileApp(pr)
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
