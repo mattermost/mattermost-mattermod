@@ -102,7 +102,7 @@ func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, or
 	}
 }
 
-func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest, orgUsername string, buildNumber int) (string, error) {
+func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest, orgUsername string, buildNumber int, expected int) (string, error) {
 	ticker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
@@ -117,8 +117,8 @@ func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest
 				return "", err
 			}
 
-			if len(artifacts) == 0 {
-				return "", errors.New("could not retrieve any artifacts")
+			if len(artifacts) < expected {
+				continue
 			}
 
 			artifactLinks := ""

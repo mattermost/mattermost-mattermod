@@ -58,6 +58,7 @@
     "BuildMobileAppInitMessage": "",
     "BuildMobileAppDoneMessage": "",
     "BuildMobileAppFailedMessage": "",
+    "BuildMobileAppArtifactsExpected": 0,
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",

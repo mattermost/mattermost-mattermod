@@ -81,11 +81,12 @@ type ServerConfig struct {
 	SetupSpinmintUpgradeMessage     string
 	SetupSpinmintUpgradeDoneMessage string
 
-	BuildMobileAppTag           string
-	BuildMobileAppInitMessage   string
-	BuildMobileAppDoneMessage   string
-	BuildMobileAppFailedMessage string
-	BuildMobileAppBranchPrefix  string
+	BuildMobileAppTag               string
+	BuildMobileAppInitMessage       string
+	BuildMobileAppDoneMessage       string
+	BuildMobileAppFailedMessage     string
+	BuildMobileAppBranchPrefix      string
+	BuildMobileAppArtifactsExpected int
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
