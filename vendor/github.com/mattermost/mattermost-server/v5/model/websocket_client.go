@@ -1,5 +1,5 @@
-// Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
-// See License.txt for license information.
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
 
 package model
 
@@ -17,17 +17,19 @@ const (
 	PING_TIMEOUT_BUFFER_SECONDS = 5
 )
 
+// WebSocketClient stores the necessary information required to
+// communicate with a WebSocket endpoint.
 type WebSocketClient struct {
-	Url                string          // The location of the server like "ws://localhost:8065"
-	ApiUrl             string          // The api location of the server like "ws://localhost:8065/api/v3"
-	ConnectUrl         string          // The websocket URL to connect to like "ws://localhost:8065/api/v3/path/to/websocket"
-	Conn               *websocket.Conn // The WebSocket connection
-	AuthToken          string          // The token used to open the WebSocket
-	Sequence           int64           // The ever-incrementing sequence attached to each WebSocket action
-	PingTimeoutChannel chan bool       // The channel used to signal ping timeouts
-	EventChannel       chan *WebSocketEvent
-	ResponseChannel    chan *WebSocketResponse
-	ListenError        *AppError
+	Url                string                  // The location of the server like "ws://localhost:8065"
+	ApiUrl             string                  // The API location of the server like "ws://localhost:8065/api/v3"
+	ConnectUrl         string                  // The WebSocket URL to connect to like "ws://localhost:8065/api/v3/path/to/websocket"
+	Conn               *websocket.Conn         // The WebSocket connection
+	AuthToken          string                  // The token used to open the WebSocket connection
+	Sequence           int64                   // The ever-incrementing sequence attached to each WebSocket action
+	PingTimeoutChannel chan bool               // The channel used to signal ping timeouts
+	EventChannel       chan *WebSocketEvent    // The channel used to receive various events pushed from the server. For example: typing, posted
+	ResponseChannel    chan *WebSocketResponse // The channel used to receive responses for requests made to the server
+	ListenError        *AppError               // A field that is set if there was an abnormal closure of the WebSocket connection
 	pingTimeoutTimer   *time.Timer
 }
 
@@ -123,7 +125,7 @@ func (wsc *WebSocketClient) Listen() {
 			}
 
 			event := WebSocketEventFromJson(bytes.NewReader(rawMsg))
-			if event != nil && event.IsValid() {
+			if event.IsValid() {
 				wsc.EventChannel <- event
 				continue
 			}
