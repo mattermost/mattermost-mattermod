@@ -22,7 +22,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
-	if repoInfo[0] == "mattermost" {
+	if repoInfo[0] == s.Config.Org {
 		// It is from upstream mattermost repo dont need to trigger the circleci because org members
 		// have permissions
 		mlog.Info("Dont need to trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))

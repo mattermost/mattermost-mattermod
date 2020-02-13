@@ -3,6 +3,7 @@
     "MattermodURL": "",
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
+    "Org": "",
     "Username": "",
     "CircleCIToken": "",
 

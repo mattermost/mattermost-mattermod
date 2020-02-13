@@ -31,7 +31,7 @@ func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
 	}
 
 	repoInfo := strings.Split(pr.FullName, "/")
-	if repoInfo[0] != "mattermost" {
+	if repoInfo[0] != s.Config.Org {
 		if !prGitHub.GetMaintainerCanModify() {
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "We dont have permissions to update this PR, please contact the submitter to apply the update.")
 			return
