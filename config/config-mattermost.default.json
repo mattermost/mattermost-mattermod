@@ -3,6 +3,7 @@
   "GithubAccessToken": "",
   "GitHubTokenReserve": 50,
   "GitHubWebhookSecret": "",
+  "Org": "",
   "Username": "",
   "DriverName": "mysql",
   "DataSource": "",

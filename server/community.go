@@ -21,7 +21,7 @@ func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
 		return
 	}
 
-	isContributorOrgMember, err := s.isOrgMember("mattermost", pr.Username)
+	isContributorOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Error getting org membership", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return

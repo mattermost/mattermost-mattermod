@@ -168,9 +168,9 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	return true
 }
 
-func (s *Server) checkIfRefExists(pr *model.PullRequest, orgUsername string, ref string) (bool, error) {
+func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, response, err := client.Git.GetRef(context.Background(), orgUsername, pr.RepoName, ref)
+	_, response, err := client.Git.GetRef(context.Background(), org, pr.RepoName, ref)
 	if err != nil {
 		return false, err
 	}
@@ -226,10 +226,10 @@ func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error 
 	return nil
 }
 
-func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, orgUsername string) (bool, error) {
+func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), orgUsername, pr.RepoName, pr.Sha, nil)
+	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), org, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err

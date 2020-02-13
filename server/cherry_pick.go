@@ -137,7 +137,7 @@ func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.Pu
 func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 
-	isContributorOrgMember, err := s.isOrgMember("mattermost", pr.Username)
+	isContributorOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Error getting org membership for cherry pick PR", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return ""

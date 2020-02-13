@@ -4,6 +4,7 @@
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
     "GitHubWebhookSecret": "",
+    "Org": "",
     "Username": "",
     "CircleCIToken": "",
 

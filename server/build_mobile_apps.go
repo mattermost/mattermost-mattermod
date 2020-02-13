@@ -15,7 +15,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	ref := "refs/heads/" + s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(prNumber)
 
-	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(pr, s.Config.Username)
+	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(pr, s.Config.Org)
 	if err != nil {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 			"Failed to retrieve the status of the PR. Error:  \n```"+err.Error()+"```")
@@ -23,9 +23,9 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	}
 
 	if isReadyToBeBuilt {
-		exists, _ := s.checkIfRefExists(pr, s.Config.Username, ref)
+		exists, _ := s.checkIfRefExists(pr, s.Config.Org, ref)
 		if exists {
-			err := s.deleteRef(s.Config.Username, prRepoName, ref)
+			err := s.deleteRef(s.Config.Org, prRepoName, ref)
 			if err != nil {
 				s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 					"Failed to delete already existing build branch. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
@@ -39,7 +39,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 		defer cancel()
 
-		buildLink, buildNumber, err := s.waitForBuildLink(ctx, pr, s.Config.Username)
+		buildLink, buildNumber, err := s.waitForBuildLink(ctx, pr, s.Config.Org)
 		if err != nil {
 			mlog.Err(err)
 			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
@@ -48,7 +48,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		}
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Successfully building: "+buildLink)
 
-		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Username, buildNumber)
+		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Org, buildNumber)
 		if err != nil {
 			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
@@ -56,7 +56,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		}
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links: "+artifactLinks)
 
-		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Username, prRepoName, ref)
+		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Org, prRepoName, ref)
 	} else {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 			"Not triggering the mobile app build workflow, because PR checks are failing. ")

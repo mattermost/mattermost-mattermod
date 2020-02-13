@@ -42,6 +42,7 @@ type ServerConfig struct {
 	GithubUsername              string
 	GithubAccessTokenCherryPick string
 	GitHubWebhookSecret         string
+	Org                         string
 	Username                    string
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
