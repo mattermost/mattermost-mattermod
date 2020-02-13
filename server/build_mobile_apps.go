@@ -54,7 +54,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
 			return
 		}
-		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links: "+artifactLinks)
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links:  \n"+artifactLinks)
 
 		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Org, prRepoName, ref)
 	} else {
