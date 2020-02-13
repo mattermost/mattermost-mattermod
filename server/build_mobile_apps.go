@@ -48,7 +48,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		}
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Successfully building: "+buildLink)
 
-		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Org, buildNumber)
+		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Org, buildNumber, s.Config.BuildMobileAppArtifactsExpected)
 		if err != nil {
 			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
