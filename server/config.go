@@ -84,6 +84,7 @@ type ServerConfig struct {
 	BuildMobileAppInitMessage   string
 	BuildMobileAppDoneMessage   string
 	BuildMobileAppFailedMessage string
+	BuildMobileAppBranchPrefix  string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

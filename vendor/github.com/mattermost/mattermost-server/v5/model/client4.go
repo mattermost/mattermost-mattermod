@@ -1,5 +1,5 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
 
 package model
 
@@ -418,10 +418,6 @@ func (c *Client4) GetTotalUsersStatsRoute() string {
 
 func (c *Client4) GetRedirectLocationRoute() string {
 	return fmt.Sprintf("/redirect_location")
-}
-
-func (c *Client4) GetServerBusyRoute() string {
-	return "/server_busy"
 }
 
 func (c *Client4) GetUserTermsOfServiceRoute(userId string) string {
@@ -3463,18 +3459,6 @@ func (c *Client4) GetSamlCertificateStatus() (*SamlCertificateStatus, *Response)
 	return SamlCertificateStatusFromJson(r.Body), BuildResponse(r)
 }
 
-func (c *Client4) GetSamlMetadataFromIdp(samlMetadataURL string) (*SamlMetadataResponse, *Response) {
-	requestBody := make(map[string]string)
-	requestBody["saml_metadata_url"] = samlMetadataURL
-	r, err := c.DoApiPost(c.GetSamlRoute()+"/metadatafromidp", MapToJson(requestBody))
-	if err != nil {
-		return nil, BuildErrorResponse(r, err)
-	}
-
-	defer closeBody(r)
-	return SamlMetadataResponseFromJson(r.Body), BuildResponse(r)
-}
-
 // Compliance Section
 
 // CreateComplianceReport creates an incoming webhook for a channel.
@@ -3612,7 +3596,7 @@ func (c *Client4) UnlinkLdapGroup(dn string) (*Group, *Response) {
 }
 
 // GetGroupsByChannel retrieves the Mattermost Groups associated with a given channel
-func (c *Client4) GetGroupsByChannel(channelId string, opts GroupSearchOpts) ([]*GroupWithSchemeAdmin, int, *Response) {
+func (c *Client4) GetGroupsByChannel(channelId string, opts GroupSearchOpts) ([]*Group, int, *Response) {
 	path := fmt.Sprintf("%s/groups?q=%v&include_member_count=%v", c.GetChannelRoute(channelId), opts.Q, opts.IncludeMemberCount)
 	if opts.PageOpts != nil {
 		path = fmt.Sprintf("%s&page=%v&per_page=%v", path, opts.PageOpts.Page, opts.PageOpts.PerPage)
@@ -3624,8 +3608,8 @@ func (c *Client4) GetGroupsByChannel(channelId string, opts GroupSearchOpts) ([]
 	defer closeBody(r)
 
 	responseData := struct {
-		Groups []*GroupWithSchemeAdmin `json:"groups"`
-		Count  int                     `json:"total_group_count"`
+		Groups []*Group `json:"groups"`
+		Count  int      `json:"total_group_count"`
 	}{}
 	if err := json.NewDecoder(r.Body).Decode(&responseData); err != nil {
 		appErr := NewAppError("Api4.GetGroupsByChannel", "api.marshal_error", nil, err.Error(), http.StatusInternalServerError)
@@ -3636,7 +3620,7 @@ func (c *Client4) GetGroupsByChannel(channelId string, opts GroupSearchOpts) ([]
 }
 
 // GetGroupsByTeam retrieves the Mattermost Groups associated with a given team
-func (c *Client4) GetGroupsByTeam(teamId string, opts GroupSearchOpts) ([]*GroupWithSchemeAdmin, int, *Response) {
+func (c *Client4) GetGroupsByTeam(teamId string, opts GroupSearchOpts) ([]*Group, int, *Response) {
 	path := fmt.Sprintf("%s/groups?q=%v&include_member_count=%v", c.GetTeamRoute(teamId), opts.Q, opts.IncludeMemberCount)
 	if opts.PageOpts != nil {
 		path = fmt.Sprintf("%s&page=%v&per_page=%v", path, opts.PageOpts.Page, opts.PageOpts.PerPage)
@@ -3648,8 +3632,8 @@ func (c *Client4) GetGroupsByTeam(teamId string, opts GroupSearchOpts) ([]*Group
 	defer closeBody(r)
 
 	responseData := struct {
-		Groups []*GroupWithSchemeAdmin `json:"groups"`
-		Count  int                     `json:"total_group_count"`
+		Groups []*Group `json:"groups"`
+		Count  int      `json:"total_group_count"`
 	}{}
 	if err := json.NewDecoder(r.Body).Decode(&responseData); err != nil {
 		appErr := NewAppError("Api4.GetGroupsByTeam", "api.marshal_error", nil, err.Error(), http.StatusInternalServerError)
@@ -4653,41 +4637,6 @@ func (c *Client4) GetRedirectLocation(urlParam, etag string) (string, *Response)
 	}
 	defer closeBody(r)
 	return MapFromJson(r.Body)["location"], BuildResponse(r)
-}
-
-// SetServerBusy will mark the server as busy, which disables non-critical services for `secs` seconds.
-func (c *Client4) SetServerBusy(secs int) (bool, *Response) {
-	url := fmt.Sprintf("%s?seconds=%d", c.GetServerBusyRoute(), secs)
-	r, err := c.DoApiPost(url, "")
-	if err != nil {
-		return false, BuildErrorResponse(r, err)
-	}
-	defer closeBody(r)
-	return CheckStatusOK(r), BuildResponse(r)
-}
-
-// ClearServerBusy will mark the server as not busy.
-func (c *Client4) ClearServerBusy() (bool, *Response) {
-	r, err := c.DoApiPost(c.GetServerBusyRoute()+"/clear", "")
-	if err != nil {
-		return false, BuildErrorResponse(r, err)
-	}
-	defer closeBody(r)
-	return CheckStatusOK(r), BuildResponse(r)
-}
-
-// GetServerBusyExpires returns the time when a server marked busy
-// will automatically have the flag cleared.
-func (c *Client4) GetServerBusyExpires() (*time.Time, *Response) {
-	r, err := c.DoApiGet(c.GetServerBusyRoute(), "")
-	if err != nil {
-		return nil, BuildErrorResponse(r, err)
-	}
-	defer closeBody(r)
-
-	sbs := ServerBusyStateFromJson(r.Body)
-	expires := time.Unix(sbs.Expires, 0)
-	return &expires, BuildResponse(r)
 }
 
 // RegisterTermsOfServiceAction saves action performed by a user against a specific terms of service.

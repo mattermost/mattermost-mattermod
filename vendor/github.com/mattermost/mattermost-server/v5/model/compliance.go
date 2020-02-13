@@ -1,5 +1,5 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// Copyright (c) 2016-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
 
 package model
 
@@ -37,61 +37,61 @@ type Compliance struct {
 
 type Compliances []Compliance
 
-func (c *Compliance) ToJson() string {
-	b, _ := json.Marshal(c)
+func (o *Compliance) ToJson() string {
+	b, _ := json.Marshal(o)
 	return string(b)
 }
 
-func (c *Compliance) PreSave() {
-	if c.Id == "" {
-		c.Id = NewId()
+func (me *Compliance) PreSave() {
+	if me.Id == "" {
+		me.Id = NewId()
 	}
 
-	if c.Status == "" {
-		c.Status = COMPLIANCE_STATUS_CREATED
+	if me.Status == "" {
+		me.Status = COMPLIANCE_STATUS_CREATED
 	}
 
-	c.Count = 0
-	c.Emails = NormalizeEmail(c.Emails)
-	c.Keywords = strings.ToLower(c.Keywords)
+	me.Count = 0
+	me.Emails = NormalizeEmail(me.Emails)
+	me.Keywords = strings.ToLower(me.Keywords)
 
-	c.CreateAt = GetMillis()
+	me.CreateAt = GetMillis()
 }
 
-func (c *Compliance) JobName() string {
-	jobName := c.Type
-	if c.Type == COMPLIANCE_TYPE_DAILY {
-		jobName += "-" + c.Desc
+func (me *Compliance) JobName() string {
+	jobName := me.Type
+	if me.Type == COMPLIANCE_TYPE_DAILY {
+		jobName += "-" + me.Desc
 	}
 
-	jobName += "-" + c.Id
+	jobName += "-" + me.Id
 
 	return jobName
 }
 
-func (c *Compliance) IsValid() *AppError {
+func (me *Compliance) IsValid() *AppError {
 
-	if len(c.Id) != 26 {
+	if len(me.Id) != 26 {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.id.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if c.CreateAt == 0 {
+	if me.CreateAt == 0 {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.create_at.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if len(c.Desc) > 512 || len(c.Desc) == 0 {
+	if len(me.Desc) > 512 || len(me.Desc) == 0 {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.desc.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if c.StartAt == 0 {
+	if me.StartAt == 0 {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.start_at.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if c.EndAt == 0 {
+	if me.EndAt == 0 {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.end_at.app_error", nil, "", http.StatusBadRequest)
 	}
 
-	if c.EndAt <= c.StartAt {
+	if me.EndAt <= me.StartAt {
 		return NewAppError("Compliance.IsValid", "model.compliance.is_valid.start_end_at.app_error", nil, "", http.StatusBadRequest)
 	}
 
@@ -99,13 +99,13 @@ func (c *Compliance) IsValid() *AppError {
 }
 
 func ComplianceFromJson(data io.Reader) *Compliance {
-	var c *Compliance
-	json.NewDecoder(data).Decode(&c)
-	return c
+	var o *Compliance
+	json.NewDecoder(data).Decode(&o)
+	return o
 }
 
-func (c Compliances) ToJson() string {
-	if b, err := json.Marshal(c); err != nil {
+func (o Compliances) ToJson() string {
+	if b, err := json.Marshal(o); err != nil {
 		return "[]"
 	} else {
 		return string(b)

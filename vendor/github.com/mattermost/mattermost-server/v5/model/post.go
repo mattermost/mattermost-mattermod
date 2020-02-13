@@ -1,5 +1,5 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
+// See License.txt for license information.
 
 package model
 
@@ -38,7 +38,6 @@ const (
 	POST_CONVERT_CHANNEL        = "system_convert_channel"
 	POST_PURPOSE_CHANGE         = "system_purpose_change"
 	POST_CHANNEL_DELETED        = "system_channel_deleted"
-	POST_CHANNEL_RESTORED       = "system_channel_restored"
 	POST_EPHEMERAL              = "system_ephemeral"
 	POST_CHANGE_CHANNEL_PRIVACY = "system_change_chan_privacy"
 	POST_ADD_BOT_TEAMS_CHANNELS = "add_bot_teams_channels"
@@ -74,6 +73,7 @@ type Post struct {
 	OriginalId string `json:"original_id"`
 
 	Message string `json:"message"`
+
 	// MessageSource will contain the message as submitted by the user if Message has been modified
 	// by Mattermost for presentation (e.g if an image proxy is being used). It should be used to
 	// populate edit boxes if present.
@@ -88,8 +88,7 @@ type Post struct {
 	HasReactions  bool            `json:"has_reactions,omitempty"`
 
 	// Transient data populated before sending a post to the client
-	ReplyCount int64         `json:"reply_count" db:"-"`
-	Metadata   *PostMetadata `json:"metadata,omitempty" db:"-"`
+	Metadata *PostMetadata `json:"metadata,omitempty" db:"-"`
 }
 
 type PostEphemeral struct {
@@ -171,20 +170,6 @@ func (o *Post) ToUnsanitizedJson() string {
 	return string(b)
 }
 
-type GetPostsSinceOptions struct {
-	ChannelId        string
-	Time             int64
-	SkipFetchThreads bool
-}
-
-type GetPostsOptions struct {
-	ChannelId        string
-	PostId           string
-	Page             int
-	PerPage          int
-	SkipFetchThreads bool
-}
-
 func PostFromJson(data io.Reader) *Post {
 	var o *Post
 	json.NewDecoder(data).Decode(&o)
@@ -244,7 +229,6 @@ func (o *Post) IsValid(maxPostSize int) *AppError {
 	switch o.Type {
 	case
 		POST_DEFAULT,
-		POST_SYSTEM_GENERIC,
 		POST_JOIN_LEAVE,
 		POST_AUTO_RESPONDER,
 		POST_ADD_REMOVE,
@@ -265,7 +249,6 @@ func (o *Post) IsValid(maxPostSize int) *AppError {
 		POST_DISPLAYNAME_CHANGE,
 		POST_CONVERT_CHANNEL,
 		POST_CHANNEL_DELETED,
-		POST_CHANNEL_RESTORED,
 		POST_CHANGE_CHANNEL_PRIVACY,
 		POST_ME,
 		POST_ADD_BOT_TEAMS_CHANNELS:
@@ -366,25 +349,25 @@ func (o *Post) IsJoinLeaveMessage() bool {
 		o.Type == POST_REMOVE_FROM_TEAM
 }
 
-func (o *Post) Patch(patch *PostPatch) {
+func (p *Post) Patch(patch *PostPatch) {
 	if patch.IsPinned != nil {
-		o.IsPinned = *patch.IsPinned
+		p.IsPinned = *patch.IsPinned
 	}
 
 	if patch.Message != nil {
-		o.Message = *patch.Message
+		p.Message = *patch.Message
 	}
 
 	if patch.Props != nil {
-		o.Props = *patch.Props
+		p.Props = *patch.Props
 	}
 
 	if patch.FileIds != nil {
-		o.FileIds = *patch.FileIds
+		p.FileIds = *patch.FileIds
 	}
 
 	if patch.HasReactions != nil {
-		o.HasReactions = *patch.HasReactions
+		p.HasReactions = *patch.HasReactions
 	}
 }
 
