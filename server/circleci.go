@@ -73,11 +73,13 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 }
 
 func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, orgUsername string) (string, int, error) {
+	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			return "", 0, errors.New("timed out waiting for build link")
-		case <-time.After(10 * time.Second):
+		case <-ticker.C:
 			branch := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
 
@@ -94,18 +96,20 @@ func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, or
 			buildNumber := builds[0].BuildNum
 
 			mlog.Debug("Started building", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName))
-
+			ticker.Stop()
 			return buildUrl, buildNumber, nil
 		}
 	}
 }
 
 func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest, orgUsername string, buildNumber int) (string, error) {
+	ticker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
 		case <-ctx.Done():
+			ticker.Stop()
 			return "", errors.New("timed out waiting for links to artifacts")
-		case <-time.After(30 * time.Second):
+		case <-ticker.C:
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			mlog.Debug("Trying to fetch artifacts", mlog.String("org", orgUsername), mlog.String("repoName", pr.RepoName), mlog.Int("build", buildNumber))
 			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, orgUsername, pr.RepoName, buildNumber)
@@ -122,7 +126,7 @@ func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest
 				artifactLinks += artifact.URL + "  \n"
 			}
 			mlog.Debug("Successfully retrieved artifacts links", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName), mlog.String("artifactLinks", artifactLinks))
-
+			ticker.Stop()
 			return artifactLinks, nil
 		}
 	}
