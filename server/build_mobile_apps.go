@@ -15,7 +15,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	ref := "refs/heads/" + s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(prNumber)
 
-	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(pr)
+	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(pr, s.Config.Username)
 	if err != nil {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 			"Failed to retrieve the status of the PR. Error:  \n```"+err.Error()+"```")
