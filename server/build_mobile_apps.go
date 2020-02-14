@@ -70,7 +70,7 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 
 	var artifacts []*circleci.Artifact
 	for _, build := range builds {
-		expectedArtifacts := findExpectedArtifacts(s.Config.BuildMobileAppJobs, build.Workflows.JobName)
+		expectedArtifacts := getExpectedArtifacts(s.Config.BuildMobileAppJobs, build.Workflows.JobName)
 		buildArtifacts, err := s.waitForArtifacts(ctx, pr, s.Config.Org, build.BuildNum, expectedArtifacts)
 		if err != nil {
 			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
@@ -92,7 +92,7 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links:  \n"+linksArtifacts)
 }
 
-func findExpectedArtifacts(jobs []*BuildMobileAppJob, buildJobName string) int {
+func getExpectedArtifacts(jobs []*BuildMobileAppJob, buildJobName string) int {
 	for _, job := range jobs {
 		if buildJobName == job.JobName {
 			return job.ExpectedArtifacts

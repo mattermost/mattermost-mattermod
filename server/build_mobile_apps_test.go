@@ -5,26 +5,26 @@ import (
 	"testing"
 )
 
-func TestFindExpectedArtifacts(t *testing.T) {
+func TestGetExpectedArtifacts(t *testing.T) {
 	job := BuildMobileAppJob {
 		JobName:           "a",
 		ExpectedArtifacts: 1,
 	}
 	jobs := []*BuildMobileAppJob{&job}
 
-	amount := findExpectedArtifacts(jobs, "a")
+	amount := getExpectedArtifacts(jobs, "a")
 
 	assert.Equal(t, 1, amount)
 }
 
-func TestFindNotExpectedArtifacts(t *testing.T) {
+func TestGetNotExpectedArtifacts(t *testing.T) {
 	job := BuildMobileAppJob {
 		JobName:           "",
 		ExpectedArtifacts: 6,
 	}
 	jobs := []*BuildMobileAppJob{&job}
 
-	amount := findExpectedArtifacts(jobs, "a")
+	amount := getExpectedArtifacts(jobs, "a")
 
 	assert.Equal(t, 0, amount)
 }
