@@ -7,6 +7,7 @@ import (
 	"context"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/metanerd/go-circleci"
 	"strconv"
 	"time"
 )
@@ -38,27 +39,72 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
 		defer cancel()
-
-		buildLink, buildNumber, err := s.waitForBuildLink(ctx, pr, s.Config.Org)
-		if err != nil {
-			mlog.Err(err)
-			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
-				"Failed retrieving build link. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
-			return
-		}
-		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Successfully building: "+buildLink)
-
-		artifactLinks, err := s.waitForArtifactLinks(ctx, pr, s.Config.Org, buildNumber, s.Config.BuildMobileAppArtifactsExpected)
-		if err != nil {
-			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
-				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
-			return
-		}
-		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links:  \n"+artifactLinks)
+		s.build(ctx, pr, s.Config.Org)
 
 		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Org, prRepoName, ref)
 	} else {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 			"Not triggering the mobile app build workflow, because PR checks are failing. ")
 	}
+}
+
+func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
+	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
+	branch := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
+
+	expectedJobNames := getExpectedJobNames(s.Config.BuildMobileAppJobs)
+
+	builds, err := s.waitForJobs(ctx, pr, org, branch, expectedJobNames)
+	if err != nil {
+		mlog.Err(err)
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
+			"Failed retrieving build links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+		return
+	}
+
+	linksBuilds := ""
+	for _, build := range builds {
+		linksBuilds += build.BuildURL + "  \n"
+	}
+	s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Successfully building:  \n"+linksBuilds)
+
+	var artifacts []*circleci.Artifact
+	for _, build := range builds {
+		expectedArtifacts := findExpectedArtifacts(s.Config.BuildMobileAppJobs, build.Workflows.JobName)
+		buildArtifacts, err := s.waitForArtifacts(ctx, pr, s.Config.Org, build.BuildNum, expectedArtifacts)
+		if err != nil {
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
+				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+			return
+		}
+		artifacts = append(artifacts, buildArtifacts...)
+	}
+
+	if len(artifacts) < len(expectedJobNames) {
+		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
+			"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. ")
+	}
+
+	linksArtifacts := ""
+	for _, artifact := range artifacts {
+		linksArtifacts += artifact.URL + "  \n"
+	}
+	s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, "Artifact links:  \n"+linksArtifacts)
+}
+
+func findExpectedArtifacts(jobs []*BuildMobileAppJob, buildJobName string) int {
+	for _, job := range jobs {
+		if buildJobName == job.JobName {
+			return job.ExpectedArtifacts
+		}
+	}
+	return 0
+}
+
+func getExpectedJobNames(jobs []*BuildMobileAppJob) []string {
+	var expectedJobNames []string
+	for _, job := range jobs {
+		expectedJobNames = append(expectedJobNames, job.JobName)
+	}
+	return expectedJobNames
 }

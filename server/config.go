@@ -34,6 +34,11 @@ type JenkinsCredentials struct {
 	ApiToken string
 }
 
+type BuildMobileAppJob struct {
+	JobName           string
+	ExpectedArtifacts int
+}
+
 type ServerConfig struct {
 	ListenAddress               string
 	MattermodURL                string
@@ -81,12 +86,12 @@ type ServerConfig struct {
 	SetupSpinmintUpgradeMessage     string
 	SetupSpinmintUpgradeDoneMessage string
 
-	BuildMobileAppTag               string
-	BuildMobileAppInitMessage       string
-	BuildMobileAppDoneMessage       string
-	BuildMobileAppFailedMessage     string
-	BuildMobileAppBranchPrefix      string
-	BuildMobileAppArtifactsExpected int
+	BuildMobileAppTag           string
+	BuildMobileAppInitMessage   string
+	BuildMobileAppDoneMessage   string
+	BuildMobileAppFailedMessage string
+	BuildMobileAppBranchPrefix  string
+	BuildMobileAppJobs          []*BuildMobileAppJob
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
