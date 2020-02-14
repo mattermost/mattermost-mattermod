@@ -50,6 +50,7 @@ type ServerConfig struct {
 	GithubUsername              string
 	GithubAccessTokenCherryPick string
 	GitHubWebhookSecret         string
+	Org                         string
 	Username                    string
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
@@ -88,10 +89,12 @@ type ServerConfig struct {
 	SetupSpinmintUpgradeMessage     string
 	SetupSpinmintUpgradeDoneMessage string
 
-	BuildMobileAppTag           string
-	BuildMobileAppInitMessage   string
-	BuildMobileAppDoneMessage   string
-	BuildMobileAppFailedMessage string
+	BuildMobileAppTag               string
+	BuildMobileAppInitMessage       string
+	BuildMobileAppDoneMessage       string
+	BuildMobileAppFailedMessage     string
+	BuildMobileAppBranchPrefix      string
+	BuildMobileAppArtifactsExpected int
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

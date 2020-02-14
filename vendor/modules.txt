@@ -4,7 +4,6 @@ github.com/PuerkitoBio/purell
 github.com/PuerkitoBio/urlesc
 # github.com/aws/aws-sdk-go v1.25.6
 github.com/aws/aws-sdk-go/aws
-github.com/aws/aws-sdk-go/aws/arn
 github.com/aws/aws-sdk-go/aws/awserr
 github.com/aws/aws-sdk-go/aws/awsutil
 github.com/aws/aws-sdk-go/aws/client
@@ -23,7 +22,6 @@ github.com/aws/aws-sdk-go/aws/request
 github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/aws/signer/v4
 github.com/aws/aws-sdk-go/internal/ini
-github.com/aws/aws-sdk-go/internal/s3err
 github.com/aws/aws-sdk-go/internal/sdkio
 github.com/aws/aws-sdk-go/internal/sdkmath
 github.com/aws/aws-sdk-go/internal/sdkrand
@@ -31,30 +29,20 @@ github.com/aws/aws-sdk-go/internal/sdkuri
 github.com/aws/aws-sdk-go/internal/shareddefaults
 github.com/aws/aws-sdk-go/private/protocol
 github.com/aws/aws-sdk-go/private/protocol/ec2query
-github.com/aws/aws-sdk-go/private/protocol/eventstream
-github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
 github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
-github.com/aws/aws-sdk-go/private/protocol/jsonrpc
 github.com/aws/aws-sdk-go/private/protocol/query
 github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/rest
 github.com/aws/aws-sdk-go/private/protocol/restxml
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/ec2
-github.com/aws/aws-sdk-go/service/iam
 github.com/aws/aws-sdk-go/service/route53
-github.com/aws/aws-sdk-go/service/s3
-github.com/aws/aws-sdk-go/service/s3/s3iface
-github.com/aws/aws-sdk-go/service/s3/s3manager
-github.com/aws/aws-sdk-go/service/secretsmanager
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/blang/semver v3.5.1+incompatible
 github.com/blang/semver
 # github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
 github.com/braintree/manners
-# github.com/cpanato/go-circleci v0.3.1-0.20191014150105-9a66b7901b51
-github.com/cpanato/go-circleci
 # github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 github.com/cpanato/golang-jenkins
 # github.com/davecgh/go-spew v1.1.1
@@ -73,8 +61,6 @@ github.com/dyatlov/go-opengraph/opengraph
 # github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633
 github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
-# github.com/go-asn1-ber/asn1-ber v1.3.2-0.20191121212151-29be175fc3a3
-github.com/go-asn1-ber/asn1-ber
 # github.com/go-gorp/gorp v2.0.0+incompatible
 github.com/go-gorp/gorp
 # github.com/go-openapi/jsonpointer v0.19.0
@@ -119,22 +105,21 @@ github.com/mattermost/go-i18n/i18n
 github.com/mattermost/go-i18n/i18n/bundle
 github.com/mattermost/go-i18n/i18n/language
 github.com/mattermost/go-i18n/i18n/translation
-# github.com/mattermost/ldap v0.0.0-20191128190019-9f62ba4b8d4d
+# github.com/mattermost/ldap v3.0.4+incompatible
 github.com/mattermost/ldap
-# github.com/mattermost/mattermost-cloud v0.7.0
-github.com/mattermost/mattermost-cloud/internal/tools/aws
+# github.com/mattermost/mattermost-cloud v0.14.1
 github.com/mattermost/mattermost-cloud/model
-# github.com/mattermost/mattermost-operator v0.7.0
+# github.com/mattermost/mattermost-operator v0.8.5
 github.com/mattermost/mattermost-operator/pkg/apis/mattermost/v1alpha1
-# github.com/mattermost/mattermost-server v5.11.1+incompatible
-github.com/mattermost/mattermost-server/mlog
-# github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200114100911-69f4dcd955fb
+# github.com/mattermost/mattermost-server/v5 v5.20.0-rc4
 github.com/mattermost/mattermost-server/v5/mlog
 github.com/mattermost/mattermost-server/v5/model
 github.com/mattermost/mattermost-server/v5/services/timezones
 github.com/mattermost/mattermost-server/v5/utils/fileutils
 github.com/mattermost/mattermost-server/v5/utils/jsonutils
 github.com/mattermost/mattermost-server/v5/utils/markdown
+# github.com/metanerd/go-circleci v0.3.1
+github.com/metanerd/go-circleci
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
@@ -215,6 +200,8 @@ google.golang.org/appengine/internal/log
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
+# gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
+gopkg.in/asn1-ber.v1
 # gopkg.in/inf.v0 v0.9.1
 gopkg.in/inf.v0
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0

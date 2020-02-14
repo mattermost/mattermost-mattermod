@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -183,4 +182,77 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	}
 
 	return true
+}
+
+func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, response, err := client.Git.GetRef(context.Background(), org, pr.RepoName, ref)
+	if err != nil {
+		return false, err
+	}
+
+	if response.StatusCode == 200 {
+		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		return true, nil
+	} else if response.StatusCode == 404 {
+		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+		return false, nil
+	} else {
+		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
+		return false, nil
+	}
+}
+
+func (s *Server) createRef(pr *model.PullRequest, ref string) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, _, err := client.Git.CreateRef(
+		context.Background(),
+		pr.RepoOwner,
+		pr.RepoName,
+		&github.Reference{
+			Ref: github.String(ref),
+			Object: &github.GitObject{
+				SHA: github.String(pr.Sha),
+			},
+		})
+
+	if err != nil {
+		mlog.Error("Error creating reference", mlog.Err(err))
+	}
+}
+
+func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	if cStatus.GetState() == "success" {
+		_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
+	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), org, pr.RepoName, pr.Sha, nil)
+	if err != nil {
+		mlog.Err(err)
+		return false, err
+	}
+	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
+	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
+		return true, nil
+	}
+	return false, nil
 }

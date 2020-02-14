@@ -3,6 +3,7 @@
     "MattermodURL": "",
     "GithubAccessToken": "",
     "GitHubTokenReserve": 50,
+    "Org": "",
     "Username": "",
     "CircleCIToken": "",
 
@@ -57,6 +58,7 @@
     "BuildMobileAppInitMessage": "",
     "BuildMobileAppDoneMessage": "",
     "BuildMobileAppFailedMessage": "",
+    "BuildMobileAppArtifactsExpected": 0,
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",

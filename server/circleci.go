@@ -6,12 +6,14 @@ package server
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/cpanato/go-circleci"
+	"github.com/metanerd/go-circleci"
 )
 
 func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
@@ -20,7 +22,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
-	if repoInfo[0] == "mattermost" {
+	if repoInfo[0] == s.Config.Org {
 		// It is from upstream mattermost repo dont need to trigger the circleci because org members
 		// have permissions
 		mlog.Info("Dont need to trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
@@ -68,4 +70,64 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		return
 	}
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+}
+
+func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, orgUsername string) (string, int, error) {
+	ticker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return "", 0, errors.New("timed out waiting for build link")
+		case <-ticker.C:
+			branch := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
+			client := &circleci.Client{Token: s.Config.CircleCIToken}
+
+			builds, err := client.ListRecentBuildsForProject(circleci.VcsTypeGithub, orgUsername, pr.RepoName, branch, "pending", 1, 0)
+			if err != nil {
+				return "", 0, err
+			}
+
+			if len(builds) == 0 {
+				return "", 0, errors.New("could not retrieve any builds")
+			}
+
+			buildUrl := builds[0].BuildURL
+			buildNumber := builds[0].BuildNum
+
+			mlog.Debug("Started building", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName))
+			ticker.Stop()
+			return buildUrl, buildNumber, nil
+		}
+	}
+}
+
+func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest, orgUsername string, buildNumber int, expected int) (string, error) {
+	ticker := time.NewTicker(1 * time.Minute)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return "", errors.New("timed out waiting for links to artifacts")
+		case <-ticker.C:
+			client := &circleci.Client{Token: s.Config.CircleCIToken}
+			mlog.Debug("Trying to fetch artifacts", mlog.String("org", orgUsername), mlog.String("repoName", pr.RepoName), mlog.Int("build", buildNumber))
+			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, orgUsername, pr.RepoName, buildNumber)
+			if err != nil {
+				return "", err
+			}
+
+			if len(artifacts) < expected {
+				continue
+			}
+
+			artifactLinks := ""
+			for _, artifact := range artifacts {
+				artifactLinks += artifact.URL + "  \n"
+			}
+			mlog.Debug("Successfully retrieved artifacts links", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName), mlog.String("artifactLinks", artifactLinks))
+			ticker.Stop()
+			return artifactLinks, nil
+		}
+	}
 }

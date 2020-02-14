@@ -5,7 +5,7 @@ package server
 
 import (
 	"flag"
-	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
