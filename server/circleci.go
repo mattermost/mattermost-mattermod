@@ -9,7 +9,6 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,62 +71,79 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
-func (s *Server) waitForBuildLink(ctx context.Context, pr *model.PullRequest, orgUsername string) (string, int, error) {
-	ticker := time.NewTicker(10 * time.Second)
+func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
+	ticker := time.NewTicker(20 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			return "", 0, errors.New("timed out waiting for build link")
+			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
-			branch := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
+			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
-
-			builds, err := client.ListRecentBuildsForProject(circleci.VcsTypeGithub, orgUsername, pr.RepoName, branch, "pending", 1, 0)
+			var builds []*circleci.Build
+			var err error
+			builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
 			if err != nil {
-				return "", 0, err
+				return nil, err
 			}
 
 			if len(builds) == 0 {
-				return "", 0, errors.New("could not retrieve any builds")
+				builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
+				if err != nil {
+					return nil, err
+				}
 			}
 
-			buildUrl := builds[0].BuildURL
-			buildNumber := builds[0].BuildNum
+			areAll := areAllExpectedJobs(builds, expectedJobNames)
+			if areAll == false {
+				continue
+			}
 
-			mlog.Debug("Started building", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName))
+			mlog.Debug("Started building", mlog.Int("pr", pr.Number))
 			ticker.Stop()
-			return buildUrl, buildNumber, nil
+			return builds, nil
 		}
 	}
 }
 
-func (s *Server) waitForArtifactLinks(ctx context.Context, pr *model.PullRequest, orgUsername string, buildNumber int, expected int) (string, error) {
+func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, org string, buildNumber int, expectedArtifacts int) ([]*circleci.Artifact, error) {
 	ticker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			return "", errors.New("timed out waiting for links to artifacts")
+			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
-			mlog.Debug("Trying to fetch artifacts", mlog.String("org", orgUsername), mlog.String("repoName", pr.RepoName), mlog.Int("build", buildNumber))
-			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, orgUsername, pr.RepoName, buildNumber)
+			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
+			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 
-			if len(artifacts) < expected {
+			if len(artifacts) < expectedArtifacts {
 				continue
 			}
 
-			artifactLinks := ""
-			for _, artifact := range artifacts {
-				artifactLinks += artifact.URL + "  \n"
-			}
-			mlog.Debug("Successfully retrieved artifacts links", mlog.Int("buildNumber", buildNumber), mlog.Int("pr", pr.Number), mlog.String("org", orgUsername), mlog.String("repo_name", pr.RepoName), mlog.String("artifactLinks", artifactLinks))
 			ticker.Stop()
-			return artifactLinks, nil
+			return artifacts, nil
 		}
 	}
+}
+
+func areAllExpectedJobs(builds []*circleci.Build, jobNames []string) bool {
+	c := 0
+	for _, build := range builds {
+		for _, jobName := range jobNames {
+			if build.Workflows.JobName == jobName {
+				c += 1
+			}
+		}
+	}
+
+	if len(jobNames) == c {
+		return true
+	}
+	return false
 }
