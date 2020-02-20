@@ -25,6 +25,7 @@ func TestCheckCLACommentExists(t *testing.T) {
 		},
 	}
 	comments := []*github.IssueComment{a, b}
+
 	id, exists := checkCLAComment(comments, "mattermod")
 	assert.True(t, exists)
 	assert.Equal(t, id, *NewInt64(23))
@@ -33,7 +34,6 @@ func TestCheckCLACommentExists(t *testing.T) {
 func TestCheckCLACommentDoesNotExist(t *testing.T) {
 	username := "mattermod"
 	bodyFail := "Fail"
-
 	a := &github.IssueComment{
 		ID:                NewInt64(1),
 		Body:              &bodyFail,
@@ -49,6 +49,7 @@ func TestCheckCLACommentDoesNotExist(t *testing.T) {
 		},
 	}
 	comments := []*github.IssueComment{a, b}
+	
 	id, exists := checkCLAComment(comments, username)
 	assert.False(t, exists)
 	assert.Equal(t, id, *NewInt64(0))
