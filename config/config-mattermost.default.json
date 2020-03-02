@@ -58,7 +58,8 @@
     {
       "RepositoryName": "",
       "Files": [],
-      "Message": ""
+      "IntegrationLink": "https://github.com/mattermost/mmctl",
+      "Message": "Changes detected in `%s`. Please make sure the %s is not affected by a breaking change. "
     }
   ],
   "PrLabels": [],

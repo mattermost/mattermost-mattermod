@@ -10,14 +10,10 @@ func TestGetRelevantIntegrationsForPR(t *testing.T) {
 	repoServer := "mattermost-server"
 	aIntegration := &Integration{
 		RepositoryName:  repoServer,
-		Files:           nil,
-		IntegrationLink: "",
 		Message:         "First",
 	}
 	bIntegration := &Integration{
 		RepositoryName:  repoServer,
-		Files:           nil,
-		IntegrationLink: "",
 		Message:         "Second",
 	}
 	integrations := []*Integration{aIntegration, bIntegration}
@@ -38,15 +34,9 @@ func TestGetOnlyOneRelevantIntegrationsForPR(t *testing.T) {
 	repoClient := "mmmctl"
 	aIntegration := &Integration{
 		RepositoryName:  repoServer,
-		Files:           nil,
-		IntegrationLink: "",
-		Message:         "",
 	}
 	bIntegration := &Integration{
 		RepositoryName:  repoClient,
-		Files:           nil,
-		IntegrationLink: "",
-		Message:         "",
 	}
 	integrations := []*Integration{aIntegration, bIntegration}
 	pr := &model.PullRequest{
@@ -63,15 +53,9 @@ func TestGetZeroRelevantIntegrationsForPR(t *testing.T) {
 	repoClient := "mmmctl"
 	aIntegration := &Integration{
 		RepositoryName:  repoClient,
-		Files:           nil,
-		IntegrationLink: "",
-		Message:         "",
 	}
 	bIntegration := &Integration{
 		RepositoryName:  repoClient,
-		Files:           nil,
-		IntegrationLink: "",
-		Message:         "",
 	}
 	integrations := []*Integration{aIntegration, bIntegration}
 	pr := &model.PullRequest{
