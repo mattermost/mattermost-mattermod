@@ -53,6 +53,15 @@
   "StartLoadtestMessage": "",
   "SignedCLAURL": "",
   "NeedsToSignCLAMessage": "",
+  "BlacklistPaths": [],
+  "Integrations": [
+    {
+      "RepositoryName": "",
+      "Files": [],
+      "IntegrationLink": "https://github.com/mattermost/mmctl",
+      "Message": "Changes detected in `%s`. Please make sure the %s is not affected by a breaking change. "
+    }
+  ],
   "PrLabels": [],
   "IssueLabels": [
     {

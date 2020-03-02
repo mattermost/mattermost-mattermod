@@ -34,6 +34,13 @@ type JenkinsCredentials struct {
 	ApiToken string
 }
 
+type Integration struct {
+	RepositoryName  string
+	Files           []string
+	IntegrationLink string
+	Message         string
+}
+
 type BuildMobileAppJob struct {
 	JobName           string
 	ExpectedArtifacts int
@@ -109,6 +116,7 @@ type ServerConfig struct {
 	DockerPassword    string
 
 	BlacklistPaths []string
+	Integrations   []*Integration
 
 	AWSCredentials struct {
 		Id     string
