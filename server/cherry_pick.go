@@ -41,7 +41,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	cmdOut, err := s.doCherryPick(args[1], nil, pr)
+	cmdOut, err := s.doCherryPick(strings.TrimSpace(args[1]), nil, pr)
 	if err != nil {
 		mlog.Error("Error doing the cherry pick", mlog.Err(err))
 		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
