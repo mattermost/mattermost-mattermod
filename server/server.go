@@ -166,7 +166,7 @@ func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
 	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
-	s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
+	//s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
 	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
 	s.Router.HandleFunc("/delete_test_server", s.deleteTestServer).Methods("DELETE")
