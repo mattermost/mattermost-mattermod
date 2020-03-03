@@ -82,7 +82,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 				return
 			}
 			mlog.Info("will clean some comments regarding the CLA")
-			commentToRemove, existComment := s.checkCLAComment(comments)
+			commentToRemove, existComment := checkCLAComment(comments, s.Config.Username)
 			if existComment {
 				mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
 				_, err := client.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
@@ -94,7 +94,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		}
 	}
 
-	_, existComment := s.checkCLAComment(comments)
+	_, existComment := checkCLAComment(comments, s.Config.Username)
 	if !existComment {
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 	}
@@ -111,9 +111,9 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 
 }
 
-func (s *Server) checkCLAComment(comments []*github.IssueComment) (int64, bool) {
+func checkCLAComment(comments []*github.IssueComment, username string) (int64, bool) {
 	for _, comment := range comments {
-		if *comment.User.Login == s.Config.Username {
+		if *comment.User.Login == username {
 			if strings.Contains(*comment.Body, "Please help complete the Mattermost") {
 				return *comment.ID, true
 			}
