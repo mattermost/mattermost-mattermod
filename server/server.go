@@ -166,8 +166,7 @@ func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
 	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
-	//s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
-	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
+	//s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
 	s.Router.HandleFunc("/delete_test_server", s.deleteTestServer).Methods("DELETE")
 	s.Router.HandleFunc("/shrug_wick", s.serveShrugWick).Methods("GET")
@@ -267,26 +266,6 @@ func (s *Server) handleCloudWebhook(w http.ResponseWriter, r *http.Request) {
 		}(channel, payloadClone)
 	}
 	s.webhookChannelsLock.Unlock()
-}
-
-func (s *Server) listPrs(w http.ResponseWriter, r *http.Request) {
-	result := <-s.Store.PullRequest().List()
-	if result.Err != nil {
-		mlog.Error("Error getting list of pull requests", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	prs := result.Data.([]*model.PullRequest)
-
-	b, err := json.Marshal(prs)
-	if err != nil {
-		mlog.Error("Error marshalling pull requests", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
 }
 
 func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
