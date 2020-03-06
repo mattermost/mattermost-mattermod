@@ -36,12 +36,6 @@ func (s *Server) checkForIntegrations(pr *model.PullRequest) {
 	integrationConfigs := s.Config.Integrations
 	relevantIntegrationConfigs := getRelevantIntegrationsForPR(pr, integrationConfigs)
 	if len(relevantIntegrationConfigs) > 0 {
-		mlog.Info("Found integration files to check for",
-			mlog.String("user", pr.Username),
-			mlog.String("repo", pr.RepoOwner),
-			mlog.String("reponame", pr.RepoName),
-			mlog.Int("pr n", pr.Number),
-		)
 		prFilenames, err := s.getFilenamesInPullRequest(pr)
 		if err != nil {
 			mlog.Error("Error listing the files from a pr",
@@ -62,8 +56,6 @@ func (s *Server) checkForIntegrations(pr *model.PullRequest) {
 				return
 			}
 		}
-	} else {
-		mlog.Info("No integration files found to check for")
 	}
 }
 
