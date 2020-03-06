@@ -166,10 +166,7 @@ func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
 	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
-	//s.Router.HandleFunc("/list_prs", s.listPrs).Methods("GET")
-	s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
-	s.Router.HandleFunc("/list_spinmints", s.listTestServers).Methods("GET")
-	s.Router.HandleFunc("/delete_test_server", s.deleteTestServer).Methods("DELETE")
+	//s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/shrug_wick", s.serveShrugWick).Methods("GET")
 }
 
@@ -269,26 +266,6 @@ func (s *Server) handleCloudWebhook(w http.ResponseWriter, r *http.Request) {
 	s.webhookChannelsLock.Unlock()
 }
 
-func (s *Server) listPrs(w http.ResponseWriter, r *http.Request) {
-	result := <-s.Store.PullRequest().List()
-	if result.Err != nil {
-		mlog.Error("Error getting list of pull requests", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	prs := result.Data.([]*model.PullRequest)
-
-	b, err := json.Marshal(prs)
-	if err != nil {
-		mlog.Error("Error marshalling pull requests", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
-}
-
 func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
 	result := <-s.Store.Issue().List()
 	if result.Err != nil {
@@ -307,61 +284,6 @@ func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
-}
-
-func (s *Server) listTestServers(w http.ResponseWriter, r *http.Request) {
-	result := <-s.Store.Spinmint().List()
-	if result.Err != nil {
-		mlog.Error("Error getting list of test servers", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	spinmints := result.Data.([]*model.Spinmint)
-
-	b, err := json.Marshal(spinmints)
-	if err != nil {
-		mlog.Error("spinmint_error", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
-}
-
-func (s *Server) deleteTestServer(w http.ResponseWriter, r *http.Request) {
-	instance := r.FormValue("instance")
-	token := r.FormValue("token")
-
-	if token != s.Config.TokenToDeleteTestServers {
-		mlog.Error("Error deleting test server - invalid token")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	result := <-s.Store.Spinmint().GetTestServer(instance)
-	if result.Err != nil {
-		mlog.Error("Error deleting test server", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	testServer := result.Data.(*model.Spinmint)
-
-	result = <-s.Store.PullRequest().Get(testServer.RepoOwner, testServer.RepoName, testServer.Number)
-	if result.Err != nil {
-		mlog.Error("Error deleting test server", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	pr := result.Data.(*model.PullRequest)
-
-	if strings.Contains(testServer.InstanceId, "i-") {
-		s.destroySpinmint(pr, testServer.InstanceId)
-	}
-
-	s.handleDestroySpinWick(pr)
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {
