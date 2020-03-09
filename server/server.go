@@ -6,7 +6,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -22,7 +21,6 @@ import (
 	"github.com/google/go-github/v28/github"
 	"github.com/gorilla/mux"
 	cloudModel "github.com/mattermost/mattermost-cloud/model"
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
@@ -166,7 +164,6 @@ func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
 	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
-	//s.Router.HandleFunc("/list_issues", s.listIssues).Methods("GET")
 	s.Router.HandleFunc("/shrug_wick", s.serveShrugWick).Methods("GET")
 }
 
@@ -264,26 +261,6 @@ func (s *Server) handleCloudWebhook(w http.ResponseWriter, r *http.Request) {
 		}(channel, payloadClone)
 	}
 	s.webhookChannelsLock.Unlock()
-}
-
-func (s *Server) listIssues(w http.ResponseWriter, r *http.Request) {
-	result := <-s.Store.Issue().List()
-	if result.Err != nil {
-		mlog.Error("Error getting list of github issues", mlog.Err(result.Err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	issues := result.Data.([]*model.Issue)
-
-	b, err := json.Marshal(issues)
-	if err != nil {
-		mlog.Error("Error marshalling github issues", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(b)
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {
