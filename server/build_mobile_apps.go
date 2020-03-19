@@ -37,7 +37,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		s.createRef(pr, ref)
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 		defer cancel()
 		s.build(ctx, pr, s.Config.Org)
 
