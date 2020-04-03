@@ -24,10 +24,13 @@ func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
 		return
 	}
 
-	userComment := *eventIssueComment.Comment.User
-	if !s.checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
-		return
+	userComment := eventIssueComment.Comment.User.GetLogin()
+	if userComment != pr.Username {
+		// If the commentor is not the PR submitter, check if the PR submitter is an org member
+		if !s.checkUserPermission(userComment, pr.RepoOwner) {
+			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for the PR submitter and org members")
+			return
+		}
 	}
 
 	repoInfo := strings.Split(pr.FullName, "/")
