@@ -36,16 +36,6 @@
     "AutoAssignerTeam": "",
     "AutoAssignerTeamID": "",
 
-    "SetupSpinWick": "",
-    "SetupSpinWickHA": "",
-    "SpinWickHALicense": "",
-    "ProvisionerServer": "",
-    "AwsAPIKey": "",
-    "DNSNameTestServer": "",
-    "AWSEmailAccessKey": "",
-    "AWSEmailSecretKey": "",
-    "AWSEmailEndpoint": "",
-
     "SetupSpinmintTag": "",
     "SetupSpinmintMessage": "",
     "SetupSpinmintDoneMessage": "",

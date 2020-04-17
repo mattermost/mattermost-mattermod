@@ -20,7 +20,6 @@ import (
 	"github.com/braintree/manners"
 	"github.com/google/go-github/v28/github"
 	"github.com/gorilla/mux"
-	cloudModel "github.com/mattermost/mattermost-cloud/model"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
@@ -31,9 +30,6 @@ type Server struct {
 	Config *ServerConfig
 	Store  store.Store
 	Router *mux.Router
-
-	webhookChannelsLock sync.Mutex
-	webhookChannels     map[string]chan cloudModel.WebhookPayload
 
 	Builds buildsInterface
 
@@ -61,11 +57,10 @@ var (
 // New returns a new server with the desired configuration
 func New(config *ServerConfig) *Server {
 	s := &Server{
-		Config:          config,
-		Store:           store.NewSqlStore(config.DriverName, config.DataSource),
-		Router:          mux.NewRouter(),
-		webhookChannels: make(map[string]chan cloudModel.WebhookPayload),
-		StartTime:       time.Now(),
+		Config:    config,
+		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
+		Router:    mux.NewRouter(),
+		StartTime: time.Now(),
 	}
 
 	s.Builds = &Builds{}
@@ -163,8 +158,6 @@ func (s *Server) Tick() {
 func (s *Server) initializeRouter() {
 	s.Router.HandleFunc("/", s.ping).Methods("GET")
 	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
-	s.Router.HandleFunc("/cloud_webhooks", s.handleCloudWebhook).Methods("POST")
-	s.Router.HandleFunc("/shrug_wick", s.serveShrugWick).Methods("GET")
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
@@ -220,9 +213,6 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
 			s.handleCherryPick(*eventIssueComment)
 		}
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/shrugwick") {
-			s.handleShrugWick(*eventIssueComment)
-		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
 			s.handleAutoassign(*eventIssueComment)
 		}
@@ -238,29 +228,6 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.handleIssueEvent(event)
-}
-
-func (s *Server) handleCloudWebhook(w http.ResponseWriter, r *http.Request) {
-	payload, err := cloudModel.WebhookPayloadFromReader(r.Body)
-	if err != nil {
-		mlog.Error("Received webhook event, but couldn't parse the payload")
-		return
-	}
-	defer r.Body.Close()
-
-	payloadClone := *payload
-
-	s.webhookChannelsLock.Lock()
-	mlog.Debug("Received cloud webhook payload", mlog.Int("channels", len(s.webhookChannels)), mlog.String("payload", fmt.Sprintf("%+v", payloadClone)))
-	for _, channel := range s.webhookChannels {
-		go func(ch chan cloudModel.WebhookPayload, p cloudModel.WebhookPayload) {
-			select {
-			case ch <- p:
-			case <-time.After(5 * time.Second):
-			}
-		}(channel, payloadClone)
-	}
-	s.webhookChannelsLock.Unlock()
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {

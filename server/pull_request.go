@@ -48,19 +48,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Error("Label event received, but label object was empty")
 			return
 		}
-		if s.isSpinWickLabel(*event.Label.Name) {
-			mlog.Info("PR received SpinWick label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
-			switch *event.Label.Name {
-			case s.Config.SetupSpinWick:
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new SpinWick test server using Mattermost Cloud.")
-				s.handleCreateSpinWick(pr, "miniSingleton", false)
-			case s.Config.SetupSpinWickHA:
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Creating a new HA SpinWick test server using Mattermost Cloud.")
-				s.handleCreateSpinWick(pr, "miniHA", true)
-			default:
-				mlog.Error("Failed to determine sizing on SpinWick label", mlog.String("label", *event.Label.Name))
-			}
-		} else if *event.Label.Name == s.Config.BuildMobileAppTag {
+		if *event.Label.Name == s.Config.BuildMobileAppTag {
 			mlog.Info("PR received Build mobile app label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
 			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
 			go s.buildMobileApp(pr)
@@ -84,10 +72,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Error("Unlabel event received, but label object was empty")
 			return
 		}
-		if s.isSpinWickLabel(*event.Label.Name) {
-			mlog.Info("PR SpinWick label was removed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
-			s.handleDestroySpinWick(pr)
-		}
 		// TODO: remove the old test server code
 		if s.isSpinMintLabel(*event.Label.Name) {
 			if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
@@ -109,14 +93,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checks(pr)
 		s.triggerCircleCiIfNeeded(pr)
-		if s.isSpinWickLabelInLabels(pr.Labels) {
-			mlog.Info("PR has a SpinWick label, starting upgrade", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-			if s.isSpinWickHALabel(pr.Labels) {
-				s.handleUpdateSpinWick(pr, true)
-			} else {
-				s.handleUpdateSpinWick(pr, false)
-			}
-		}
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
 		} else {
@@ -138,10 +114,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			if strings.Contains(spinmint.InstanceId, "i-") {
 				go s.destroySpinmint(pr, spinmint.InstanceId)
 			}
-		}
-
-		if s.isSpinWickLabelInLabels(pr.Labels) {
-			s.handleDestroySpinWick(pr)
 		}
 	}
 
@@ -328,17 +300,8 @@ func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.Pu
 		s.Config.SetupSpinmintFailedMessage,
 		"Spinmint test server created",
 		"Spinmint upgrade test server created",
-		"New commit detected",
 		"Error during the request to upgrade",
 		"Error doing the upgrade process",
-		"Timed out waiting",
-		"Mattermost test server created!",
-		"Mattermost test server updated!",
-		"Failed to create mattermost installation",
-		"Kubernetes cluster created",
-		"Failed to create the k8s cluster",
-		"Creating a new SpinWick test server using Mattermost Cloud.",
-		"Please wait while a new kubernetes cluster is created for your SpinWick",
 	}
 
 	mlog.Info("Removing old Mattermod comments")

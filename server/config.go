@@ -68,18 +68,8 @@ type ServerConfig struct {
 
 	Repositories []*Repository
 
-	SetupSpinWick            string
-	SetupSpinWickHA          string
-	SpinWickHALicense        string
-	ProvisionerServer        string
-	AwsAPIKey                string
-	DNSNameTestServer        string
-	AWSEmailAccessKey        string
-	AWSEmailSecretKey        string
-	AWSEmailEndpoint         string
-	TokenToDeleteTestServers string
-	BlockPRMergeLabels       []string
-	AutoPRMergeLabel         string
+	BlockPRMergeLabels []string
+	AutoPRMergeLabel   string
 
 	SetupSpinmintTag                   string
 	SetupSpinmintMessage               string
