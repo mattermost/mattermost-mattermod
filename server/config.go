@@ -58,7 +58,7 @@ type ServerConfig struct {
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
 
-	TickRateMinutes        int
+	TickRateMinutes int
 
 	DriverName string
 	DataSource string

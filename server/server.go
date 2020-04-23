@@ -38,7 +38,7 @@ type Server struct {
 }
 
 const (
-	LOG_FILENAME        = "mattermod.log"
+	LOG_FILENAME = "mattermod.log"
 
 	// buildOverride overrides the buildsInterface of the server for development
 	// and testing.
