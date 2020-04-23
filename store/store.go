@@ -29,7 +29,6 @@ func Must(sc StoreChannel) interface{} {
 type Store interface {
 	PullRequest() PullRequestStore
 	Issue() IssueStore
-	Spinmint() SpinmintStore
 	Close()
 	DropAllTables()
 }
@@ -46,12 +45,4 @@ type IssueStore interface {
 	Get(repoOwner, repoName string, number int) StoreChannel
 	List() StoreChannel
 	ListOpen() StoreChannel
-}
-
-type SpinmintStore interface {
-	Save(spinmint *model.Spinmint) StoreChannel
-	Delete(instanceID string) StoreChannel
-	Get(prNumber int, repoName string) StoreChannel
-	GetTestServer(instanceID string) StoreChannel
-	List() StoreChannel
 }

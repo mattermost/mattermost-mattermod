@@ -8,8 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/pkg/errors"
 )
 
@@ -61,7 +59,6 @@ type ServerConfig struct {
 	CircleCIToken               string
 
 	TickRateMinutes        int
-	SpinmintExpirationHour int
 
 	DriverName string
 	DataSource string
@@ -70,18 +67,6 @@ type ServerConfig struct {
 
 	BlockPRMergeLabels []string
 	AutoPRMergeLabel   string
-
-	SetupSpinmintTag                   string
-	SetupSpinmintMessage               string
-	SetupSpinmintDoneMessage           string
-	SetupSpinmintFailedMessage         string
-	DestroyedSpinmintMessage           string
-	DestroyedExpirationSpinmintMessage string
-	SpinmintsUseHttps                  bool
-
-	SetupSpinmintUpgradeTag         string
-	SetupSpinmintUpgradeMessage     string
-	SetupSpinmintUpgradeDoneMessage string
 
 	BuildMobileAppTag           string
 	BuildMobileAppInitMessage   string
@@ -107,21 +92,6 @@ type ServerConfig struct {
 
 	BlacklistPaths []string
 	Integrations   []*Integration
-
-	AWSCredentials struct {
-		Id     string
-		Secret string
-		Token  string
-	}
-
-	AWSRegion        string
-	AWSImageId       string
-	AWSKeyName       string
-	AWSInstanceType  string
-	AWSHostedZoneId  string
-	AWSSecurityGroup string
-	AWSDnsSuffix     string
-	AWSSubNetId      string
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
@@ -182,20 +152,4 @@ func GetRepository(repositories []*Repository, owner, name string) (*Repository,
 	}
 
 	return nil, false
-}
-
-func (s *Server) GetAwsConfig() *aws.Config {
-	var creds *credentials.Credentials = nil
-	if s.Config.AWSCredentials.Id != "" {
-		creds = credentials.NewStaticCredentials(
-			s.Config.AWSCredentials.Id,
-			s.Config.AWSCredentials.Secret,
-			s.Config.AWSCredentials.Token,
-		)
-	}
-
-	return &aws.Config{
-		Credentials: creds,
-		Region:      &s.Config.AWSRegion,
-	}
 }

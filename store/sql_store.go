@@ -54,7 +54,6 @@ type SqlStore struct {
 	replicas      []*gorp.DbMap
 	pullRequest   PullRequestStore
 	issue         IssueStore
-	spinmint      SpinmintStore
 	SchemaVersion string
 }
 
@@ -86,7 +85,6 @@ func NewSqlStore(driverName, dataSource string) Store {
 
 	sqlStore.pullRequest = NewSqlPullRequestStore(sqlStore)
 	sqlStore.issue = NewSqlIssueStore(sqlStore)
-	sqlStore.spinmint = NewSqlSpinmintStore(sqlStore)
 
 	if err := sqlStore.master.CreateTablesIfNotExists(); err != nil {
 		mlog.Critical("error creating tables", mlog.Err(err))
@@ -98,7 +96,6 @@ func NewSqlStore(driverName, dataSource string) Store {
 
 	sqlStore.pullRequest.(*SqlPullRequestStore).CreateIndexesIfNotExists()
 	sqlStore.issue.(*SqlIssueStore).CreateIndexesIfNotExists()
-	sqlStore.spinmint.(*SqlSpinmintStore).CreateIndexesIfNotExists()
 
 	return sqlStore
 }
@@ -332,10 +329,6 @@ func (ss *SqlStore) PullRequest() PullRequestStore {
 
 func (ss *SqlStore) Issue() IssueStore {
 	return ss.issue
-}
-
-func (ss *SqlStore) Spinmint() SpinmintStore {
-	return ss.spinmint
 }
 
 func (ss *SqlStore) DropAllTables() {

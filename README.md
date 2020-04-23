@@ -19,4 +19,3 @@ In order to test Mattermod locally a couple of steps are needed.
   * 2.1\. You will need to create a Github repo and a Github Access Token. *GithubAccessToken*, *Username* and *Repositories* should be updated with your details.
   * 2.2\. *DataSource* should be updated with the DSN of the MYSQL Database that was created in step 1.
   * 2.3\. *PrLabels* should be updated with your preferred PR Labels
-  * 2.4\. The rest of the config file should be updated based on the testing activity. For example if you want to test the spin up of a test server, then all *SetupSpinmintTag*, *SetupSpinmintMessage*, *SetupSpinmintDoneMessage*, *SetupSpinmintFailedMessage*, *DestroyedSpinmintMessage*, *DestroyedExpirationSpinmintMessage* should be updated, as well as *JenkinsCredentials* and *AWSCredentials*.

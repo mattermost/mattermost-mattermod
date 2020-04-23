@@ -11,7 +11,6 @@
     "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true",
 
     "TickRateMinutes": 15,
-    "SpinmintExpirationHour": 72,
 
     "Repositories": [
         {
@@ -34,16 +33,6 @@
     "AutoAssignerTeam": "",
     "AutoAssignerTeamID": "",
 
-    "SetupSpinmintTag": "",
-    "SetupSpinmintMessage": "",
-    "SetupSpinmintDoneMessage": "",
-    "SetupSpinmintFailedMessage": "",
-    "DestroyedSpinmintMessage": "",
-    "DestroyedExpirationSpinmintMessage": "",
-    "SpinmintsUseHttps": false,
-    "SetupSpinmintUpgradeTag": "",
-    "SetupSpinmintUpgradeMessage": "",
-    "SetupSpinmintUpgradeDoneMessage": "",
     "BuildMobileAppTag": "",
     "BuildMobileAppInitMessage": "",
     "BuildMobileAppDoneMessage": "",
@@ -87,21 +76,6 @@
             "ApiToken": ""
         }
     },
-
-    "AWSCredentials": {
-        "Id": "",
-        "Secret": "",
-        "Token": ""
-    },
-
-    "AWSRegion": "",
-    "AWSImageId": "",
-    "AWSKeyName": "",
-    "AWSInstanceType": "",
-    "AWSHostedZoneId": "",
-    "AWSSecurityGroup": "",
-    "AWSSubNetId": "",
-    "AWSDnsSuffix": "",
 
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",

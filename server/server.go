@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,19 +38,11 @@ type Server struct {
 }
 
 const (
-	INSTANCE_ID_MESSAGE = "Instance ID: "
 	LOG_FILENAME        = "mattermod.log"
 
 	// buildOverride overrides the buildsInterface of the server for development
 	// and testing.
 	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
-)
-
-var (
-	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
-	INSTANCE_ID         = "INSTANCE_ID"
-	INTERNAL_IP         = "INTERNAL_IP"
-	SPINMINT_LINK       = "SPINMINT_LINK"
 )
 
 // New returns a new server with the desired configuration
