@@ -45,13 +45,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 	}
 
 	mlog.Debug("Triggering ee tests with: ", mlog.String("ref", pr.Ref), mlog.String("sha", pr.Sha))
-	dataParams := map[string]map[string]string{
-		"parameters": {
-			"external_sha":    pr.Sha,
-			"external_branch": externalBranch,
-		},
-	}
-	err = s.triggerPipeline(pr, s.Config.Org, s.Config.EnterpriseReponame, dataParams)
+	err = s.triggerEnterprisePipeline(s.Config.Org, s.Config.EnterpriseReponame, pr.Sha, externalBranch)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
@@ -81,4 +75,13 @@ func (s *Server) getFakeEnvCircleBranch(pr *model.PullRequest) (string, error) {
 		externalBranch = pr.Ref
 	}
 	return externalBranch, nil
+}
+
+func (s *Server) succeedJenkinsPendingStatuses(pr *model.PullRequest) {
+	enterpriseStatus := &github.RepoStatus{
+		State:       github.String("success"),
+		Context:     github.String("continuous-integration/jenkins/pr-merge"),
+		Description: github.String("Outdated check"),
+	}
+	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
 }
