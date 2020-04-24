@@ -38,25 +38,25 @@ func (s *Server) createEnterpriseTestsErrorStatus(pr *model.PullRequest, err err
 }
 
 func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	externalBranch, err := s.getFakeEnvCircleBranch(pr)
-	if err != nil {
-		s.createEnterpriseTestsErrorStatus(pr, err)
-		return
-	}
-
-	mlog.Debug("Triggering ee tests with: ", mlog.String("ref", pr.Ref), mlog.String("sha", pr.Sha))
-	err = s.triggerEnterprisePipeline(s.Config.Org, s.Config.EnterpriseReponame, pr.Sha, externalBranch)
-	if err != nil {
-		s.createEnterpriseTestsErrorStatus(pr, err)
-		return
-	}
-
-	enterpriseSuccessStatus := &github.RepoStatus{
-		State:       github.String("success"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("Enterprise tests success"),
-	}
-	s.createEnterpriseTestsStatus(pr, enterpriseSuccessStatus)
+	//externalBranch, err := s.getFakeEnvCircleBranch(pr)
+	//if err != nil {
+	//	s.createEnterpriseTestsErrorStatus(pr, err)
+	//	return
+	//}
+	//
+	//mlog.Debug("Triggering ee tests with: ", mlog.String("ref", pr.Ref), mlog.String("sha", pr.Sha))
+	//err = s.triggerEnterprisePipeline(s.Config.Org, s.Config.EnterpriseReponame, pr.Sha, externalBranch)
+	//if err != nil {
+	//	s.createEnterpriseTestsErrorStatus(pr, err)
+	//	return
+	//}
+	//
+	//enterpriseSuccessStatus := &github.RepoStatus{
+	//	State:       github.String("success"),
+	//	Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+	//	Description: github.String("Enterprise tests success"),
+	//}
+	//s.createEnterpriseTestsStatus(pr, enterpriseSuccessStatus)
 }
 
 // todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
