@@ -107,7 +107,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.createEnterpriseTestsPendingStatus(pr)
 
 			// todo: remove after build.mattermost.com is gone
-			s.succeedJenkinsPendingStatuses(pr)
+			s.succeedOutDatedJenkinsStatuses(pr)
 		}
 		s.triggerCircleCiIfNeeded(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {

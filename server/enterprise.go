@@ -77,7 +77,7 @@ func (s *Server) getFakeEnvCircleBranch(pr *model.PullRequest) (string, error) {
 	return externalBranch, nil
 }
 
-func (s *Server) succeedJenkinsPendingStatuses(pr *model.PullRequest) {
+func (s *Server) succeedOutDatedJenkinsStatuses(pr *model.PullRequest) {
 	enterpriseStatus := &github.RepoStatus{
 		State:       github.String("success"),
 		Context:     github.String("continuous-integration/jenkins/pr-merge"),
