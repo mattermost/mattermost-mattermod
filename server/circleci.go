@@ -74,7 +74,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 }
 
 func (s *Server) triggerEnterprisePipeline(owner string, repo string, triggerBranch, triggerSha string) error {
-	body := strings.NewReader(`parameters[external_branch]=`+triggerBranch+`&parameters[external_sha]=`+triggerSha)
+	body := strings.NewReader(`parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + triggerSha)
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return err
