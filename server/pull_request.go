@@ -62,7 +62,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if *event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.String("repo", pr.RepoName), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
 			go s.triggerEnterpriseTests(pr)
-			s.removeLabel(s.Config.Org, s.Config.EnterpriseTriggerReponame, pr.Number, s.Config.EnterpriseTriggerLabel)
+			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
 		// TODO: remove the old test server code
