@@ -73,17 +73,18 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
-func (s *Server) triggerEnterprisePipeline(owner string, repo string, triggerBranch, triggerSha string) error {
+func (s *Server) triggerEnterprisePipeline(prNumber int, triggerBranch, triggerSha string) error {
 	body := strings.NewReader(`parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + triggerSha)
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(os.ExpandEnv("${CIRCLECI_TOKEN}"), "<PASSWORD>")
+	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
+	mlog.Debug("EE triggered", mlog.Int("pr", prNumber), mlog.String("sha", triggerSha), mlog.String("sha", triggerBranch))
+	if err != nil  {
 		return err
 	}
 	_ = resp.Body.Close()
