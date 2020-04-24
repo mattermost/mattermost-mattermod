@@ -9,6 +9,8 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -69,6 +71,23 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		return
 	}
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+}
+
+func (s *Server) triggerEnterprisePipeline(owner string, repo string, triggerBranch, triggerSha string) error {
+	body := strings.NewReader(`parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + triggerSha)
+	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(os.ExpandEnv("${CIRCLECI_TOKEN}"), "<PASSWORD>")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	_ = resp.Body.Close()
+	return nil
 }
 
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {

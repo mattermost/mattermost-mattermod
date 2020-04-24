@@ -26,6 +26,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checks(pr)
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+			s.createEnterpriseTestsPendingStatus(pr)
+		}
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -36,7 +39,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checks(pr)
-		s.checkForIntegrations(pr)
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+			s.createEnterpriseTestsPendingStatus(pr)
+		}
 		s.triggerCircleCiIfNeeded(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
@@ -54,6 +59,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			go s.buildMobileApp(pr)
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
+		if s.Config.EnterpriseTriggerReponame == event.Repo.GetName() && event.Label.GetName() == s.Config.EnterpriseTriggerLabel {
+			mlog.Info("Label to run ee tests", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+			go s.triggerEnterpriseTests(pr)
+			s.removeLabel(s.Config.Org, s.Config.EnterpriseTriggerReponame, pr.Number, s.Config.EnterpriseTriggerLabel)
+		}
+
 		// TODO: remove the old test server code
 		if event.Label.GetName() == s.Config.SetupSpinmintTag {
 			mlog.Info("Label to spin a old test server")
@@ -92,6 +103,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checks(pr)
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+			s.createEnterpriseTestsPendingStatus(pr)
+
+			// todo: remove after build.mattermost.com is gone
+			s.succeedOutDatedJenkinsStatuses(pr)
+		}
 		s.triggerCircleCiIfNeeded(pr)
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)

@@ -58,6 +58,10 @@
             "ExpectedArtifacts": 0
         }
     ],
+    "EnterpriseReponame": "",
+    "EnterpriseTriggerReponame": "",
+    "EnterpriseTriggerLabel": "",
+    "EnterpriseGithubStatusContext": "",
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",
