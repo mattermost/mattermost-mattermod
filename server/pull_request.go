@@ -25,7 +25,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checks(pr)
+		s.checkCLA(pr)
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(pr)
 		}
@@ -38,7 +38,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checks(pr)
+		s.checkCLA(pr)
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(pr)
 		}
@@ -59,15 +59,18 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			go s.buildMobileApp(pr)
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
-		mlog.Debug("before label", mlog.String("enterprise label", s.Config.EnterpriseTriggerLabel))
-		mlog.Debug("before label", mlog.String("enterprise repo", s.Config.EnterpriseTriggerReponame))
-		mlog.Debug("before label", mlog.String("trigger repo", pr.RepoName))
-		mlog.Debug("before label", mlog.Int("pr", pr.Number))
-		mlog.Debug("before label", mlog.String("label", *event.Label.Name))
-		if *event.Label.Name == s.Config.EnterpriseTriggerLabel {
-			mlog.Info("Label to run ee tests", mlog.String("repo", pr.RepoName), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
-			go s.triggerEnterpriseTests(pr)
-			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
+
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+			mlog.Debug("before label", mlog.String("enterprise label", s.Config.EnterpriseTriggerLabel))
+			mlog.Debug("before label", mlog.String("enterprise repo", s.Config.EnterpriseReponame))
+			mlog.Debug("before label", mlog.String("trigger repo", pr.RepoName))
+			mlog.Debug("before label", mlog.Int("pr", pr.Number))
+			mlog.Debug("before label", mlog.String("label", *event.Label.Name))
+			if *event.Label.Name == s.Config.EnterpriseTriggerLabel {
+				mlog.Info("Label to run ee tests", mlog.String("repo", pr.RepoName), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+				go s.triggerEnterpriseTests(pr)
+				s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
+			}
 		}
 
 		// TODO: remove the old test server code
@@ -107,7 +110,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checks(pr)
+		s.checkCLA(pr)
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(pr)
 

@@ -201,14 +201,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/checks") {
-			s.handleChecks(*eventIssueComment)
-		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
 			s.handleCheckCLA(*eventIssueComment)
-		}
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-integrations") {
-			s.handleCheckIntegrations(*eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
 			s.handleCherryPick(*eventIssueComment)

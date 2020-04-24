@@ -111,7 +111,6 @@ type ServerConfig struct {
 	DockerPassword    string
 
 	BlacklistPaths []string
-	Integrations   []*Integration
 
 	AWSCredentials struct {
 		Id     string
