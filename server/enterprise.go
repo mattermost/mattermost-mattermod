@@ -45,7 +45,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 	}
 
 	mlog.Debug("Triggering ee tests with: ", mlog.String("ref", pr.Ref), mlog.String("sha", pr.Sha))
-	err = s.triggerEnterprisePipeline(s.Config.Org, s.Config.EnterpriseReponame, pr.Sha, externalBranch)
+	err = s.triggerEnterprisePipeline(pr.Number, pr.Sha, externalBranch)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
