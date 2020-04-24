@@ -84,7 +84,7 @@ func (s *Server) triggerEnterprisePipeline(prNumber int, triggerBranch, triggerS
 
 	resp, err := http.DefaultClient.Do(req)
 	mlog.Debug("EE triggered", mlog.Int("pr", prNumber), mlog.String("sha", triggerSha), mlog.String("sha", triggerBranch))
-	if err != nil  {
+	if err != nil {
 		return err
 	}
 	_ = resp.Body.Close()
