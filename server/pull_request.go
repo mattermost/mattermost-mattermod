@@ -60,7 +60,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame{
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			mlog.Debug("before label", mlog.String("enterprise label", s.Config.EnterpriseTriggerLabel))
 			mlog.Debug("before label", mlog.String("enterprise repo", s.Config.EnterpriseReponame))
 			mlog.Debug("before label", mlog.String("trigger repo", pr.RepoName))
