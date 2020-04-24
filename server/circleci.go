@@ -71,6 +71,15 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
+func (s *Server) triggerPipeline(pr *model.PullRequest, owner string, repo string, dataParams map[string]map[string]string) error {
+	client := &circleci.Client{Token: s.Config.CircleCIToken}
+	err := client.TriggerNewPipeline("github", owner, repo, dataParams)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
 	ticker := time.NewTicker(20 * time.Second)
 	for {

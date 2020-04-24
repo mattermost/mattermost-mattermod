@@ -90,6 +90,11 @@ type ServerConfig struct {
 	BuildMobileAppBranchPrefix  string
 	BuildMobileAppJobs          []*BuildMobileAppJob
 
+	EnterpriseReponame            string
+	EnterpriseTriggerReponame     string
+	EnterpriseTriggerLabel        string
+	EnterpriseGithubStatusContext string
+
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 
