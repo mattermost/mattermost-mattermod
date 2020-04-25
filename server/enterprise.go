@@ -51,12 +51,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 		return
 	}
 
-	enterpriseSuccessStatus := &github.RepoStatus{
-		State:       github.String("success"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("Enterprise tests success"),
-	}
-	s.createEnterpriseTestsStatus(pr, enterpriseSuccessStatus)
+	// github context for "ee/mattermost" will be set as "success" by the enterprise pipeline.
 }
 
 // todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
