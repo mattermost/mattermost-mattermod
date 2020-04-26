@@ -22,6 +22,7 @@ func (s *Server) createEnterpriseTestsPendingStatus(pr *model.PullRequest) {
 		State:       github.String("pending"),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("TODO as org member: After reviewing please trigger label \""+s.Config.EnterpriseTriggerLabel+"\""),
+		TargetURL:   github.String(""),
 	}
 	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
 }
@@ -31,6 +32,7 @@ func (s *Server) createEnterpriseTestsErrorStatus(pr *model.PullRequest, err err
 		State:       github.String("error"),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("Enterprise tests error"),
+		TargetURL:   github.String(""),
 	}
 	s.createEnterpriseTestsStatus(pr, enterpriseErrorStatus)
 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
