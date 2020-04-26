@@ -79,6 +79,7 @@ func (s *Server) succeedOutDatedJenkinsStatuses(pr *model.PullRequest) {
 		State:       github.String("success"),
 		Context:     github.String("continuous-integration/jenkins/pr-merge"),
 		Description: github.String("Outdated check"),
+		TargetURL:   github.String(""),
 	}
 	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
 }
