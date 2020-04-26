@@ -21,7 +21,7 @@ func (s *Server) createEnterpriseTestsPendingStatus(pr *model.PullRequest) {
 	enterpriseStatus := &github.RepoStatus{
 		State:       github.String("pending"),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("TODO as org member: After reviewing please trigger label \"Run enterprise tests\""),
+		Description: github.String("TODO as org member: After reviewing please trigger label \""+s.Config.EnterpriseTriggerLabel+"\""),
 	}
 	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
 }

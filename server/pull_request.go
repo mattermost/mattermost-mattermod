@@ -54,7 +54,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			return
 		}
 		if *event.Label.Name == s.Config.BuildMobileAppTag {
-			mlog.Info("PR received Build mobile app label", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+			mlog.Info("Label to run mobile build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
 			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
 			go s.buildMobileApp(pr)
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
@@ -62,7 +62,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			if *event.Label.Name == s.Config.EnterpriseTriggerLabel {
-				mlog.Info("Label to run ee tests", mlog.String("repo", pr.RepoName), mlog.Int("pr", event.PRNumber), mlog.String("label", *event.Label.Name))
+				mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
 				go s.triggerEnterpriseTests(pr)
 				s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 			}
