@@ -40,14 +40,14 @@ func (s *Server) createEnterpriseTestsErrorStatus(pr *model.PullRequest, err err
 }
 
 func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	externalBranch, err := s.getFakeEnvCircleBranch(pr)
+	externalBranch, eeBranch, err := s.getPRInfo(pr)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
 	}
 
-	mlog.Debug("Triggering ee tests with: ", mlog.String("ref", pr.Ref), mlog.String("sha", pr.Sha))
-	err = s.triggerEnterprisePipeline(pr.Number, externalBranch, pr.Sha)
+	mlog.Debug("Triggering ee tests with: ", mlog.String("eeRef", pr.Ref), mlog.String("triggerRef", pr.Ref), mlog.String("sha", pr.Sha))
+	err = s.triggerEnterprisePipeline(pr.Number, eeBranch, externalBranch, pr.Sha)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
@@ -58,11 +58,11 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 
 // todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
 // this is a hack to reproduce circleCI $CIRCLEBRANCH env variable, which is pull/PRNUMBER on a forked PR, but normal branchname on an upstream PR
-func (s *Server) getFakeEnvCircleBranch(pr *model.PullRequest) (string, error) {
+func (s *Server) getPRInfo(pr *model.PullRequest) (string, string, error) {
 	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
 	pullRequest, _, err := clientGitHub.PullRequests.Get(context.Background(), s.Config.Org, pr.RepoName, pr.Number)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	var externalBranch string
@@ -71,7 +71,7 @@ func (s *Server) getFakeEnvCircleBranch(pr *model.PullRequest) (string, error) {
 	} else {
 		externalBranch = pr.Ref
 	}
-	return externalBranch, nil
+	return externalBranch, *pullRequest.Base.Ref, nil
 }
 
 func (s *Server) succeedOutDatedJenkinsStatuses(pr *model.PullRequest) {
