@@ -66,7 +66,7 @@ func (s *Server) getFakeEnvCircleBranch(pr *model.PullRequest) (string, error) {
 	}
 
 	var externalBranch string
-	if pullRequest.GetBase().GetRepo().GetFork() {
+	if pullRequest.GetHead().GetRepo().GetFork() {
 		externalBranch = fmt.Sprintf("pull/%d", pr.Number)
 	} else {
 		externalBranch = pr.Ref
