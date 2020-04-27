@@ -224,13 +224,6 @@ func (s *Server) addAssignee(newPRNumber int, pr *model.PullRequest, assignees [
 	}
 }
 
-func (s *Server) isOrgMember(org, user string) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	isOrgMember, _, err := client.Organizations.IsMember(context.Background(), org, user)
-	return isOrgMember, err
-}
-
 func returnToMaster(dir string) {
 	cmd := exec.Command("git", "checkout", "master")
 	cmd.Dir = dir

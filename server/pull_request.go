@@ -26,11 +26,14 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-		}
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
+
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+			s.createEnterpriseTestsPendingStatus(pr)
+			go s.triggerEETestsforOrgMembers(pr)
+		}
+
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
 		} else {
@@ -39,10 +42,13 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
+		s.triggerCircleCiIfNeeded(pr)
+
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(pr)
+			go s.triggerEETestsforOrgMembers(pr)
 		}
-		s.triggerCircleCiIfNeeded(pr)
+
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
 		} else {
@@ -60,12 +66,11 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			if *event.Label.Name == s.Config.EnterpriseTriggerLabel {
-				mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
-				go s.triggerEnterpriseTests(pr)
-				s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
-			}
+		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
+			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
+			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
+			go s.triggerEnterpriseTests(pr)
+			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
 		// TODO: remove the old test server code
@@ -106,13 +111,15 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
+		s.triggerCircleCiIfNeeded(pr)
+
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(pr)
-
+			go s.triggerEETestsforOrgMembers(pr)
 			// todo: remove after build.mattermost.com is gone
 			s.succeedOutDatedJenkinsStatuses(pr)
 		}
-		s.triggerCircleCiIfNeeded(pr)
+
 		if s.isBlockPRMergeInLabels(pr.Labels) {
 			s.blockPRMerge(pr)
 		} else {
