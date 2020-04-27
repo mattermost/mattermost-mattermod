@@ -73,8 +73,8 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
-func (s *Server) triggerEnterprisePipeline(prNumber int, eeBranch string, triggerBranch string, triggerSha string) error {
-	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + triggerSha)
+func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch string, triggerBranch string) error {
+	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha)
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return err
@@ -83,11 +83,12 @@ func (s *Server) triggerEnterprisePipeline(prNumber int, eeBranch string, trigge
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
-	mlog.Debug("EE triggered", mlog.Int("pr", prNumber), mlog.String("sha", triggerSha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
+	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
 	if err != nil {
 		return err
 	}
 	_ = resp.Body.Close()
+	s.sendGitHubComment(pr.RepoOwner, pr.Username, pr.Number, "Triggered enterprise tests. ")
 	return nil
 }
 

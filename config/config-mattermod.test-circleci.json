@@ -62,6 +62,7 @@
     "EnterpriseTriggerReponame": "",
     "EnterpriseTriggerLabel": "",
     "EnterpriseGithubStatusContext": "",
+    "EnterpriseGithubStatusTETests": "",
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",

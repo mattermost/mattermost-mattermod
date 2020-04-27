@@ -6,7 +6,26 @@ import (
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"net/http"
 )
+
+// TODO: Use this function to check before running ee tests, if te tests are passing.
+func (s *Server) arePRTETestsPassing(pr *model.PullRequest) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	prStatuses, resp, err := client.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		mlog.Error("Failed getting PRTETestsStatuses")
+		return false, err
+	}
+
+	for _, status := range prStatuses {
+		if *status.Context == s.Config.EnterpriseGithubStatusTETests &&
+			*status.State == "success" {
+			return true, nil
+		}
+	}
+	return false, err
+}
 
 func (s *Server) createEnterpriseTestsStatus(pr *model.PullRequest, status *github.RepoStatus) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
@@ -22,6 +41,16 @@ func (s *Server) createEnterpriseTestsPendingStatus(pr *model.PullRequest) {
 		State:       github.String("pending"),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
+		TargetURL:   github.String(""),
+	}
+	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
+}
+
+func (s *Server) createEnterpriseTestsBlockedStatus(pr *model.PullRequest, description string) {
+	enterpriseStatus := &github.RepoStatus{
+		State:       github.String("pending"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String(description),
 		TargetURL:   github.String(""),
 	}
 	s.createEnterpriseTestsStatus(pr, enterpriseStatus)
@@ -57,7 +86,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 	}
 
 	mlog.Debug("Triggering ee tests with: ", mlog.String("eeRef", pr.Ref), mlog.String("triggerRef", pr.Ref), mlog.String("sha", pr.Sha))
-	err = s.triggerEnterprisePipeline(pr.Number, eeBranch, externalBranch, pr.Sha)
+	err = s.triggerEnterprisePipeline(pr, eeBranch, externalBranch)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
