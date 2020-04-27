@@ -184,6 +184,13 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 	return true
 }
 
+func (s *Server) isOrgMember(org, user string) (bool, error) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+
+	isOrgMember, _, err := client.Organizations.IsMember(context.Background(), org, user)
+	return isOrgMember, err
+}
+
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, response, err := client.Git.GetRef(context.Background(), org, pr.RepoName, ref)
