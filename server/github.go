@@ -258,7 +258,7 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return false, err
 	}
 	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == "success" || cStatus.GetState() == "" {
+	if cStatus.GetState() == "success" || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
 		return true, nil
 	}
 	return false, nil
