@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -74,7 +75,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 }
 
 func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch string, triggerBranch string) error {
-	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha)
+	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return err
