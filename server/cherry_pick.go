@@ -34,21 +34,25 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
+	// todo: fix cherrypicking
+	if pr.RepoName == s.Config.EnterpriseReponame || pr.RepoName == s.Config.EnterpriseTriggerReponame {
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
+		return
+	}
 
-	//args := strings.Split(*eventIssueComment.Comment.Body, " ")
-	//mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
-	//if !prGitHub.GetMerged() {
-	//	mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prGitHub.GetNumber()), mlog.String("Repo", pr.RepoName))
-	//	return
-	//}
-	//cmdOut, err := s.doCherryPick(strings.TrimSpace(args[1]), nil, pr)
-	//if err != nil {
-	//	mlog.Error("Error doing the cherry pick", mlog.Err(err))
-	//	errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-	//	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
-	//	return
-	//}
+	args := strings.Split(*eventIssueComment.Comment.Body, " ")
+	mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
+	if !prGitHub.GetMerged() {
+		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prGitHub.GetNumber()), mlog.String("Repo", pr.RepoName))
+		return
+	}
+	cmdOut, err := s.doCherryPick(strings.TrimSpace(args[1]), nil, pr)
+	if err != nil {
+		mlog.Error("Error doing the cherry pick", mlog.Err(err))
+		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+		return
+	}
 }
 
 func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
@@ -79,16 +83,22 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
-			//milestoneNumber := prMilestone.GetNumber()
-			//milestone := getMilestone(prMilestone.GetTitle())
-			//cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
-			//if err != nil {
-			//	mlog.Error("Error doing the cherry pick", mlog.Err(err))
-			//	errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
-			//	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
-			//	return
-			//}
+
+			// todo: fix cherrypicking
+			if pr.RepoName == s.Config.EnterpriseReponame || pr.RepoName == s.Config.EnterpriseTriggerReponame {
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
+				return
+			}
+
+			milestoneNumber := prMilestone.GetNumber()
+			milestone := getMilestone(prMilestone.GetTitle())
+			cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
+			if err != nil {
+				mlog.Error("Error doing the cherry pick", mlog.Err(err))
+				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
+				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+				return
+			}
 		}
 	}
 }
