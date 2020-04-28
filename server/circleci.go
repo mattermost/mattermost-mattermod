@@ -89,7 +89,7 @@ func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch strin
 		return err
 	}
 	_ = resp.Body.Close()
-	s.sendGitHubComment(pr.RepoOwner, pr.Username, pr.Number, "Triggered enterprise tests. ")
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Triggered enterprise tests. ")
 	return nil
 }
 
