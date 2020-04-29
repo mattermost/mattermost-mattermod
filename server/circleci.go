@@ -119,6 +119,7 @@ func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch strin
 	}
 
 	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(triggeredR.Number) + "/workflows/" + workflowId
+	mlog.Debug("EE tests Workflow found", mlog.String("link", buildLink), mlog.String("wf id", workflowId), mlog.Int("pip number", triggeredR.Number))
 	return buildLink, nil
 }
 
