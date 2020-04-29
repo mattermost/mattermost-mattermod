@@ -63,6 +63,7 @@
     "EnterpriseTriggerLabel": "",
     "EnterpriseGithubStatusContext": "",
     "EnterpriseGithubStatusTETests": "",
+    "EnterpriseWorkflowName": "",
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "SignedCLAURL": "",

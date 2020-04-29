@@ -95,6 +95,7 @@ type ServerConfig struct {
 	EnterpriseTriggerLabel        string
 	EnterpriseGithubStatusContext string
 	EnterpriseGithubStatusTETests string
+	EnterpriseWorkflowName        string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

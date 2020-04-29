@@ -8,7 +8,9 @@ import (
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+	"time"
 )
 
 func NewGithubClient(token string) *github.Client {
@@ -262,4 +264,45 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return true, nil
 	}
 	return false, nil
+}
+
+func (s *Server) createRepoStatus(pr *model.PullRequest, status *github.RepoStatus) {
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	_, _, err := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
+	if err != nil {
+		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+		return
+	}
+}
+
+func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return errors.New("timed out waiting for status " + statusContext)
+		case <-ticker.C:
+			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
+			client := NewGithubClient(s.Config.GithubAccessToken)
+			statuses, _, err := client.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+			if err != nil {
+				return err
+			}
+
+			hasStatus := false
+			for _, status := range statuses {
+				if *status.Context == statusContext && *status.State == statusState {
+					hasStatus = true
+				}
+			}
+
+			if !hasStatus {
+				continue
+			}
+
+			ticker.Stop()
+			return nil
+		}
+	}
 }
