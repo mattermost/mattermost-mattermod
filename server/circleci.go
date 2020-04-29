@@ -83,11 +83,11 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) error {
+func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch string, triggerBranch string) (string, error) {
 	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -95,23 +95,26 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 	resp, err := http.DefaultClient.Do(req)
 	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
 	if err != nil {
-		return err
+		return "", err
 	}
 	b, err := ioutil.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-
+	err = resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
 	triggeredR := PipelineTriggeredResponse{}
 	err = json.Unmarshal(b, &triggeredR)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	 workflowId, err := s.getPipelineWorkflowIdByName(ctx, triggeredR.Id, s.Config.EnterpriseWorkflowName)
+	workflowId, err := s.getPipelineWorkflowIdByName(triggeredR.Id, s.Config.EnterpriseWorkflowName)
+	if err != nil {
+		return "", err
+	}
 
-
-	buildLink := ""
-	s.sendGitHubComment(pr.RepoOwner, pr.Username, pr.Number, "Triggered enterprise tests. [workflow](" + buildLink + ")")
-	return nil
+	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + triggeredR.Id + "/workflows/" + workflowId
+	return buildLink, nil
 }
 
 type PipelineItem struct {
@@ -130,7 +133,7 @@ type PipelineWorkflowResponse struct {
 	NextPageToken     string `json:"next_page_token"`
 }
 
-func (s *Server) getPipelineWorkflowIdByName(ctx context.Context, id string, workflowName string) (string, error) {
+func (s *Server) getPipelineWorkflowIdByName(id string, workflowName string) (string, error) {
 	req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/" + id + "/workflow", nil)
 	if err != nil {
 		return "", err
@@ -142,7 +145,10 @@ func (s *Server) getPipelineWorkflowIdByName(ctx context.Context, id string, wor
 		return "", err
 	}
 	b, err := ioutil.ReadAll(resp.Body)
-	_ = resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		return "", err
+	}
 
 	triggeredR := PipelineWorkflowResponse{}
 	err = json.Unmarshal(b, &triggeredR)
