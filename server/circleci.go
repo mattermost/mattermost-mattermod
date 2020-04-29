@@ -111,7 +111,9 @@ func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch strin
 		return "", err
 	}
 
-	workflowId, err := s.getPipelineWorkflowIdByName(triggeredR.Id, s.Config.EnterpriseWorkflowName)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	workflowId, err := s.waitForWorkflowId(ctx, triggeredR.Id, s.Config.EnterpriseWorkflowName)
 	if err != nil {
 		return "", err
 	}
@@ -136,41 +138,55 @@ type PipelineWorkflowResponse struct {
 	NextPageToken string         `json:"next_page_token"`
 }
 
-func (s *Server) getPipelineWorkflowIdByName(id string, workflowName string) (string, error) {
-	req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
-	if err != nil {
-		return "", err
-	}
-	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
+func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName string) (string, error) {
+	ticker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			return "", errors.New("timed out trying to fetch workflow")
+		case <-ticker.C:
+			req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
+			if err != nil {
+				return "", err
+			}
+			req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	b, err := ioutil.ReadAll(resp.Body)
-	err = resp.Body.Close()
-	if err != nil {
-		return "", err
-	}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return "", err
+			}
+			b, err := ioutil.ReadAll(resp.Body)
+			err = resp.Body.Close()
+			if err != nil {
+				return "", err
+			}
 
-	triggeredR := PipelineWorkflowResponse{}
-	err = json.Unmarshal(b, &triggeredR)
-	if err != nil {
-		return "", err
-	}
+			if resp.StatusCode != http.StatusOK {
+				continue
+			}
 
-	workflowId := ""
-	for _, pip := range triggeredR.Pipelines {
-		if pip.Name == workflowName {
-			workflowId = pip.WorkflowId
+			triggeredR := PipelineWorkflowResponse{}
+			err = json.Unmarshal(b, &triggeredR)
+			if err != nil {
+				return "", err
+			}
+
+			workflowId := ""
+			for _, pip := range triggeredR.Pipelines {
+				if pip.Name == workflowName {
+					workflowId = pip.WorkflowId
+				}
+			}
+
+			if workflowId == "" {
+				return "", fmt.Errorf("unable to find workflow, %v", err)
+			}
+
+			ticker.Stop()
+			return workflowId, nil
 		}
 	}
-
-	if workflowId == "" {
-		return "", fmt.Errorf("unable to find workflow, %v", err)
-	}
-
-	return workflowId, nil
 }
 
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
