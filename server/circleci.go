@@ -118,7 +118,7 @@ func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch strin
 		return "", err
 	}
 
-	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + triggeredR.Id + "/workflows/" + workflowId
+	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(triggeredR.Number) + "/workflows/" + workflowId
 	return buildLink, nil
 }
 

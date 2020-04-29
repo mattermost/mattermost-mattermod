@@ -54,6 +54,7 @@
   "EnterpriseTriggerLabel": "",
   "EnterpriseGithubStatusContext": "",
   "EnterpriseGithubStatusTETests": "",
+  "EnterpriseGithubStatusEETests": "",
   "EnterpriseWorkflowName": "",
   "StartLoadtestTag": "",
   "StartLoadtestMessage": "",

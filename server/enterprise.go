@@ -92,7 +92,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 		return
 	}
 
-	s.updateBuildStatus(pr, s.Config.EnterpriseGithubStatusContext, buildLink)
+	s.updateBuildStatus(pr, s.Config.EnterpriseGithubStatusEETests, buildLink)
 }
 
 // todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
