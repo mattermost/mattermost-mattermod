@@ -83,11 +83,11 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) (string, error) {
+func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) error {
 	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
 	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
-		return "", err
+		return err
 	}
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -95,24 +95,23 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 	resp, err := http.DefaultClient.Do(req)
 	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer resp.Body.Close()
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Triggered enterprise tests. ")
-
 	b, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
 	triggeredR := PipelineTriggeredResponse{}
 	err = json.Unmarshal(b, &triggeredR)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	 getPipeline(ctx, triggeredR.Id)
+	 workflowId, err := s.getPipelineWorkflowIdByName(ctx, triggeredR.Id, s.Config.EnterpriseWorkflowName)
 
 
 	buildLink := ""
 	s.sendGitHubComment(pr.RepoOwner, pr.Username, pr.Number, "Triggered enterprise tests. [workflow](" + buildLink + ")")
-	return buildLink, nil
+	return nil
 }
 
 type PipelineItem struct {
@@ -131,7 +130,7 @@ type PipelineWorkflowResponse struct {
 	NextPageToken     string `json:"next_page_token"`
 }
 
-func (s *Server) getPipelineWorkflowByName(ctx context.Context, id string, workflowName string) (string, error) {
+func (s *Server) getPipelineWorkflowIdByName(ctx context.Context, id string, workflowName string) (string, error) {
 	req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/" + id + "/workflow", nil)
 	if err != nil {
 		return "", err
@@ -142,14 +141,20 @@ func (s *Server) getPipelineWorkflowByName(ctx context.Context, id string, workf
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 	b, err := ioutil.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
 	triggeredR := PipelineWorkflowResponse{}
 	err = json.Unmarshal(b, &triggeredR)
 	if err != nil {
 		return "", err
 	}
-	return
+	for _, pip := range triggeredR.Pipelines {
+		if pip.Name == workflowName {
+			return pip.WorkflowId, nil
+		}
+	}
+	return "", fmt.Errorf("unable to find workflow, %v", err)
 }
 
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
