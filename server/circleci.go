@@ -129,12 +129,12 @@ type PipelineItem struct {
 }
 
 type PipelineWorkflowResponse struct {
-	Pipelines []PipelineItem `json:"items"`
-	NextPageToken     string `json:"next_page_token"`
+	Pipelines     []PipelineItem `json:"items"`
+	NextPageToken string         `json:"next_page_token"`
 }
 
 func (s *Server) getPipelineWorkflowIdByName(id string, workflowName string) (string, error) {
-	req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/" + id + "/workflow", nil)
+	req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
 	if err != nil {
 		return "", err
 	}
