@@ -92,7 +92,10 @@ func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, eeBranch strin
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	resp, err := http.DefaultClient.Do(req)
+	client := http.Client{
+		Timeout: 20 * time.Second,
+	}
+	resp, err := client.Do(req)
 	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
 	if err != nil {
 		return "", err
@@ -155,12 +158,19 @@ func (s *Server) getPipelineWorkflowIdByName(id string, workflowName string) (st
 	if err != nil {
 		return "", err
 	}
+
+	workflowId := ""
 	for _, pip := range triggeredR.Pipelines {
 		if pip.Name == workflowName {
-			return pip.WorkflowId, nil
+			workflowId = pip.WorkflowId
 		}
 	}
-	return "", fmt.Errorf("unable to find workflow, %v", err)
+
+	if workflowId == "" {
+		return "", fmt.Errorf("unable to find workflow, %v", err)
+	}
+
+	return workflowId, nil
 }
 
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
