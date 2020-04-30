@@ -8,7 +8,7 @@ require (
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/go-gorp/gorp v2.0.0+incompatible
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.5.0
 	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
