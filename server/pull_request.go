@@ -127,7 +127,11 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
+
 		go s.checkIfNeedCherryPick(pr)
+
+		go s.cleanUpLabels(pr)
+
 		if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
 		} else if result.Data == nil {
@@ -142,6 +146,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 				go s.destroySpinmint(pr, spinmint.InstanceId)
 			}
 		}
+
 	}
 
 	s.checkPullRequestForChanges(pr)
@@ -455,6 +460,37 @@ func (s *Server) CleanOutdatedPRs() {
 		time.Sleep(5 * time.Second)
 	}
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
+}
+
+func (s *Server) cleanUpLabels(pr *model.PullRequest) {
+	labelsToRemove := []string{
+		"AutoMerge",
+		"Awaiting Submitter Action",
+		"Do Not Merge/Awaiting Loadtest",
+		"Do Not Merge/Awaiting Next Release",
+		"Do Not Merge/Awaiting PR",
+		"Do Not Merge",
+		"Setup Cloud Test Server",
+		"Setup HA Cloud Test Server",
+		"Setup Old Test Server",
+		"Setup Upgrade Test Server",
+		"Work In Progress",
+	}
+
+	client := NewGithubClient(s.Config.GithubAccessToken)
+	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
+		mlog.Error("Error listing the labels for closed PR", mlog.Err(err))
+		return
+	}
+
+	for _, l := range labels {
+		for _, labelToRemove := range labelsToRemove {
+			if l.GetName() == labelToRemove {
+				go s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, labelToRemove)
+			}
+		}
+	}
 }
 
 func (s *Server) isBlockPRMerge(label string) bool {
