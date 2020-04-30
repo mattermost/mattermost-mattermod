@@ -85,14 +85,14 @@ func (s *Server) AutoMergePR() {
 		merged, _, err := client.PullRequests.Merge(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
-			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+			s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 			continue
 		}
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-		s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+		s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 	}
 
 	mlog.Info("Done the process to auto merge PRs")
