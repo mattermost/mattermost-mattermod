@@ -3,7 +3,7 @@ module github.com/mattermost/mattermost-mattermod
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.25.6
+	github.com/aws/aws-sdk-go v1.30.17
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/docker/distribution v2.7.1+incompatible // indirect
