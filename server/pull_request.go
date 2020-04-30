@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v28/github"
@@ -63,14 +64,18 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info("Label to run mobile build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
 			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
 			go s.buildMobileApp(pr)
-			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
+
+			client := NewGithubClient(s.Config.GithubAccessToken)
+			s.removeLabel(client, mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
 			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
 			go s.triggerEnterpriseTests(pr)
-			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
+
+			client := NewGithubClient(s.Config.GithubAccessToken)
+			s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
 		// TODO: remove the old test server code
@@ -128,9 +133,11 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 
+		client := NewGithubClient(s.Config.GithubAccessToken)
+
 		go s.checkIfNeedCherryPick(pr)
 
-		go s.cleanUpLabels(pr)
+		go s.CleanUpLabels(client, pr)
 
 		if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
 			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
@@ -146,7 +153,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 				go s.destroySpinmint(pr, spinmint.InstanceId)
 			}
 		}
-
 	}
 
 	s.checkPullRequestForChanges(pr)
@@ -462,7 +468,7 @@ func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
 }
 
-func (s *Server) cleanUpLabels(pr *model.PullRequest) {
+func (s *Server) CleanUpLabels(client *GithubClient, pr *model.PullRequest) {
 	labelsToRemove := []string{
 		"AutoMerge",
 		"Awaiting Submitter Action",
@@ -477,20 +483,27 @@ func (s *Server) cleanUpLabels(pr *model.PullRequest) {
 		"Work In Progress",
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the labels for closed PR", mlog.Err(err))
 		return
 	}
 
+	var wg sync.WaitGroup
+
 	for _, l := range labels {
 		for _, labelToRemove := range labelsToRemove {
 			if l.GetName() == labelToRemove {
-				go s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, labelToRemove)
+				wg.Add(1)
+				go func(label string) {
+					defer wg.Done()
+					s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, label)
+				}(labelToRemove)
 			}
 		}
 	}
+
+	wg.Wait()
 }
 
 func (s *Server) isBlockPRMerge(label string) bool {
