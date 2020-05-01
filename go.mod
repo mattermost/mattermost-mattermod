@@ -10,7 +10,7 @@ require (
 	github.com/go-gorp/gorp v2.0.0+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/go-github/v28 v28.1.1
-	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/ldap v3.0.4+incompatible // indirect
 	github.com/mattermost/mattermost-server/v5 v5.20.0-rc4
