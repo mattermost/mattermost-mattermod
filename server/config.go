@@ -101,6 +101,7 @@ type ServerConfig struct {
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 
+	CLAExclusionsList     []string
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
 
