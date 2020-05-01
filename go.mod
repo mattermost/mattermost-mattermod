@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/ldap v3.0.4+incompatible // indirect
-	github.com/mattermost/mattermost-server/v5 v5.20.0-rc4
+	github.com/mattermost/mattermost-server/v5 v5.23.0-rc1
 	github.com/metanerd/go-circleci v0.3.1
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
