@@ -45,7 +45,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		mlog.Int("pr n", pr.Number),
 	)
 
-	if excluded := isUserExcluded(s.Config.CLAExclusionsList, username); excluded {
+	if contains(s.Config.CLAExclusionsList, username) {
 		mlog.Info(fmt.Sprintf("%s is excluded to sign the CLA", username))
 		return
 	}
@@ -129,16 +129,4 @@ func checkCLAComment(comments []*github.IssueComment, username string) (int64, b
 		}
 	}
 	return 0, false
-}
-
-func isUserExcluded(exclusions []string, username string) bool {
-	if len(exclusions) == 0 {
-		return false
-	}
-	for _, u := range exclusions {
-		if u == username {
-			return true
-		}
-	}
-	return false
 }
