@@ -76,14 +76,12 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 }
 
 func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) error {
-	circleciClient := http.DefaultClient
-
-	r, err := s.triggerEEPipeline(circleciClient, ctx, pr, eeBranch, triggerBranch)
+	r, err := s.triggerEEPipeline(ctx, pr, eeBranch, triggerBranch)
 	if err != nil {
 		return err
 	}
 
-	workflowId, err := s.waitForWorkflowId(circleciClient, ctx, r.Id, s.Config.EnterpriseWorkflowName)
+	workflowId, err := s.waitForWorkflowId(ctx, r.Id, s.Config.EnterpriseWorkflowName)
 	if err != nil {
 		return err
 	}
@@ -108,7 +106,7 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) triggerEEPipeline(circleciClient *http.Client, ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) (*PipelineTriggeredResponse, error) {
+func (s *Server) triggerEEPipeline(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) (*PipelineTriggeredResponse, error) {
 	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
@@ -116,16 +114,13 @@ func (s *Server) triggerEEPipeline(circleciClient *http.Client, ctx context.Cont
 	}
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := circleciClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
 	if err != nil {
 		return nil, err
 	}
-	err = resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	r := PipelineTriggeredResponse{}
+	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&r)
 	if err != nil {
 		return nil, err
@@ -150,7 +145,7 @@ type PipelineWorkflowResponse struct {
 	NextPageToken string         `json:"next_page_token"`
 }
 
-func (s *Server) waitForWorkflowId(circleciClient *http.Client, ctx context.Context, id string, workflowName string) (string, error) {
+func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName string) (string, error) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -163,17 +158,15 @@ func (s *Server) waitForWorkflowId(circleciClient *http.Client, ctx context.Cont
 				return "", err
 			}
 			req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-
-			resp, err := circleciClient.Do(req)
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				return "", err
 			}
-			err = resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
 				continue
 			}
-
 			r := PipelineWorkflowResponse{}
+			defer resp.Body.Close()
 			err = json.NewDecoder(resp.Body).Decode(&r)
 			if err != nil {
 				return "", err
