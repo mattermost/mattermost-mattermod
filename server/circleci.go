@@ -10,7 +10,6 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -76,6 +75,30 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
+func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) error {
+	r, err := s.triggerEnterprisePipeline(ctx, pr, info)
+	if err != nil {
+		return err
+	}
+
+	workflowId, err := s.waitForWorkflowId(ctx, r.Id, s.Config.EnterpriseWorkflowName)
+	if err != nil {
+		return err
+	}
+
+	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowId
+	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
+
+	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, "success")
+	if err != nil {
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
+		return err
+	}
+
+	s.updateBuildStatus(ctx, pr, s.Config.EnterpriseGithubStatusEETests, buildLink)
+	return nil
+}
+
 type PipelineTriggeredResponse struct {
 	Number    int       `json:"number"`
 	State     string    `json:"state"`
@@ -83,44 +106,34 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) triggerEnterprisePipeline(pr *model.PullRequest, info EETriggerInfo) (string, error) {
-	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
-	req, err := http.NewRequest("POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
+func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
+	body := strings.NewReader(
+		`branch=` + info.BaseBranch +
+			`&parameters[tbs_server_owner]=` + info.ServerOwner +
+			`&parameters[tbs_server_branch]=` + info.ServerBranch +
+			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
+			`&parameters[tbs_webapp_branch]=` + info.WebappBranch +
+			`&parameters[tbs_sha]=` + pr.Sha +
+			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	client := http.Client{
-		Timeout: 20 * time.Second,
-	}
-	resp, err := client.Do(req)
-	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
+	resp, err := http.DefaultClient.Do(req)
+	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	b, err := ioutil.ReadAll(resp.Body)
-	err = resp.Body.Close()
+	r := PipelineTriggeredResponse{}
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&r)
 	if err != nil {
-		return "", err
-	}
-	triggeredR := PipelineTriggeredResponse{}
-	err = json.Unmarshal(b, &triggeredR)
-	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-	workflowId, err := s.waitForWorkflowId(ctx, triggeredR.Id, s.Config.EnterpriseWorkflowName)
-	if err != nil {
-		return "", err
-	}
-
-	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(triggeredR.Number) + "/workflows/" + workflowId
-	mlog.Debug("EE tests Workflow found", mlog.String("link", buildLink), mlog.String("wf id", workflowId), mlog.Int("pip number", triggeredR.Number))
-	return buildLink, nil
+	return &r, err
 }
 
 type PipelineItem struct {
@@ -141,40 +154,33 @@ type PipelineWorkflowResponse struct {
 
 func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName string) (string, error) {
 	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			ticker.Stop()
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			req, err := http.NewRequest("GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
+			req, err := http.NewRequestWithContext(ctx, "GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
 			if err != nil {
 				return "", err
 			}
 			req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-
 			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				return "", err
 			}
-			b, err := ioutil.ReadAll(resp.Body)
-			err = resp.Body.Close()
-			if err != nil {
-				return "", err
-			}
-
 			if resp.StatusCode != http.StatusOK {
 				continue
 			}
-
-			triggeredR := PipelineWorkflowResponse{}
-			err = json.Unmarshal(b, &triggeredR)
+			r := PipelineWorkflowResponse{}
+			defer resp.Body.Close()
+			err = json.NewDecoder(resp.Body).Decode(&r)
 			if err != nil {
 				return "", err
 			}
 
 			workflowId := ""
-			for _, pip := range triggeredR.Pipelines {
+			for _, pip := range r.Pipelines {
 				if pip.Name == workflowName {
 					workflowId = pip.WorkflowId
 				}
@@ -184,7 +190,6 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 				return "", fmt.Errorf("unable to find workflow, %v", err)
 			}
 
-			ticker.Stop()
 			return workflowId, nil
 		}
 	}
@@ -192,10 +197,10 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 
 func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
 	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			ticker.Stop()
 			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
@@ -220,7 +225,6 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 			}
 
 			mlog.Debug("Started building", mlog.Int("pr", pr.Number))
-			ticker.Stop()
 			return builds, nil
 		}
 	}
@@ -228,10 +232,10 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 
 func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, org string, buildNumber int, expectedArtifacts int) ([]*circleci.Artifact, error) {
 	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
-			ticker.Stop()
 			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
@@ -245,7 +249,6 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 				continue
 			}
 
-			ticker.Stop()
 			return artifacts, nil
 		}
 	}
