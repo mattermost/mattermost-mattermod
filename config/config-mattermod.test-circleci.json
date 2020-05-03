@@ -60,6 +60,7 @@
     ],
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
+    "EnterpriseWebappReponame": "",
     "EnterpriseTriggerLabel": "",
     "EnterpriseGithubStatusContext": "",
     "EnterpriseGithubStatusTETests": "",

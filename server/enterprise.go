@@ -70,15 +70,15 @@ func (s *Server) triggerEETestsforOrgMembers(pr *model.PullRequest) {
 	}
 }
 
-func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	externalBranch, eeBranch, err := s.getPRInfo(pr)
+func (s *Server) triggerEnterpriseTests(ctx context.Context, pr *model.PullRequest) {
+	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
 	}
 
 	mlog.Debug("Triggering ee tests with: ", mlog.String("eeRef", pr.Ref), mlog.String("triggerRef", pr.Ref), mlog.String("sha", pr.Sha))
-	buildLink, err := s.triggerEnterprisePipeline(pr, eeBranch, externalBranch)
+	buildLink, err := s.triggerEnterprisePipeline(pr, triggerInfo)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(pr, err)
 		return
@@ -95,22 +95,81 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 	s.updateBuildStatus(pr, s.Config.EnterpriseGithubStatusEETests, buildLink)
 }
 
-// todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
-// this is a hack to reproduce circleCI $CIRCLEBRANCH env variable, which is pull/PRNUMBER on a forked PR, but normal branchname on an upstream PR
-func (s *Server) getPRInfo(pr *model.PullRequest) (string, string, error) {
+type EETriggerInfo struct {
+	BaseBranch   string
+	ServerOwner  string
+	ServerBranch string
+	WebappOwner  string
+	WebappBranch string
+}
+
+func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (*EETriggerInfo, error) {
 	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
-	pullRequest, _, err := clientGitHub.PullRequests.Get(context.Background(), s.Config.Org, pr.RepoName, pr.Number)
+	pullRequest, _, err := clientGitHub.PullRequests.Get(ctx, s.Config.Org, pr.RepoName, pr.Number)
+	if err != nil {
+		return nil, err
+	}
+
+	isFork := pullRequest.GetHead().GetRepo().GetFork()
+	var serverOwner string
+	if isFork {
+		serverOwner = pullRequest.GetHead().GetUser().GetLogin()
+	} else {
+		serverOwner = s.Config.Org
+	}
+	if serverOwner == "" {
+		return nil, fmt.Errorf("owner of server branch not found")
+	}
+
+	webappOwner, webappBranch, err := s.findWebappBranch(clientGitHub, ctx, pullRequest)
+	if err != nil {
+		return nil, err
+	}
+	info := &EETriggerInfo{
+		BaseBranch: *pullRequest.Base.Ref,
+		ServerOwner: serverOwner,
+		ServerBranch: pr.Ref,
+		WebappOwner: webappOwner,
+		WebappBranch: webappBranch,
+	}
+	return info, nil
+}
+
+func (s *Server) findWebappBranch(client *github.Client, ctx context.Context, serverPR *github.PullRequest) (string, string, error) {
+	serverBranch := serverPR.GetHead().GetRef()
+	destinationServerBranch := serverPR.GetBase().GetRef()
+
+	owner, webappBranch, err := s.getWebappBranchWithSameName(client, ctx, serverPR)
 	if err != nil {
 		return "", "", err
 	}
 
-	var externalBranch string
-	if pullRequest.GetHead().GetRepo().GetFork() {
-		externalBranch = fmt.Sprintf("pull/%d", pr.Number)
-	} else {
-		externalBranch = pr.Ref
+	if webappBranch == "" {
+		mlog.Debug("Setting base ref of server as webapp branch", mlog.Int("pr", serverPR.GetNumber()), mlog.String("ref", serverBranch))
+		return s.Config.Org, destinationServerBranch, nil
 	}
-	return externalBranch, *pullRequest.Base.Ref, nil
+
+	return owner, webappBranch, nil
+}
+
+func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.Context, serverPR *github.PullRequest) (string, string, error) {
+	branch, resp, err := client.Repositories.GetBranch(ctx, serverPR.GetUser().GetLogin(), s.Config.EnterpriseWebappReponame, serverPR.GetHead().GetRef())
+	if err != nil {
+		return "", "", err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		branch, resp, err := client.Repositories.GetBranch(ctx, s.Config.Org, s.Config.EnterpriseWebappReponame, serverPR.GetHead().GetRef())
+		if err != nil {
+			return "", "", err
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			return s.Config.Org, serverPR.GetBase().GetRef(), nil
+		}
+		owner := s.Config.Org
+		return owner, branch.GetName(), nil
+	}
+	owner := s.Config.Org
+	return owner, branch.GetName(), nil
 }
 
 func (s *Server) succeedOutDatedJenkinsStatuses(pr *model.PullRequest) {
