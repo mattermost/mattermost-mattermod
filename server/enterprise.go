@@ -142,12 +142,15 @@ func (s *Server) findWebappBranch(client *github.Client, ctx context.Context, se
 }
 
 func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.Context, serverPR *github.PullRequest) (string, string, error) {
-	branch, resp, err := client.Repositories.GetBranch(ctx, serverPR.GetUser().GetLogin(), s.Config.EnterpriseWebappReponame, serverPR.GetHead().GetRef())
+	prAuthor := serverPR.GetUser().GetLogin()
+	ref := serverPR.GetHead().GetRef()
+
+	forkBranch, resp, err := client.Repositories.GetBranch(ctx, prAuthor, s.Config.EnterpriseWebappReponame, ref)
 	if err != nil {
 		return "", "", err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		branch, resp, err := client.Repositories.GetBranch(ctx, s.Config.Org, s.Config.EnterpriseWebappReponame, serverPR.GetHead().GetRef())
+		upstreamBranch, resp, err := client.Repositories.GetBranch(ctx, s.Config.Org, s.Config.EnterpriseWebappReponame, ref)
 		if err != nil {
 			return "", "", err
 		}
@@ -155,10 +158,9 @@ func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.
 			return s.Config.Org, serverPR.GetBase().GetRef(), nil
 		}
 		owner := s.Config.Org
-		return owner, branch.GetName(), nil
+		return owner, upstreamBranch.GetName(), nil
 	}
-	owner := s.Config.Org
-	return owner, branch.GetName(), nil
+	return prAuthor, forkBranch.GetName(), nil
 }
 
 func (s *Server) succeedOutDatedJenkinsStatuses(ctx context.Context, pr *model.PullRequest) {
