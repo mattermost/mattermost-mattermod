@@ -109,12 +109,12 @@ type PipelineTriggeredResponse struct {
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
 	body := strings.NewReader(
 		`branch=` + info.BaseBranch +
+			`&parameters[tbs_sha]=` + pr.Sha +
+			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number) +
 			`&parameters[tbs_server_owner]=` + info.ServerOwner +
 			`&parameters[tbs_server_branch]=` + info.ServerBranch +
 			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
-			`&parameters[tbs_webapp_branch]=` + info.WebappBranch +
-			`&parameters[tbs_sha]=` + pr.Sha +
-			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number))
+			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return nil, err
