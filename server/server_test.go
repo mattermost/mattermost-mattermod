@@ -5,6 +5,7 @@ package server
 
 import (
 	"flag"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/xeipuuv/gojsonschema"
 )
 
