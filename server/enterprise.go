@@ -7,6 +7,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"net/http"
+	"regexp"
 )
 
 // TODO: Use this function to check before running ee tests, if te tests are passing.
@@ -73,6 +74,16 @@ func (s *Server) triggerEnterpriseTests(ctx context.Context, pr *model.PullReque
 	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
+		return
+	}
+
+	isBaseBranchReleaseBranch, err := regexp.MatchString(`$release-*`, triggerInfo.BaseBranch)
+	if err != nil {
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
+		return
+	}
+	if triggerInfo.BaseBranch != "master" || !isBaseBranchReleaseBranch {
+		s.succeedEEStatuses(ctx, pr, "base branch not master or release")
 		return
 	}
 
@@ -171,6 +182,24 @@ func (s *Server) succeedOutDatedJenkinsStatuses(ctx context.Context, pr *model.P
 		TargetURL:   github.String(""),
 	}
 	s.createRepoStatus(ctx, pr, enterpriseStatus)
+}
+
+func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, desc string) {
+	eeTriggeredStatus := &github.RepoStatus{
+		State:       github.String("success"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String(desc),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, eeTriggeredStatus)
+
+	eeReportStatus := &github.RepoStatus{
+		State:       github.String("success"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusEETests),
+		Description: github.String(desc),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, eeReportStatus)
 }
 
 func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetUrl string) {
