@@ -5,13 +5,20 @@ package server
 
 import (
 	"context"
-	"time"
-
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
+	"time"
 )
+
+func NewGithubClient(token string) *github.Client {
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(oauth2.NoContext, ts)
+
+	return github.NewClient(tc)
+}
 
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
@@ -112,9 +119,9 @@ func (s *Server) sendGitHubComment(repoOwner, repoName string, number int, comme
 	}
 }
 
-func (s *Server) removeLabel(client *GithubClient, repoOwner, repoName string, number int, label string) {
+func (s *Server) removeLabel(repoOwner, repoName string, number int, label string) {
 	mlog.Info("Removing label on issue", mlog.Int("issue", number), mlog.String("label", label))
-
+	client := NewGithubClient(s.Config.GithubAccessToken)
 	_, err := client.Issues.RemoveLabelForIssue(context.Background(), repoOwner, repoName, number, label)
 	if err != nil {
 		mlog.Error("Error removing the label", mlog.Err(err))
