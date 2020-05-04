@@ -37,9 +37,18 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	}
 
 	username := pr.Username
-	mlog.Info("Will check the CLA for user", mlog.String("user", username),
-		mlog.String("repo", pr.RepoOwner), mlog.String("reponame", pr.RepoName),
-		mlog.Int("pr n", pr.Number))
+	mlog.Info(
+		"Will check the CLA for user",
+		mlog.String("user", username),
+		mlog.String("repo", pr.RepoOwner),
+		mlog.String("reponame", pr.RepoName),
+		mlog.Int("pr n", pr.Number),
+	)
+
+	if contains(s.Config.CLAExclusionsList, username) {
+		mlog.Info(fmt.Sprintf("%s is excluded to sign the CLA", username))
+		return
+	}
 
 	resp, err := http.Get(s.Config.SignedCLAURL)
 	if err != nil {
