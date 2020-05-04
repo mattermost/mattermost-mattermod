@@ -97,7 +97,11 @@ func TestCleanUpLabels(t *testing.T) {
 			client := test.SetupClient(ctrl)
 			defer ctrl.Finish()
 
-			s := &server.Server{}
+			s := &server.Server{
+				Config: &server.ServerConfig{
+					IssueLabelsToCleanUp: []string{"AutoMerge", "Do Not Merge", "Work In Progress"},
+				},
+			}
 			s.CleanUpLabels(client, pr)
 		})
 	}

@@ -469,18 +469,8 @@ func (s *Server) CleanOutdatedPRs() {
 }
 
 func (s *Server) CleanUpLabels(client *GithubClient, pr *model.PullRequest) {
-	labelsToRemove := []string{
-		"AutoMerge",
-		"Awaiting Submitter Action",
-		"Do Not Merge/Awaiting Loadtest",
-		"Do Not Merge/Awaiting Next Release",
-		"Do Not Merge/Awaiting PR",
-		"Do Not Merge",
-		"Setup Cloud Test Server",
-		"Setup HA Cloud Test Server",
-		"Setup Old Test Server",
-		"Setup Upgrade Test Server",
-		"Work In Progress",
+	if len(s.Config.IssueLabelsToCleanUp) == 0 {
+		return
 	}
 
 	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
@@ -492,7 +482,7 @@ func (s *Server) CleanUpLabels(client *GithubClient, pr *model.PullRequest) {
 	var wg sync.WaitGroup
 
 	for _, l := range labels {
-		for _, labelToRemove := range labelsToRemove {
+		for _, labelToRemove := range s.Config.IssueLabelsToCleanUp {
 			if l.GetName() == labelToRemove {
 				wg.Add(1)
 				go func(label string) {

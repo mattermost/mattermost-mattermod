@@ -107,6 +107,8 @@ type ServerConfig struct {
 	PrLabels    []LabelResponse
 	IssueLabels []LabelResponse
 
+	IssueLabelsToCleanUp []string
+
 	JenkinsCredentials map[string]*JenkinsCredentials
 
 	DockerRegistryURL string
