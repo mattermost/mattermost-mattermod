@@ -59,6 +59,7 @@
   "EnterpriseWorkflowName": "",
   "StartLoadtestTag": "",
   "StartLoadtestMessage": "",
+  "CLAExclusionsList": [],
   "SignedCLAURL": "",
   "NeedsToSignCLAMessage": "",
   "BlacklistPaths": [],

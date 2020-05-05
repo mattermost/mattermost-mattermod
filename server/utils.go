@@ -59,3 +59,12 @@ func NewInt(n int) *int          { return &n }
 func NewInt64(n int64) *int64    { return &n }
 func NewInt32(n int32) *int32    { return &n }
 func NewString(s string) *string { return &s }
+
+func contains(list []string, item string) bool {
+	for _, i := range list {
+		if i == item {
+			return true
+		}
+	}
+	return false
+}

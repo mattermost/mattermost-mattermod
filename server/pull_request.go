@@ -30,10 +30,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.addHacktoberfestLabel(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsforOrgMembers(ctx, pr)
+			s.createEnterpriseTestsPendingStatus(context.Background(), pr)
+			go s.triggerEETestsforOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -47,10 +45,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsforOrgMembers(ctx, pr)
+			s.createEnterpriseTestsPendingStatus(context.Background(), pr)
+			go s.triggerEETestsforOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -73,9 +69,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
 			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
-			go s.triggerEnterpriseTests(ctx, pr)
+			go s.triggerEnterpriseTests(pr)
 			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
@@ -120,10 +114,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsforOrgMembers(ctx, pr)
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			go s.triggerEETestsforOrgMembers(pr)
 			// todo: remove after build.mattermost.com is gone
 			s.succeedOutDatedJenkinsStatuses(ctx, pr)
 		}

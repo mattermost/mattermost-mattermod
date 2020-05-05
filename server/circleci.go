@@ -169,11 +169,11 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 			if err != nil {
 				return "", err
 			}
+			defer resp.Body.Close()
 			if resp.StatusCode != http.StatusOK {
 				continue
 			}
 			r := PipelineWorkflowResponse{}
-			defer resp.Body.Close()
 			err = json.NewDecoder(resp.Body).Decode(&r)
 			if err != nil {
 				return "", err

@@ -59,18 +59,21 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
 		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
 }
-func (s *Server) triggerEETestsforOrgMembers(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) triggerEETestsforOrgMembers(pr *model.PullRequest) {
 	isOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Failed fetching org membership status")
 		isOrgMember = false
 	}
 	if isOrgMember {
-		s.triggerEnterpriseTests(ctx, pr)
+		s.triggerEnterpriseTests(pr)
 	}
 }
 
-func (s *Server) triggerEnterpriseTests(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
