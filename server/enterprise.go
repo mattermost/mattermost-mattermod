@@ -8,58 +8,10 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"net/http"
 	"regexp"
+	"time"
 )
 
-// TODO: Use this function to check before running ee tests, if te tests are passing.
-func (s *Server) arePRTETestsPassing(pr *model.PullRequest) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prStatuses, resp, err := client.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		mlog.Error("Failed getting PRTETestsStatuses")
-		return false, err
-	}
-
-	for _, status := range prStatuses {
-		if *status.Context == s.Config.EnterpriseGithubStatusTETests &&
-			*status.State == "success" {
-			return true, nil
-		}
-	}
-	return false, err
-}
-
-func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *model.PullRequest) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(ctx, pr, enterpriseStatus)
-}
-
-func (s *Server) createEnterpriseTestsBlockedStatus(ctx context.Context, pr *model.PullRequest, description string) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String(description),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(ctx, pr, enterpriseStatus)
-}
-
-func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
-	enterpriseErrorStatus := &github.RepoStatus{
-		State:       github.String("error"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("Enterprise tests error"),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
-		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
-}
-func (s *Server) triggerEETestsforOrgMembers(pr *model.PullRequest) {
+func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
 	isOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Failed fetching org membership status")
@@ -175,6 +127,38 @@ func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.
 		return owner, upstreamBranch.GetName(), nil
 	}
 	return prAuthor, forkBranch.GetName(), nil
+}
+
+func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *model.PullRequest) {
+	enterpriseStatus := &github.RepoStatus{
+		State:       github.String("pending"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, enterpriseStatus)
+}
+
+func (s *Server) createEnterpriseTestsBlockedStatus(ctx context.Context, pr *model.PullRequest, description string) {
+	enterpriseStatus := &github.RepoStatus{
+		State:       github.String("pending"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String(description),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, enterpriseStatus)
+}
+
+func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
+	enterpriseErrorStatus := &github.RepoStatus{
+		State:       github.String("error"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String("Enterprise tests error"),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
+		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
 }
 
 func (s *Server) succeedOutDatedJenkinsStatuses(ctx context.Context, pr *model.PullRequest) {
