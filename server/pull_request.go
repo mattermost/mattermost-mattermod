@@ -30,8 +30,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.addHacktoberfestLabel(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
@@ -47,8 +49,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
@@ -120,8 +124,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 			// todo: remove after build.mattermost.com is gone
