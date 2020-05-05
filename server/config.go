@@ -92,6 +92,7 @@ type ServerConfig struct {
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
+	EnterpriseWebappReponame      string
 	EnterpriseTriggerLabel        string
 	EnterpriseGithubStatusContext string
 	EnterpriseGithubStatusTETests string

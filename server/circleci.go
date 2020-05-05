@@ -75,23 +75,23 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 }
 
-func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) error {
-	r, err := s.triggerEEPipeline(ctx, pr, eeBranch, triggerBranch)
+func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) error {
+	r, err := s.triggerEnterprisePipeline(ctx, pr, info)
 	if err != nil {
 		return err
 	}
 
-	mlog.Debug("Waiting for workflow", mlog.String("pip", r.Id))
 	workflowId, err := s.waitForWorkflowId(ctx, r.Id, s.Config.EnterpriseWorkflowName)
 	if err != nil {
 		return err
 	}
 
 	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowId
-	mlog.Debug("EE tests Workflow found", mlog.String("link", buildLink))
+	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
 
 	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, "success")
 	if err != nil {
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return err
 	}
 
@@ -106,8 +106,15 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) triggerEEPipeline(ctx context.Context, pr *model.PullRequest, eeBranch string, triggerBranch string) (*PipelineTriggeredResponse, error) {
-	body := strings.NewReader(`branch=` + eeBranch + `&parameters[external_branch]=` + triggerBranch + `&parameters[external_sha]=` + pr.Sha + `&parameters[external_pr]=` + strconv.Itoa(pr.Number))
+func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
+	body := strings.NewReader(
+		`branch=` + info.BaseBranch +
+			`&parameters[tbs_sha]=` + pr.Sha +
+			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number) +
+			`&parameters[tbs_server_owner]=` + info.ServerOwner +
+			`&parameters[tbs_server_branch]=` + info.ServerBranch +
+			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
+			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
 	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return nil, err
@@ -115,7 +122,7 @@ func (s *Server) triggerEEPipeline(ctx context.Context, pr *model.PullRequest, e
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := http.DefaultClient.Do(req)
-	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("triggerRef", triggerBranch), mlog.String("eeBranch", eeBranch))
+	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
 	if err != nil {
 		return nil, err
 	}
