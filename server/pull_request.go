@@ -31,8 +31,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
 
@@ -48,8 +48,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
 
@@ -121,8 +121,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-			defer cancel()
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			defer cancel()
 			go s.triggerEETestsforOrgMembers(ctx, pr)
 			// todo: remove after build.mattermost.com is gone
 			s.succeedOutDatedJenkinsStatuses(ctx, pr)
