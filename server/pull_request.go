@@ -30,8 +30,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.addHacktoberfestLabel(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -45,8 +47,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			go s.triggerEETestsforOrgMembers(ctx, pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -69,7 +73,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
 			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
-			go s.triggerEnterpriseTests(pr)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			go s.triggerEnterpriseTests(ctx, pr)
 			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
@@ -114,10 +120,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			go s.triggerEETestsforOrgMembers(ctx, pr)
 			// todo: remove after build.mattermost.com is gone
-			s.succeedOutDatedJenkinsStatuses(pr)
+			s.succeedOutDatedJenkinsStatuses(ctx, pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
