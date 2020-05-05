@@ -37,7 +37,8 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return
 	}
-	if triggerInfo.BaseBranch != "master" || !isBaseBranchReleaseBranch {
+	if triggerInfo.BaseBranch != "master" && !isBaseBranchReleaseBranch {
+		mlog.Debug("Succeeding ee statuses", mlog.Int("pr", pr.Number), mlog.String("base ref", triggerInfo.BaseBranch))
 		s.succeedEEStatuses(ctx, pr, "base branch not master or release")
 		return
 	}
