@@ -110,18 +110,25 @@ func (s *Server) findWebappBranch(client *github.Client, ctx context.Context, se
 func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.Context, serverPR *github.PullRequest) (owner string, branch string, err error) {
 	prAuthor := serverPR.GetUser().GetLogin()
 	ref := serverPR.GetHead().GetRef()
-	forkBranch, resp, err := client.Repositories.GetBranch(ctx, prAuthor, s.Config.EnterpriseWebappReponame, ref)
-	if err != nil || (resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusOK) {
-		return "", "", err
-	}
-
-	if resp.StatusCode == http.StatusNotFound {
-		upstreamBranch, resp, err := client.Repositories.GetBranch(ctx, s.Config.Org, s.Config.EnterpriseWebappReponame, ref)
-		if err != nil || (resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusOK) {
+	forkBranch, r, err := client.Repositories.GetBranch(ctx, prAuthor, s.Config.EnterpriseWebappReponame, ref)
+	if err != nil {
+		if r == nil {
 			return "", "", err
 		}
 
-		if resp.StatusCode == http.StatusNotFound {
+		if r.StatusCode != http.StatusNotFound {
+			return "", "", err
+		}
+
+		upstreamBranch, r, err := client.Repositories.GetBranch(ctx, s.Config.Org, s.Config.EnterpriseWebappReponame, ref)
+		if err != nil {
+			if r == nil {
+				return "", "", err
+			}
+
+			if r.StatusCode != http.StatusNotFound {
+				return "", "", err
+			}
 			return s.Config.Org, serverPR.GetBase().GetRef(), nil
 		}
 
@@ -129,7 +136,6 @@ func (s *Server) getWebappBranchWithSameName(client *github.Client, ctx context.
 		mlog.Debug("Found upstream webapp branch", mlog.String("owner", owner), mlog.String("branch", upstreamBranch.GetName()))
 		return owner, upstreamBranch.GetName(), nil
 	}
-
 	mlog.Debug("Found webapp branch", mlog.String("owner", prAuthor), mlog.String("branch", forkBranch.GetName()))
 	return prAuthor, forkBranch.GetName(), nil
 }
