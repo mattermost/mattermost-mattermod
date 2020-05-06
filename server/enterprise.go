@@ -61,12 +61,11 @@ type EETriggerInfo struct {
 }
 
 func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EETriggerInfo, err error) {
-	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
-	pullRequest, _, err := clientGitHub.PullRequests.Get(ctx, s.Config.Org, pr.RepoName, pr.Number)
+	pullRequest, _, err := s.GithubClient.PullRequests.Get(ctx, s.Config.Org, pr.RepoName, pr.Number)
 	if err != nil {
 		return nil, err
 	}
-	baseBranch := pullRequest.Base.GetRef()
+	baseBranch := pullRequest.GetBase().GetRef()
 	isFork := pullRequest.GetHead().GetRepo().GetFork()
 	var serverOwner string
 	if isFork {
@@ -86,7 +85,7 @@ func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EE
 		eeBranch = baseBranch
 	}
 
-	webappOwner, webappBranch, err := s.getSameBranchInRepo(ctx, pr, s.Config.EnterpriseWebappReponame)
+	webappOwner, webappBranch, err := s.getBranchFromForkOrUpstreamRepo(ctx, pr, s.Config.EnterpriseWebappReponame)
 	if err != nil {
 		return nil, err
 	}
@@ -107,13 +106,9 @@ func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EE
 }
 
 func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo string, ref string) (branch string, err error) {
-	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
-	ghBranch, r, err := clientGitHub.Repositories.GetBranch(ctx, remote, repo, ref)
+	ghBranch, r, err := s.GithubClient.Repositories.GetBranch(ctx, remote, repo, ref)
 	if err != nil {
-		if r == nil {
-			return "", err
-		}
-		if r.StatusCode != http.StatusNotFound {
+		if r == nil || r.StatusCode != http.StatusNotFound {
 			return "", err
 		}
 		return "", nil // do not err if branch is not found
@@ -124,7 +119,7 @@ func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo 
 	return ghBranch.GetName(), nil
 }
 
-func (s *Server) getSameBranchInRepo(ctx context.Context, serverPR *model.PullRequest, repo string) (owner string, branch string, err error) {
+func (s *Server) getBranchFromForkOrUpstreamRepo(ctx context.Context, serverPR *model.PullRequest, repo string) (owner string, branch string, err error) {
 	forkBranch, err := s.getBranchWithSameName(ctx, serverPR.Username, repo, serverPR.Ref)
 	if err != nil {
 		return "", "", err
@@ -134,7 +129,7 @@ func (s *Server) getSameBranchInRepo(ctx context.Context, serverPR *model.PullRe
 		if err != nil {
 			return "", "", err
 		}
-		if upstreamBranch == forkBranch {
+		if upstreamBranch == "" {
 			return s.Config.Org, "", nil
 		}
 		return s.Config.Org, upstreamBranch, nil
