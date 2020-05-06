@@ -116,8 +116,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
 			go s.triggerEETestsForOrgMembers(pr)
-			// todo: remove after build.mattermost.com is gone
-			s.succeedOutDatedJenkinsStatuses(context.TODO(), pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {

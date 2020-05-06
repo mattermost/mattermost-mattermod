@@ -108,7 +108,7 @@ type PipelineTriggeredResponse struct {
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
 	body := strings.NewReader(
-		`branch=` + info.BaseBranch +
+		`branch=` + info.EEBranch +
 			`&parameters[tbs_sha]=` + pr.Sha +
 			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number) +
 			`&parameters[tbs_server_owner]=` + info.ServerOwner +

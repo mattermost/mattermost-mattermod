@@ -27,9 +27,10 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config *ServerConfig
-	Store  store.Store
-	Router *mux.Router
+	Config       *ServerConfig
+	Store        store.Store
+	Router       *mux.Router
+	GithubClient *github.Client
 
 	Builds buildsInterface
 
@@ -63,6 +64,7 @@ func New(config *ServerConfig) *Server {
 		StartTime: time.Now(),
 	}
 
+	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
 		mlog.Warn("Using mocked build tools")
