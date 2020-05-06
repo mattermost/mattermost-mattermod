@@ -7,59 +7,11 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"net/http"
+	"regexp"
 	"time"
 )
 
-// TODO: Use this function to check before running ee tests, if te tests are passing.
-func (s *Server) arePRTETestsPassing(pr *model.PullRequest) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prStatuses, resp, err := client.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Ref, nil)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		mlog.Error("Failed getting PRTETestsStatuses")
-		return false, err
-	}
-
-	for _, status := range prStatuses {
-		if *status.Context == s.Config.EnterpriseGithubStatusTETests &&
-			*status.State == "success" {
-			return true, nil
-		}
-	}
-	return false, err
-}
-
-func (s *Server) createEnterpriseTestsPendingStatus(pr *model.PullRequest) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(pr, enterpriseStatus)
-}
-
-func (s *Server) createEnterpriseTestsBlockedStatus(pr *model.PullRequest, description string) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String(description),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(pr, enterpriseStatus)
-}
-
-func (s *Server) createEnterpriseTestsErrorStatus(pr *model.PullRequest, err error) {
-	enterpriseErrorStatus := &github.RepoStatus{
-		State:       github.String("error"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String("Enterprise tests error"),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(pr, enterpriseErrorStatus)
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
-		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
-}
-func (s *Server) triggerEETestsforOrgMembers(pr *model.PullRequest) {
+func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
 	isOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Failed fetching org membership status")
@@ -71,64 +23,176 @@ func (s *Server) triggerEETestsforOrgMembers(pr *model.PullRequest) {
 }
 
 func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	externalBranch, eeBranch, err := s.getPRInfo(pr)
-	if err != nil {
-		s.createEnterpriseTestsErrorStatus(pr, err)
-		return
-	}
-
-	mlog.Debug("Triggering ee tests with: ", mlog.String("eeRef", pr.Ref), mlog.String("triggerRef", pr.Ref), mlog.String("sha", pr.Sha))
-	buildLink, err := s.triggerEnterprisePipeline(pr, eeBranch, externalBranch)
-	if err != nil {
-		s.createEnterpriseTestsErrorStatus(pr, err)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, "success")
+
+	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
-		s.createEnterpriseTestsErrorStatus(pr, err)
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return
 	}
 
-	s.updateBuildStatus(pr, s.Config.EnterpriseGithubStatusEETests, buildLink)
+	isBaseBranchReleaseBranch, err := regexp.MatchString(`$release-*`, triggerInfo.BaseBranch)
+	if err != nil {
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
+		return
+	}
+	if triggerInfo.BaseBranch != "master" && !isBaseBranchReleaseBranch {
+		mlog.Debug("Succeeding ee statuses", mlog.Int("pr", pr.Number), mlog.String("base ref", triggerInfo.BaseBranch))
+		s.succeedEEStatuses(ctx, pr, "base branch not master or release")
+		return
+	}
+
+	mlog.Debug("Triggering ee tests", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
+	err = s.requestEETriggering(ctx, pr, triggerInfo)
+	if err != nil {
+		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
+		return
+	}
 }
 
-// todo: adapt enterprise pipeline code so it already knows that it is a fork. This will make the enterprise pipeline code more readable.
-// this is a hack to reproduce circleCI $CIRCLEBRANCH env variable, which is pull/PRNUMBER on a forked PR, but normal branchname on an upstream PR
-func (s *Server) getPRInfo(pr *model.PullRequest) (string, string, error) {
-	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
-	pullRequest, _, err := clientGitHub.PullRequests.Get(context.Background(), s.Config.Org, pr.RepoName, pr.Number)
+type EETriggerInfo struct {
+	BaseBranch   string
+	EEBranch     string
+	ServerOwner  string
+	ServerBranch string
+	WebappOwner  string
+	WebappBranch string
+}
+
+func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EETriggerInfo, err error) {
+	pullRequest, _, err := s.GithubClient.PullRequests.Get(ctx, s.Config.Org, pr.RepoName, pr.Number)
+	if err != nil {
+		return nil, err
+	}
+	baseBranch := pullRequest.GetBase().GetRef()
+	isFork := pullRequest.GetHead().GetRepo().GetFork()
+	var serverOwner string
+	if isFork {
+		serverOwner = pullRequest.GetHead().GetUser().GetLogin()
+	} else {
+		serverOwner = s.Config.Org
+	}
+	if serverOwner == "" {
+		return nil, fmt.Errorf("owner of server branch not found")
+	}
+
+	eeBranch, err := s.getBranchWithSameName(ctx, s.Config.Org, s.Config.EnterpriseReponame, pr.Ref)
+	if err != nil {
+		return nil, err
+	}
+	if eeBranch == "" {
+		eeBranch = baseBranch
+	}
+
+	webappOwner, webappBranch, err := s.getBranchFromForkOrUpstreamRepo(ctx, pr, s.Config.EnterpriseWebappReponame)
+	if err != nil {
+		return nil, err
+	}
+	if webappBranch == "" {
+		webappOwner = s.Config.Org
+		webappBranch = baseBranch
+	}
+
+	info = &EETriggerInfo{
+		BaseBranch:   baseBranch,
+		EEBranch:     eeBranch,
+		ServerOwner:  serverOwner,
+		ServerBranch: pr.Ref,
+		WebappOwner:  webappOwner,
+		WebappBranch: webappBranch,
+	}
+	return info, nil
+}
+
+func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo string, ref string) (branch string, err error) {
+	ghBranch, r, err := s.GithubClient.Repositories.GetBranch(ctx, remote, repo, ref)
+	if err != nil {
+		if r == nil || r.StatusCode != http.StatusNotFound {
+			return "", err
+		}
+		return "", nil // do not err if branch is not found
+	}
+	if ghBranch == nil {
+		return "", fmt.Errorf("unexpected failure case")
+	}
+	return ghBranch.GetName(), nil
+}
+
+func (s *Server) getBranchFromForkOrUpstreamRepo(ctx context.Context, serverPR *model.PullRequest, repo string) (owner string, branch string, err error) {
+	forkBranch, err := s.getBranchWithSameName(ctx, serverPR.Username, repo, serverPR.Ref)
 	if err != nil {
 		return "", "", err
 	}
-
-	var externalBranch string
-	if pullRequest.GetHead().GetRepo().GetFork() {
-		externalBranch = fmt.Sprintf("pull/%d", pr.Number)
-	} else {
-		externalBranch = pr.Ref
+	if forkBranch == "" {
+		upstreamBranch, err := s.getBranchWithSameName(ctx, s.Config.Org, repo, serverPR.Ref)
+		if err != nil {
+			return "", "", err
+		}
+		if upstreamBranch == "" {
+			return s.Config.Org, "", nil
+		}
+		return s.Config.Org, upstreamBranch, nil
 	}
-	return externalBranch, *pullRequest.Base.Ref, nil
+	return serverPR.Username, forkBranch, nil
 }
 
-func (s *Server) succeedOutDatedJenkinsStatuses(pr *model.PullRequest) {
+func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *model.PullRequest) {
 	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("success"),
-		Context:     github.String("continuous-integration/jenkins/pr-merge"),
-		Description: github.String("Outdated check"),
+		State:       github.String("pending"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
 		TargetURL:   github.String(""),
 	}
-	s.createRepoStatus(pr, enterpriseStatus)
+	s.createRepoStatus(ctx, pr, enterpriseStatus)
 }
 
-func (s *Server) updateBuildStatus(pr *model.PullRequest, context string, targetUrl string) {
+func (s *Server) createEnterpriseTestsBlockedStatus(ctx context.Context, pr *model.PullRequest, description string) {
+	enterpriseStatus := &github.RepoStatus{
+		State:       github.String("pending"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String(description),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, enterpriseStatus)
+}
+
+func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
+	enterpriseErrorStatus := &github.RepoStatus{
+		State:       github.String("error"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String("Enterprise tests error"),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
+	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
+		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+}
+
+func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, desc string) {
+	eeTriggeredStatus := &github.RepoStatus{
+		State:       github.String("success"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
+		Description: github.String(desc),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, eeTriggeredStatus)
+
+	eeReportStatus := &github.RepoStatus{
+		State:       github.String("success"),
+		Context:     github.String(s.Config.EnterpriseGithubStatusEETests),
+		Description: github.String(desc),
+		TargetURL:   github.String(""),
+	}
+	s.createRepoStatus(ctx, pr, eeReportStatus)
+}
+
+func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetUrl string) {
 	status := &github.RepoStatus{
 		State:       github.String("pending"),
 		Context:     github.String(context),
 		Description: github.String("Testing EE. SHA: " + pr.Sha),
 		TargetURL:   github.String(targetUrl),
 	}
-	s.createRepoStatus(pr, status)
+	s.createRepoStatus(ctx, pr, status)
 }

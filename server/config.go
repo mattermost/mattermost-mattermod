@@ -92,6 +92,7 @@ type ServerConfig struct {
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
+	EnterpriseWebappReponame      string
 	EnterpriseTriggerLabel        string
 	EnterpriseGithubStatusContext string
 	EnterpriseGithubStatusTETests string
@@ -101,6 +102,7 @@ type ServerConfig struct {
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 
+	CLAExclusionsList     []string
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
 

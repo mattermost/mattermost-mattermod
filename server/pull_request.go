@@ -31,8 +31,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.addHacktoberfestLabel(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
+			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -46,8 +46,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
+			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -119,10 +119,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(pr)
-			go s.triggerEETestsforOrgMembers(pr)
-			// todo: remove after build.mattermost.com is gone
-			s.succeedOutDatedJenkinsStatuses(pr)
+			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {

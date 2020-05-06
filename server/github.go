@@ -259,9 +259,9 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 	return false, nil
 }
 
-func (s *Server) createRepoStatus(pr *model.PullRequest, status *github.RepoStatus) {
+func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) {
 	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, _, err := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
+	_, _, err := client.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
