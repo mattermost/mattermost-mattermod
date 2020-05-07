@@ -30,7 +30,7 @@ type Server struct {
 	Config       *ServerConfig
 	Store        store.Store
 	Router       *mux.Router
-	GithubClient *github.Client
+	GithubClient *GithubClient
 
 	Builds buildsInterface
 

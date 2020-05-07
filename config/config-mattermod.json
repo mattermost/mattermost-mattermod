@@ -84,6 +84,8 @@
         }
     ],
 
+    "IssueLabelsToCleanUp": [],
+
     "JenkinsCredentials": {
         "jenkins": {
             "URL": "",
