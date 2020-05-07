@@ -94,15 +94,15 @@ func TestCleanUpLabels(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
-			client := test.SetupClient(ctrl)
 			defer ctrl.Finish()
 
 			s := &server.Server{
 				Config: &server.ServerConfig{
 					IssueLabelsToCleanUp: []string{"AutoMerge", "Do Not Merge", "Work In Progress"},
 				},
+				GithubClient: test.SetupClient(ctrl),
 			}
-			s.CleanUpLabels(client, pr)
+			s.CleanUpLabels(pr)
 		})
 	}
 }

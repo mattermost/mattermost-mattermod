@@ -12,9 +12,7 @@ import (
 
 func (s *Server) CheckLimitRateAndSleep() {
 	mlog.Info("Checking the rate limit on Github and will sleep if need...")
-
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	rate, _, err := client.RateLimits(context.Background())
+	rate, _, err := s.GithubClient.RateLimits(context.Background())
 	if err != nil {
 		mlog.Error("Error getting the rate limit", mlog.Err(err))
 		time.Sleep(30 * time.Second)
@@ -32,9 +30,7 @@ func (s *Server) CheckLimitRateAndSleep() {
 
 func (s *Server) CheckLimitRateAndAbortRequest() bool {
 	mlog.Info("Checking the rate limit on Github and will abort request if need...")
-
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	rate, _, err := client.RateLimits(context.Background())
+	rate, _, err := s.GithubClient.RateLimits(context.Background())
 	if err != nil {
 		mlog.Error("Error getting the rate limit", mlog.Err(err))
 		time.Sleep(30 * time.Second)

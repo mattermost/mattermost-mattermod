@@ -10,9 +10,7 @@ import (
 )
 
 func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	teams, _, err := client.Repositories.ListTeams(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, nil)
+	teams, _, err := s.GithubClient.Repositories.ListTeams(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, nil)
 	if err != nil {
 		mlog.Error("Error listing the teams to check", mlog.Err(err), mlog.String("RepoOwner", *eventIssueComment.Repository.Owner.Login), mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
 		s.autoAssignerPostError(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, eventIssueComment.Comment.GetHTMLURL())
@@ -33,7 +31,7 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 			TeamReviewers: []string{s.Config.AutoAssignerTeam},
 		}
 
-		_, _, err = client.PullRequests.RequestReviewers(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, reviewReq)
+		_, _, err = s.GithubClient.PullRequests.RequestReviewers(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, reviewReq)
 		if err != nil {
 			mlog.Error("Error setting the reviewers for pull panda", mlog.Err(err), mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
 			s.autoAssignerPostError(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, eventIssueComment.Comment.GetHTMLURL())

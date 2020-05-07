@@ -16,8 +16,7 @@ import (
 )
 
 func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -63,14 +62,13 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		return
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	claStatus := &github.RepoStatus{
 		TargetURL: github.String(s.Config.SignedCLAURL),
 		Context:   github.String("cla/mattermost"),
 	}
 
 	// Get Github comments
-	comments, _, err := client.Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
@@ -85,7 +83,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 			claStatus.State = github.String("success")
 			userMsg := fmt.Sprintf("%s authorized", username)
 			claStatus.Description = github.String(userMsg)
-			_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
+			_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
 			if errStatus != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 				return
@@ -94,7 +92,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 			commentToRemove, existComment := checkCLAComment(comments, s.Config.Username)
 			if existComment {
 				mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
-				_, err := client.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
+				_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
 				if err != nil {
 					mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
 				}
@@ -111,7 +109,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
 	claStatus.Description = github.String(userMsg)
 	mlog.Info("will post error on CLA", mlog.String("user", username))
-	_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
+	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
 	if errStatus != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return

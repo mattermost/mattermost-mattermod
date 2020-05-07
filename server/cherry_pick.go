@@ -20,8 +20,7 @@ import (
 )
 
 func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -56,9 +55,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 }
 
 func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	prCherryCandidate, _, err := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error getting the PR info", mlog.Err(err))
 		return
@@ -75,7 +72,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		return
 	}
 
-	labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the labels for PR", mlog.Err(err))
 		return
@@ -146,8 +143,6 @@ func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.Pu
 }
 
 func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	isContributorOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
 	if err != nil {
 		mlog.Error("Error getting org membership for cherry pick PR", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
@@ -161,7 +156,7 @@ func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 	} else {
 		// We have to get a random reviewer from the original PR
 		// Get the reviewers from the cherry pick PR
-		reviewersFromPR, _, err := client.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		reviewersFromPR, _, err := s.GithubClient.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 		if err != nil {
 			mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 			return ""
@@ -175,24 +170,22 @@ func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 }
 
 func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	// Add the AutomatedCherryPick/Done in the new pr
 	labelsNewPR := []string{"AutomatedCherryPick", "Changelog/Not Needed", "Docs/Not Needed"}
-	_, _, err := client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, labelsNewPR)
+	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, labelsNewPR)
 	if err != nil {
 		mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
 	// remove the CherryPick/Approved and add the CherryPick/Done
-	_, _, err = client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"CherryPick/Done"})
+	_, _, err = s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"CherryPick/Done"})
 	if err != nil {
 		mlog.Error("Error applying the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
-	_, err = client.Issues.RemoveLabelForIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPick/Approved")
+	_, err = s.GithubClient.Issues.RemoveLabelForIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPick/Approved")
 	if err != nil {
 		mlog.Error("Error removing the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
@@ -200,25 +193,21 @@ func (s *Server) updateCherryPickLabels(newPRNumber int, pr *model.PullRequest) 
 }
 
 func (s *Server) addMilestone(newPRNumber int, pr *model.PullRequest, milestoneNumber *int) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	// Add the milestone to the new PR
 	request := &github.IssueRequest{
 		Milestone: milestoneNumber,
 	}
-	_, _, err := client.Issues.Edit(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, request)
+	_, _, err := s.GithubClient.Issues.Edit(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, request)
 	if err != nil {
 		mlog.Error("Error applying the milestone in the new pr", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 	}
 }
 
 func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewers []string) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	reviewReq := github.ReviewersRequest{
 		Reviewers: reviewers,
 	}
-	_, _, err := client.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
+	_, _, err := s.GithubClient.PullRequests.RequestReviewers(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, reviewReq)
 	if err != nil {
 		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return
@@ -226,9 +215,7 @@ func (s *Server) addReviewers(newPRNumber int, pr *model.PullRequest, reviewers 
 }
 
 func (s *Server) addAssignee(newPRNumber int, pr *model.PullRequest, assignees []string) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	_, _, err := client.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignees)
+	_, _, err := s.GithubClient.Issues.AddAssignees(context.Background(), pr.RepoOwner, pr.RepoName, newPRNumber, assignees)
 	if err != nil {
 		mlog.Error("Error setting the reviewers ", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 		return

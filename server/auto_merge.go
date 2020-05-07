@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-
 	"github.com/google/go-github/v28/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -22,14 +21,13 @@ func (s *Server) AutoMergePR() {
 	}
 	prs = result.Data.([]*model.PullRequest)
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	for _, pr := range prs {
 		if !s.isAutoMergeLabelInLabels(pr.Labels) {
 			mlog.Info("No auto merge label for this PR", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
 			continue
 		}
 
-		prToMerge, _, err := client.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		prToMerge, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			mlog.Error("Error in getting the PR info", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue
@@ -45,7 +43,7 @@ func (s *Server) AutoMergePR() {
 		}
 
 		// Get the Statuses
-		PRStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, prToMerge.Head.GetSHA(), nil)
+		PRStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, prToMerge.Head.GetSHA(), nil)
 		if err != nil {
 			mlog.Error("Error in getting the PR Status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue
@@ -62,7 +60,7 @@ func (s *Server) AutoMergePR() {
 		}
 
 		// Check if all reviewers did the review
-		prReviewers, _, err := client.PullRequests.ListReviewers(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		prReviewers, _, err := s.GithubClient.PullRequests.ListReviewers(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 		if err != nil {
 			mlog.Error("Error to get the Reviewers for a PR", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue
@@ -82,17 +80,17 @@ func (s *Server) AutoMergePR() {
 			MergeMethod: "squash",
 		}
 
-		merged, _, err := client.PullRequests.Merge(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
+		merged, _, err := s.GithubClient.PullRequests.Merge(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
-			s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 			continue
 		}
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-		s.removeLabel(client, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+		s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 	}
 
 	mlog.Info("Done the process to auto merge PRs")
