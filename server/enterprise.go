@@ -43,7 +43,6 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 		return
 	}
 
-	mlog.Debug("Triggering ee tests", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
 	err = s.requestEETriggering(ctx, pr, triggerInfo)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)

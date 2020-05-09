@@ -120,7 +120,15 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := http.DefaultClient.Do(req)
-	mlog.Debug("EE triggered", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha))
+	mlog.Debug("EE triggered",
+		mlog.Int("pr", pr.Number),
+		mlog.String("sha", pr.Sha),
+		mlog.String("EEBranch", info.EEBranch),
+		mlog.String("ServerOwner", info.ServerOwner),
+		mlog.String("ServerBranch", info.ServerBranch),
+		mlog.String("WebappOwner", info.WebappOwner),
+		mlog.String("WebappBranch", info.WebappBranch),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +193,7 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 			}
 
 			if workflowId == "" {
-				return "", fmt.Errorf("unable to find workflow, %v", err)
+				return "", fmt.Errorf("workflow for pip %s not found", id)
 			}
 
 			return workflowId, nil
