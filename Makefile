@@ -9,7 +9,7 @@ all: check-style test
 
 ## Runs govet and gofmt against all packages.
 .PHONY: check-style
-check-style: gofmt govet
+check-style: gofmt goimports govet
 	@echo Checking for style guide compliance
 
 build:
@@ -22,7 +22,7 @@ build:
 	cp config/config-mattermost.default.json dist/mattermod/config-mattermod.json
 
 
-package: gofmt govet build
+package: gofmt goimports govet build
 	tar -C dist -czf dist/mattermod.tar.gz mattermod
 
 ## Runs gofmt against all packages.
@@ -43,6 +43,13 @@ gofmt:
 		fi; \
 	done
 	@echo "gofmt success"; \
+
+## Runs goimports against go files.
+.PHONY: goimports
+goimports:
+	@echo Running goimports
+	env GO111MODULE=off $(GO) get golang.org/x/tools/cmd/goimports
+	! goimports -d `find . -type f -name '*.go' -not -path "./vendor/*"` | grep .
 
 ## Runs govet against all packages.
 .PHONY: govet

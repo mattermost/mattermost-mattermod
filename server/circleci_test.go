@@ -1,20 +1,21 @@
 package server
 
 import (
+	"testing"
+
 	"github.com/metanerd/go-circleci"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAreAllExpectedJobs(t *testing.T) {
 	buildA := circleci.Build{
-		Workflows:               &circleci.Workflow{
-			JobName:        "a",
+		Workflows: &circleci.Workflow{
+			JobName: "a",
 		},
 	}
 	buildB := circleci.Build{
-		Workflows:               &circleci.Workflow{
-			JobName:        "b",
+		Workflows: &circleci.Workflow{
+			JobName: "b",
 		},
 	}
 	builds := []*circleci.Build{&buildA, &buildB}
@@ -26,8 +27,8 @@ func TestAreAllExpectedJobs(t *testing.T) {
 
 func TestAreNotAllExpectedJobs(t *testing.T) {
 	buildA := circleci.Build{
-		Workflows:               &circleci.Workflow{
-			JobName:        "a",
+		Workflows: &circleci.Workflow{
+			JobName: "a",
 		},
 	}
 	builds := []*circleci.Build{&buildA}

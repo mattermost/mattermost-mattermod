@@ -7,14 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 
 	"github.com/metanerd/go-circleci"
 )
