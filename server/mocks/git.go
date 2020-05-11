@@ -6,9 +6,10 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v28/github"
-	reflect "reflect"
 )
 
 // MockGitService is a mock of GitService interface

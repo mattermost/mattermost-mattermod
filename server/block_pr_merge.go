@@ -24,9 +24,8 @@ func (s *Server) blockPRMerge(pr *model.PullRequest) {
 		TargetURL:   github.String(""),
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	mlog.Info("will block PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
 	if errStatus != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
@@ -56,9 +55,8 @@ func (s *Server) unblockPRMerge(pr *model.PullRequest) {
 		TargetURL:   github.String(""),
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	mlog.Info("will unblock PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := client.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
 	if errStatus != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return

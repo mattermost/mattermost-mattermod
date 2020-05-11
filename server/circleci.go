@@ -7,22 +7,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
+
 	"github.com/metanerd/go-circleci"
 )
 
 func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	client := &circleci.Client{Token: s.Config.CircleCIToken}
-	clientGitHub := NewGithubClient(s.Config.GithubAccessToken)
-
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
@@ -45,7 +44,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	}
 
 	// List th files that was modified or added in the PullRequest
-	prFiles, _, err := clientGitHub.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return

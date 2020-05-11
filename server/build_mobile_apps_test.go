@@ -1,12 +1,13 @@
 package server
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetExpectedArtifacts(t *testing.T) {
-	job := BuildMobileAppJob {
+	job := BuildMobileAppJob{
 		JobName:           "a",
 		ExpectedArtifacts: 1,
 	}
@@ -18,7 +19,7 @@ func TestGetExpectedArtifacts(t *testing.T) {
 }
 
 func TestGetNotExpectedArtifacts(t *testing.T) {
-	job := BuildMobileAppJob {
+	job := BuildMobileAppJob{
 		JobName:           "",
 		ExpectedArtifacts: 6,
 	}

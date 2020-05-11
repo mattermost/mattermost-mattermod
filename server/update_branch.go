@@ -12,8 +12,7 @@ import (
 )
 
 func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prGitHub, _, err := client.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	if err != nil {
 		mlog.Error("Error getting the latest PR information from github", mlog.Err(err))
 		return
@@ -45,8 +44,8 @@ func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
 		ExpectedHeadSHA: github.String(pr.Sha),
 	}
 
-	_, resp, err := client.PullRequests.UpdateBranch(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, opt)
-	if resp.StatusCode != http.StatusAccepted {
+	_, resp, err := s.GithubClient.PullRequests.UpdateBranch(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, opt)
+	if resp != nil && resp.StatusCode != http.StatusAccepted {
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Error trying to update the PR.\nPlease do it manually.")
 		return
 	}

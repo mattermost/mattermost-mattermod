@@ -5,11 +5,12 @@ package server
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/metanerd/go-circleci"
-	"strconv"
-	"time"
 )
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {

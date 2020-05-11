@@ -31,8 +31,7 @@ func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
 		return
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, _, err = client.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
+	_, _, err = s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
 	if err != nil {
 		mlog.Error("Error applying Hacktoberfest label", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return

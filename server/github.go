@@ -31,11 +31,9 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 		pr.FullName = *pullRequest.Head.Repo.FullName
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
-		if combined, _, err := client.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		if combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
 			return nil, err
 		} else {
 			for _, status := range combined.Statuses {
@@ -48,7 +46,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 		}
 
 		// for the repos using circleci we have the checks now
-		if checks, _, err := client.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		if checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
 			return nil, err
 		} else {
 			for _, status := range checks.CheckRuns {
@@ -62,7 +60,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 		}
 	}
 
-	if labels, _, err := client.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
+	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
 		return nil, err
 	} else {
 		pr.Labels = labelsToStringArray(labels)
@@ -84,7 +82,7 @@ func (s *Server) GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.
 		State:     *ghIssue.State,
 	}
 
-	if labels, _, err := NewGithubClient(s.Config.GithubAccessToken).Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
+	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
 		return nil, err
 	} else {
 		issue.Labels = labelsToStringArray(labels)
@@ -105,17 +103,16 @@ func labelsToStringArray(labels []*github.Label) []string {
 
 func (s *Server) sendGitHubComment(repoOwner, repoName string, number int, comment string) {
 	mlog.Debug("Sending GitHub comment", mlog.Int("issue", number), mlog.String("comment", comment))
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, _, err := client.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	_, _, err := s.GithubClient.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
 		mlog.Error("Error commenting", mlog.Err(err))
 	}
 }
 
-func (s *Server) removeLabel(client *GithubClient, repoOwner, repoName string, number int, label string) {
+func (s *Server) removeLabel(repoOwner, repoName string, number int, label string) {
 	mlog.Info("Removing label on issue", mlog.Int("issue", number), mlog.String("label", label))
 
-	_, err := client.Issues.RemoveLabelForIssue(context.Background(), repoOwner, repoName, number, label)
+	_, err := s.GithubClient.Issues.RemoveLabelForIssue(context.Background(), repoOwner, repoName, number, label)
 	if err != nil {
 		mlog.Error("Error removing the label", mlog.Err(err))
 	}
@@ -123,8 +120,7 @@ func (s *Server) removeLabel(client *GithubClient, repoOwner, repoName string, n
 }
 
 func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	comments, _, err := client.Issues.ListComments(context.Background(), repoOwner, repoName, number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), repoOwner, repoName, number, nil)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return nil, err
@@ -133,8 +129,7 @@ func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.
 }
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prGitHub, _, err := client.PullRequests.Get(context.Background(), owner, repoName, prNumber)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), owner, repoName, prNumber)
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -149,8 +144,7 @@ func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.P
 }
 
 func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	prFiles, _, err := client.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return nil, err
@@ -165,9 +159,7 @@ func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, err
 }
 
 func (s *Server) checkUserPermission(user, repoOwner string) bool {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	_, resp, err := client.Organizations.GetOrgMembership(context.Background(), user, repoOwner)
+	_, resp, err := s.GithubClient.Organizations.GetOrgMembership(context.Background(), user, repoOwner)
 	if resp.StatusCode == 404 {
 		mlog.Info("User is not part of the ORG", mlog.String("User", user))
 		return false
@@ -180,15 +172,12 @@ func (s *Server) checkUserPermission(user, repoOwner string) bool {
 }
 
 func (s *Server) isOrgMember(org, user string) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
-	isOrgMember, _, err := client.Organizations.IsMember(context.Background(), org, user)
+	isOrgMember, _, err := s.GithubClient.Organizations.IsMember(context.Background(), org, user)
 	return isOrgMember, err
 }
 
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, response, err := client.Git.GetRef(context.Background(), org, pr.RepoName, ref)
+	_, response, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
 	if err != nil {
 		return false, err
 	}
@@ -206,8 +195,7 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 }
 
 func (s *Server) createRef(pr *model.PullRequest, ref string) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, _, err := client.Git.CreateRef(
+	_, _, err := s.GithubClient.Git.CreateRef(
 		context.Background(),
 		pr.RepoOwner,
 		pr.RepoName,
@@ -224,10 +212,9 @@ func (s *Server) createRef(pr *model.PullRequest, ref string) {
 }
 
 func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	cStatus, _, _ := client.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	cStatus, _, _ := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
 	if cStatus.GetState() == "success" {
-		_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+		_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
 			return err
 		}
@@ -236,8 +223,7 @@ func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repo
 }
 
 func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+	_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 	if err != nil {
 		return err
 	}
@@ -245,9 +231,8 @@ func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error 
 }
 
 func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bool, error) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := client.Repositories.GetCombinedStatus(context.Background(), org, pr.RepoName, pr.Sha, nil)
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), org, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err
@@ -260,8 +245,7 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 }
 
 func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-	_, _, err := client.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
@@ -277,8 +261,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return errors.New("timed out waiting for status " + statusContext)
 		case <-ticker.C:
 			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
-			client := NewGithubClient(s.Config.GithubAccessToken)
-			statuses, _, err := client.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+			statuses, _, err := s.GithubClient.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 			if err != nil {
 				return err
 			}

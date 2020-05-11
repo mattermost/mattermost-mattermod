@@ -111,10 +111,8 @@ func (s *Server) Tick() {
 		return
 	}
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	for _, repository := range s.Config.Repositories {
-		ghPullRequests, _, err := client.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
+		ghPullRequests, _, err := s.GithubClient.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -132,7 +130,7 @@ func (s *Server) Tick() {
 			s.checkPullRequestForChanges(pullRequest)
 		}
 
-		issues, _, err := client.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
+		issues, _, err := s.GithubClient.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
 			State: "open",
 		})
 		if err != nil {

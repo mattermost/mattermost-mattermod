@@ -77,13 +77,11 @@ func (s *Server) checkIssueForChanges(issue *model.Issue) {
 }
 
 func (s *Server) handleIssueLabeled(issue *model.Issue, addedLabel string) {
-	client := NewGithubClient(s.Config.GithubAccessToken)
-
 	// Must be sure the comment is created before we let anouther request test
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := client.Issues.ListComments(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
 		mlog.Error("issue_error", mlog.Err(err))
 		return
@@ -111,9 +109,8 @@ func (s *Server) CleanOutdatedIssues() {
 
 	mlog.Info("Will process the Issues", mlog.Int("Issues Count", len(issues)))
 
-	client := NewGithubClient(s.Config.GithubAccessToken)
 	for _, issue := range issues {
-		ghIssue, _, errIssue := client.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
+		ghIssue, _, errIssue := s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
 		if errIssue != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errIssue))
 			if _, ok := errIssue.(*github.RateLimitError); ok {
