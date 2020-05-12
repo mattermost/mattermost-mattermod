@@ -8,7 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v31/github"
 )
 
 func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
@@ -40,7 +40,7 @@ func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
 		}
 	}
 
-	opt := &github.PullReqestBranchUpdateOptions{
+	opt := &github.PullRequestBranchUpdateOptions{
 		ExpectedHeadSHA: github.String(pr.Sha),
 	}
 

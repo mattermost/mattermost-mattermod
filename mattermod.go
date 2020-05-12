@@ -11,7 +11,6 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )
 
@@ -22,7 +21,7 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		errors.Wrap(err, "unable to load server config")
+		panic(err)
 	}
 	server.SetupLogging(config)
 

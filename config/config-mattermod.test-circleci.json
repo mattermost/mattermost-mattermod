@@ -32,7 +32,7 @@
     "StaleLabel": "",
     "StaleComment": "",
     "AutoAssignerTeam": "",
-    "AutoAssignerTeamID": "",
+    "AutoAssignerTeamID": 0,
 
     "SetupSpinmintTag": "",
     "SetupSpinmintMessage": "",

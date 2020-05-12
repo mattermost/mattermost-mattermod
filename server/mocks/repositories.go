@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	github "github.com/google/go-github/v28/github"
+	github "github.com/google/go-github/v31/github"
 )
 
 // MockRepositoriesService is a mock of RepositoriesService interface

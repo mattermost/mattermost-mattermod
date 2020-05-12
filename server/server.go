@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/braintree/manners"
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
