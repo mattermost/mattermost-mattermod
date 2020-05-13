@@ -206,7 +206,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		select {
 		case <-ctx.Done():
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
-			return "", errors.Errorf("timed out waiting the build link")
+			return "", errors.New("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}
 	}
