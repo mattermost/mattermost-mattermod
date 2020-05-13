@@ -2,7 +2,7 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"regexp"
 	"time"
@@ -74,7 +74,7 @@ func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EE
 		serverOwner = s.Config.Org
 	}
 	if serverOwner == "" {
-		return nil, fmt.Errorf("owner of server branch not found")
+		return nil, errors.New("owner of server branch not found")
 	}
 
 	eeBranch, err := s.getBranchWithSameName(ctx, s.Config.Org, s.Config.EnterpriseReponame, pr.Ref)
@@ -114,7 +114,7 @@ func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo 
 		return "", nil // do not err if branch is not found
 	}
 	if ghBranch == nil {
-		return "", fmt.Errorf("unexpected failure case")
+		return "", errors.New("unexpected failure case")
 	}
 	return ghBranch.GetName(), nil
 }

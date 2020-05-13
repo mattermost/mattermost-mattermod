@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/heroku/docker-registry-client/registry"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
 
 // Builds implements buildsInterface for working with external CI/CD systems.
@@ -32,12 +32,12 @@ func (b *Builds) getInstallationVersion(pr *model.PullRequest) string {
 
 func (b *Builds) dockerRegistryClient(s *Server) (reg *registry.Registry, err error) {
 	if _, err = url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
-		return nil, fmt.Errorf("invalid url for docker registry")
+		return nil, errors.Wrap(err, "invalid url for docker registry")
 	}
 
 	reg, err = registry.New(s.Config.DockerRegistryURL, s.Config.DockerUsername, s.Config.DockerPassword)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to docker registry")
+		return nil, errors.Wrap(err, "failed to connect to docker registry")
 	}
 
 	return reg, nil
@@ -46,11 +46,11 @@ func (b *Builds) dockerRegistryClient(s *Server) (reg *registry.Registry, err er
 func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if !ok || repo.JenkinsServer == "" {
-		return repo, nil, fmt.Errorf("jenkins server is not configured")
+		return repo, nil, errors.New("jenkins server is not configured")
 	}
 	credentials, ok := s.Config.JenkinsCredentials[repo.JenkinsServer]
 	if !ok {
-		return repo, nil, fmt.Errorf("jenkins server credentials are not configured")
+		return repo, nil, errors.New("jenkins server credentials are not configured")
 	}
 
 	client := jenkins.NewJenkins(&jenkins.Auth{
@@ -65,11 +65,11 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 	for {
 		select {
 		case <-ctx.Done():
-			return pr, fmt.Errorf("timed out waiting for image to publish")
+			return pr, errors.New("timed out waiting for image to publish")
 		case <-time.After(10 * time.Second):
 			result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 			if result.Err != nil {
-				return pr, fmt.Errorf("unable to get updated PR from Mattermod database")
+				return pr, errors.Wrap(result.Err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
@@ -80,7 +80,7 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 
 			_, err := reg.ManifestDigest(image, desiredTag)
 			if err != nil && !strings.Contains(err.Error(), "status=404") {
-				return pr, fmt.Errorf("unable to fetch tag from docker registry")
+				return pr, errors.Wrap(err, "unable to fetch tag from docker registry")
 			}
 
 			if err == nil {
@@ -97,11 +97,11 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 	for {
 		select {
 		case <-ctx.Done():
-			return pr, fmt.Errorf("timed out waiting for build to finish")
+			return pr, errors.New("timed out waiting for build to finish")
 		case <-time.After(30 * time.Second):
 			result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 			if result.Err != nil {
-				return pr, fmt.Errorf("unable to get updated PR from Mattermod database")
+				return pr, errors.Wrap(result.Err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
@@ -109,7 +109,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 			var err error
 			pr, err = s.GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
 			if err != nil {
-				return pr, fmt.Errorf("unable to get updated PR from GitHub")
+				return pr, errors.Wrap(err, "unable to get updated PR from GitHub")
 			}
 			mlog.Info("Current PR Status", mlog.String("repo_name", pr.RepoName), mlog.String("build_status", pr.BuildStatus), mlog.String("build_conclusion", pr.BuildConclusion))
 
@@ -122,9 +122,9 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						mlog.Info("Build in CircleCI succeed")
 						return pr, nil
 					}
-					return pr, fmt.Errorf("build failed")
+					return pr, errors.New("build failed")
 				default:
-					return pr, fmt.Errorf("unknown build status %s", pr.BuildStatus)
+					return pr, errors.Errorf("unknown build status %s", pr.BuildStatus)
 				}
 			} else {
 				if pr.BuildLink == "" {
@@ -144,12 +144,12 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						subJobName := parts[len(parts)-4] //PR-XXXX
 						jobName = "mp/job/" + jobName + "/job/" + subJobName
 					default:
-						return pr, fmt.Errorf("unsupported repository %s", pr.RepoName)
+						return pr, errors.Errorf("unsupported repository %s", pr.RepoName)
 					}
 
 					job, err := client.GetJob(jobName)
 					if err != nil {
-						return pr, fmt.Errorf("failed to get Jenkins job %s", jobName)
+						return pr, errors.Wrapf(err, "failed to get Jenkins job %s", jobName)
 					}
 
 					// Doing this because the lib we are using does not support folders :(
@@ -158,14 +158,14 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 
 					build, err := client.GetBuild(job, int(jobNumber))
 					if err != nil {
-						return pr, fmt.Errorf("failed to get Jenkins build %d", build.Number)
+						return pr, errors.Wrapf(err, "failed to get Jenkins build %d", build.Number)
 					}
 
 					if !build.Building && build.Result == "SUCCESS" {
 						mlog.Info("build for PR succeeded!", mlog.Int("build_number", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 						return pr, nil
 					} else if build.Result == "FAILURE" || build.Result == "ABORTED" {
-						return pr, fmt.Errorf("build %d failed with status %q", build.Number, build.Result)
+						return pr, errors.Errorf("build %d failed with status %q", build.Number, build.Result)
 					} else {
 						mlog.Info("Build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 					}
@@ -206,7 +206,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		select {
 		case <-ctx.Done():
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
-			return "", fmt.Errorf("timed out waiting the build link")
+			return "", errors.Errorf("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}
 	}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 
 	"github.com/metanerd/go-circleci"
 )
@@ -164,7 +165,7 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 	for {
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("timed out trying to fetch workflow")
+			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
 			req, err := http.NewRequestWithContext(ctx, "GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
 			if err != nil {
@@ -193,7 +194,7 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 			}
 
 			if workflowId == "" {
-				return "", fmt.Errorf("workflow for pip %s not found", id)
+				return "", errors.Errorf("workflow for pip %s not found", id)
 			}
 
 			return workflowId, nil
@@ -207,7 +208,7 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for build")
+			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
@@ -242,7 +243,7 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timed out waiting for links to artifacts")
+			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
 			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))

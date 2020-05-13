@@ -5,12 +5,12 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
 
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
@@ -258,7 +258,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			return fmt.Errorf("timed out waiting for status " + statusContext)
+			return errors.New("timed out waiting for status " + statusContext)
 		case <-ticker.C:
 			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
 			statuses, _, err := s.GithubClient.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/pkg/errors"
 )
 
 type LabelResponse struct {
@@ -172,13 +173,13 @@ func GetConfig(fileName string) (*ServerConfig, error) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		return config, err
+		return config, errors.Wrap(err, "unable to open config file")
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(config)
 	if err != nil {
-		return config, err
+		return config, errors.Wrap(err, "unable to decode config file")
 	}
 
 	return config, nil

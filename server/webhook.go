@@ -6,7 +6,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 )
@@ -35,7 +35,7 @@ func (s *Server) sendToWebhook(webhookRequest *WebhookRequest, url string) error
 
 	if response.StatusCode != http.StatusOK {
 		contents, _ := ioutil.ReadAll(response.Body)
-		return fmt.Errorf("Received non-200 status code when posting to Mattermost: %v", contents)
+		return errors.Errorf("received non-200 status code posting to mattermost: %v", contents)
 	}
 
 	return nil
