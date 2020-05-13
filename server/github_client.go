@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v31/github"
 	"golang.org/x/oauth2"
 )
 
@@ -46,7 +46,7 @@ type PullRequestsService interface {
 	ListReviews(ctx context.Context, owner, repo string, number int, opts *github.ListOptions) ([]*github.PullRequestReview, *github.Response, error)
 	Merge(ctx context.Context, owner string, repo string, number int, commitMessage string, options *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error)
 	RequestReviewers(ctx context.Context, owner, repo string, number int, reviewers github.ReviewersRequest) (*github.PullRequest, *github.Response, error)
-	UpdateBranch(ctx context.Context, owner, repo string, number int, opts *github.PullReqestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error)
+	UpdateBranch(ctx context.Context, owner, repo string, number int, opts *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error)
 }
 
 type RepositoriesService interface {

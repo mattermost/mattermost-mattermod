@@ -19,7 +19,7 @@ build:
 	mkdir -p dist/mattermod
 	$(GO) build
 	mv mattermost-mattermod dist/mattermod/
-	cp config/config-mattermost.default.json dist/mattermod/config-mattermod.json
+	cp config/config-mattermod.default.json dist/mattermod/config-mattermod.json
 
 
 package: gofmt goimports govet build

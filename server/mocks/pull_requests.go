@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	github "github.com/google/go-github/v28/github"
+	github "github.com/google/go-github/v31/github"
 )
 
 // MockPullRequestsService is a mock of PullRequestsService interface
@@ -148,7 +148,7 @@ func (mr *MockPullRequestsServiceMockRecorder) RequestReviewers(arg0, arg1, arg2
 }
 
 // UpdateBranch mocks base method
-func (m *MockPullRequestsService) UpdateBranch(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.PullReqestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error) {
+func (m *MockPullRequestsService) UpdateBranch(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateBranch", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(*github.PullRequestBranchUpdateResponse)

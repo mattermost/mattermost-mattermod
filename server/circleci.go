@@ -194,7 +194,7 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 			}
 
 			if workflowId == "" {
-				return "", fmt.Errorf("workflow for pip %s not found", id)
+				return "", errors.Errorf("workflow for pip %s not found", id)
 			}
 
 			return workflowId, nil

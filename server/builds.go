@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -125,7 +124,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 					}
 					return pr, errors.New("build failed")
 				default:
-					return pr, fmt.Errorf("unknown build status %s", pr.BuildStatus)
+					return pr, errors.Errorf("unknown build status %s", pr.BuildStatus)
 				}
 			} else {
 				if pr.BuildLink == "" {
@@ -145,7 +144,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						subJobName := parts[len(parts)-4] //PR-XXXX
 						jobName = "mp/job/" + jobName + "/job/" + subJobName
 					default:
-						return pr, fmt.Errorf("unsupported repository %s", pr.RepoName)
+						return pr, errors.Errorf("unsupported repository %s", pr.RepoName)
 					}
 
 					job, err := client.GetJob(jobName)
@@ -166,7 +165,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						mlog.Info("build for PR succeeded!", mlog.Int("build_number", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 						return pr, nil
 					} else if build.Result == "FAILURE" || build.Result == "ABORTED" {
-						return pr, fmt.Errorf("build %d failed with status %q", build.Number, build.Result)
+						return pr, errors.Errorf("build %d failed with status %q", build.Number, build.Result)
 					} else {
 						mlog.Info("Build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 					}
@@ -207,7 +206,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		select {
 		case <-ctx.Done():
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
-			return "", fmt.Errorf("timed out waiting the build link")
+			return "", errors.New("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}
 	}
