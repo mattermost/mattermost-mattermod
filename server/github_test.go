@@ -38,6 +38,6 @@ func TestIsOrgMember(t *testing.T) {
 		OrgMembers:   nil,
 	}
 	s.RefreshMembers()
-	assert.Equal(t, s.IsOrgMember("test3"), false)
-	assert.Equal(t, s.IsOrgMember("test1"), true)
+	assert.Equal(t, false, s.IsOrgMember("test3"))
+	assert.Equal(t, true, s.IsOrgMember("test1"))
 }
