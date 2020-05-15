@@ -27,8 +27,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	userComment := *eventIssueComment.Comment.User
-	if !s.checkUserPermission(userComment.GetLogin(), pr.RepoOwner) {
+	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
@@ -143,14 +142,10 @@ func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.Pu
 }
 
 func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
-	isContributorOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
-	if err != nil {
-		mlog.Error("Error getting org membership for cherry pick PR", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
-		return ""
-	}
+	isOrgMember := s.IsOrgMember(pr.Username)
 
 	var assignee string
-	if isContributorOrgMember {
+	if isOrgMember {
 		// He/She can review the PR herself/himself
 		assignee = pr.Username
 	} else {

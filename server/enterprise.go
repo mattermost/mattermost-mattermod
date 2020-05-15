@@ -13,11 +13,7 @@ import (
 )
 
 func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
-	isOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
-	if err != nil {
-		mlog.Error("Failed fetching org membership status")
-		isOrgMember = false
-	}
+	isOrgMember := s.IsOrgMember(pr.Username)
 	if isOrgMember {
 		s.triggerEnterpriseTests(pr)
 	}

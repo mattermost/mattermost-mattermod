@@ -31,7 +31,10 @@ func TestMain(m *testing.M) {
 	SetupLogging(config)
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
 
-	s = New(config)
+	s, err = New(config)
+	if err != nil {
+		mlog.Err(err)
+	}
 	s.Start()
 
 	exitVal := m.Run()

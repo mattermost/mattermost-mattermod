@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,12 +32,10 @@ type Server struct {
 	Store        store.Store
 	Router       *mux.Router
 	GithubClient *GithubClient
-
-	Builds buildsInterface
-
-	commentLock sync.Mutex
-
-	StartTime time.Time
+	OrgMembers   *[]string
+	Builds       buildsInterface
+	commentLock  sync.Mutex
+	StartTime    time.Time
 }
 
 const (
@@ -55,8 +54,7 @@ var (
 	SPINMINT_LINK       = "SPINMINT_LINK"
 )
 
-// New returns a new server with the desired configuration
-func New(config *ServerConfig) *Server {
+func New(config *ServerConfig) (server *Server, err error) {
 	s := &Server{
 		Config:    config,
 		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
@@ -65,6 +63,7 @@ func New(config *ServerConfig) *Server {
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
 		mlog.Warn("Using mocked build tools")
@@ -73,7 +72,7 @@ func New(config *ServerConfig) *Server {
 		}
 	}
 
-	return s
+	return s, nil
 }
 
 // Start starts a server
@@ -83,6 +82,14 @@ func (s *Server) Start() {
 	rand.Seed(time.Now().Unix())
 
 	s.initializeRouter()
+	isTestEnv, err := strconv.ParseBool(os.Getenv("GOTEST"))
+	if err != nil {
+		mlog.Error("could not get test env", mlog.Err(err))
+	}
+	fmt.Println("GOTEST:", isTestEnv)
+	if !isTestEnv {
+		s.RefreshMembers()
+	}
 
 	var handler http.Handler = s.Router
 	go func() {
@@ -100,6 +107,18 @@ func (s *Server) Start() {
 func (s *Server) Stop() {
 	mlog.Info("Stopping Mattermod")
 	manners.Close()
+}
+
+func (s *Server) RefreshMembers() {
+	s.OrgMembers = nil
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	members, err := s.getMembers(ctx)
+	if err != nil {
+		s.logErrorToMattermost("failed refreshing org members")
+		mlog.Error("failed to refresh org members", mlog.Err(err))
+	}
+	s.OrgMembers = members
 }
 
 // Tick runs a check on objects in the database

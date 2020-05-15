@@ -374,12 +374,8 @@ func (s *Server) CheckPRActivity() {
 		}
 
 		// Only mark community contributions as stale
-		isContributorOrgMember, err := s.isOrgMember(pr.RepoOwner, pr.Username)
-		if err != nil {
-			mlog.Error("Error getting org membership", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
-			break
-		}
-		if isContributorOrgMember {
+		isOrgMember := s.IsOrgMember(pr.Username)
+		if isOrgMember {
 			continue
 		}
 
