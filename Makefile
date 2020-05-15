@@ -63,8 +63,7 @@ govet:
 ## Runs tests. For local usage, run `make test CONFIG_TEST="-config=config-mattermod.test-local.json"`
 test:
 	@echo Running Go tests
-	env GOTEST=true $(GO) test $(PACKAGES) $(CONFIG_TEST)
-	unset $(GOTEST)
+	$(GO) test $(PACKAGES) $(CONFIG_TEST)
 	@echo test success
 
 

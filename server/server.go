@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -82,14 +81,7 @@ func (s *Server) Start() {
 	rand.Seed(time.Now().Unix())
 
 	s.initializeRouter()
-	isTestEnv, err := strconv.ParseBool(os.Getenv("GOTEST"))
-	if err != nil {
-		mlog.Error("could not get test env", mlog.Err(err))
-	}
-	fmt.Println("GOTEST:", isTestEnv)
-	if !isTestEnv {
-		s.RefreshMembers()
-	}
+	s.RefreshMembers()
 
 	var handler http.Handler = s.Router
 	go func() {
