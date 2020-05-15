@@ -12,30 +12,30 @@ import (
 	github "github.com/google/go-github/v31/github"
 )
 
-// MockChecksService is a mock of ChecksService interface.
+// MockChecksService is a mock of ChecksService interface
 type MockChecksService struct {
 	ctrl     *gomock.Controller
 	recorder *MockChecksServiceMockRecorder
 }
 
-// MockChecksServiceMockRecorder is the mock recorder for MockChecksService.
+// MockChecksServiceMockRecorder is the mock recorder for MockChecksService
 type MockChecksServiceMockRecorder struct {
 	mock *MockChecksService
 }
 
-// NewMockChecksService creates a new mock instance.
+// NewMockChecksService creates a new mock instance
 func NewMockChecksService(ctrl *gomock.Controller) *MockChecksService {
 	mock := &MockChecksService{ctrl: ctrl}
 	mock.recorder = &MockChecksServiceMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use.
+// EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockChecksService) EXPECT() *MockChecksServiceMockRecorder {
 	return m.recorder
 }
 
-// ListCheckRunsForRef mocks base method.
+// ListCheckRunsForRef mocks base method
 func (m *MockChecksService) ListCheckRunsForRef(arg0 context.Context, arg1, arg2, arg3 string, arg4 *github.ListCheckRunsOptions) (*github.ListCheckRunsResults, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListCheckRunsForRef", arg0, arg1, arg2, arg3, arg4)
@@ -45,7 +45,7 @@ func (m *MockChecksService) ListCheckRunsForRef(arg0 context.Context, arg1, arg2
 	return ret0, ret1, ret2
 }
 
-// ListCheckRunsForRef indicates an expected call of ListCheckRunsForRef.
+// ListCheckRunsForRef indicates an expected call of ListCheckRunsForRef
 func (mr *MockChecksServiceMockRecorder) ListCheckRunsForRef(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCheckRunsForRef", reflect.TypeOf((*MockChecksService)(nil).ListCheckRunsForRef), arg0, arg1, arg2, arg3, arg4)
