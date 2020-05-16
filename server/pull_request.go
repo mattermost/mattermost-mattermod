@@ -374,8 +374,7 @@ func (s *Server) CheckPRActivity() {
 		}
 
 		// Only mark community contributions as stale
-		isOrgMember := s.IsOrgMember(pr.Username)
-		if isOrgMember {
+		if s.IsOrgMember(pr.Username) {
 			continue
 		}
 
