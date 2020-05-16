@@ -145,7 +145,7 @@ func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 	isOrgMember := s.IsOrgMember(pr.Username)
 
 	var assignee string
-	if isOrgMember {
+	if s.IsOrgMember(pr.Username) {
 		// He/She can review the PR herself/himself
 		assignee = pr.Username
 	} else {
