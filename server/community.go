@@ -21,9 +21,8 @@ func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
 		return
 	}
 
-	isOrgMember := s.IsOrgMember(pr.Username)
 	// Don't apply label if the contributors is a core committer
-	if  s.IsOrgMember(pr.Username) {
+	if s.IsOrgMember(pr.Username) {
 		return
 	}
 

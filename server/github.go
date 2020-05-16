@@ -159,19 +159,16 @@ func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, err
 	return filenames, nil
 }
 
-func (s *Server) getMembers(ctx context.Context) (orgMembers *[]string, err error) {
+func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
 	opts := &github.ListMembersOptions{
 		ListOptions: github.ListOptions{},
 	}
 	users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
 	if err != nil {
-		s.logErrorToMattermost("failed listing org members")
 		return nil, err
 	}
 	if r != nil && r.StatusCode != http.StatusOK {
-		s.logErrorToMattermost("failed listing org members: got http status " + r.Status)
 		err := errors.New("failed listing org members: got http status " + r.Status)
-		mlog.Error("failed listing org members", mlog.Err(err))
 		return nil, err
 	}
 
@@ -179,11 +176,11 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers *[]string, err erro
 	for _, user := range users {
 		members = append(members, user.GetLogin())
 	}
-	return &members, nil
+	return members, nil
 }
 
 func (s *Server) IsOrgMember(user string) bool {
-	for _, member := range *s.OrgMembers {
+	for _, member := range s.OrgMembers {
 		if user == member {
 			return true
 		}

@@ -13,8 +13,7 @@ import (
 )
 
 func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
-	isOrgMember := s.IsOrgMember(pr.Username)
-	if isOrgMember {
+	if s.IsOrgMember(pr.Username) {
 		s.triggerEnterpriseTests(pr)
 	}
 }

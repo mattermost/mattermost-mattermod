@@ -142,8 +142,6 @@ func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.Pu
 }
 
 func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
-	isOrgMember := s.IsOrgMember(pr.Username)
-
 	var assignee string
 	if s.IsOrgMember(pr.Username) {
 		// He/She can review the PR herself/himself
@@ -157,8 +155,8 @@ func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 			return ""
 		}
 
-		randonReviewer := rand.Intn(len(reviewersFromPR) - 1)
-		assignee = reviewersFromPR[randonReviewer].User.GetLogin()
+		randomReviewer := rand.Intn(len(reviewersFromPR) - 1)
+		assignee = reviewersFromPR[randomReviewer].User.GetLogin()
 	}
 
 	return assignee

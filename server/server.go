@@ -31,7 +31,7 @@ type Server struct {
 	Store        store.Store
 	Router       *mux.Router
 	GithubClient *GithubClient
-	OrgMembers   *[]string
+	OrgMembers   []string
 	Builds       buildsInterface
 	commentLock  sync.Mutex
 	StartTime    time.Time
@@ -102,12 +102,11 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) RefreshMembers() {
-	s.OrgMembers = nil
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
-		s.logErrorToMattermost("failed refreshing org members")
+		s.logErrorToMattermost(err.Error())
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 	}
 	s.OrgMembers = members

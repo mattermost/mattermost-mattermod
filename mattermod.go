@@ -23,7 +23,8 @@ func main() {
 	config, err := server.GetConfig(configFile)
 	if err != nil {
 		err = errors.Wrap(err, "unable to load server config")
-		fmt.Println(err)
+		mlog.Error("unable to load server config", mlog.Err(err))
+		panic(err)
 	}
 	server.SetupLogging(config)
 
