@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 	s, err = New(config)
 	if err != nil {
-		mlog.Err(err)
+		panic(err)
 	}
 	s.Start()
 
