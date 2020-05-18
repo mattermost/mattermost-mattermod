@@ -9,7 +9,6 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,9 +30,6 @@ func TestIsOrgMember(t *testing.T) {
 	for i := 0; i < expectedUserSize; i++ {
 		user = &github.User{Login: github.String("test" + strconv.Itoa(i))}
 		dummyUsers[i] = user
-	}
-	for _, user := range dummyUsers {
-		mlog.Debug("user added", mlog.String("user", user.GetLogin()))
 	}
 	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(dummyUsers, nil, nil)
 
