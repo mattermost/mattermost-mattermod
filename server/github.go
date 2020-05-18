@@ -173,8 +173,8 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 	}
 
 	members := make([]string, len(users))
-	for _, user := range users {
-		members = append(members, user.GetLogin())
+	for i, user := range users {
+		members[i] = user.GetLogin()
 	}
 	return members, nil
 }
