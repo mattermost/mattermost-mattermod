@@ -108,6 +108,7 @@ func (s *Server) RefreshMembers() {
 	if err != nil {
 		s.logErrorToMattermost(err.Error())
 		mlog.Error("failed to refresh org members", mlog.Err(err))
+		return
 	}
 	s.OrgMembers = members
 }
