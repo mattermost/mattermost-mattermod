@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"net/http"
 	"strconv"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestIsOrgMember(t *testing.T) {
 	}
 
 	opts := &github.ListMembersOptions{
-		ListOptions: github.ListOptions{},
+		ListOptions: github.ListOptions{PerPage: 30},
 	}
 	expectedUserSize := 66
 	dummyUsers := make([]*github.User, expectedUserSize)
@@ -31,7 +32,12 @@ func TestIsOrgMember(t *testing.T) {
 		user = &github.User{Login: github.String("test" + strconv.Itoa(i))}
 		dummyUsers[i] = user
 	}
-	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(dummyUsers, nil, nil)
+	r := &http.Response{StatusCode: 200}
+	ghR := &github.Response{
+		Response: r,
+		NextPage: 0,
+	}
+	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(dummyUsers, ghR, nil)
 
 	s := &server.Server{
 		Config: &server.ServerConfig{

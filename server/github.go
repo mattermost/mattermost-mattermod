@@ -161,21 +161,30 @@ func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, err
 
 func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
 	opts := &github.ListMembersOptions{
-		ListOptions: github.ListOptions{},
+		ListOptions: github.ListOptions{PerPage: 30},
 	}
-	users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
-	if err != nil {
-		return nil, err
-	}
-	if r != nil && r.StatusCode != http.StatusOK {
-		err := errors.New("failed listing org members: got http status " + r.Status)
-		return nil, err
+	var allUsers []*github.User
+	for {
+		users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
+		if err != nil {
+			return nil, err
+		}
+		allUsers = append(allUsers, users...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			err := errors.New("failed listing org members: got http status " + r.Status)
+			return nil, err
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
 	}
 
-	members := make([]string, len(users))
-	for i, user := range users {
+	members := make([]string, len(allUsers))
+	for i, user := range allUsers {
 		members[i] = user.GetLogin()
 	}
+
 	return members, nil
 }
 
