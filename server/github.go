@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/google/go-github/v31/github"
@@ -158,22 +159,41 @@ func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, err
 	return filenames, nil
 }
 
-func (s *Server) checkUserPermission(user, repoOwner string) bool {
-	_, resp, err := s.GithubClient.Organizations.GetOrgMembership(context.Background(), user, repoOwner)
-	if resp.StatusCode == 404 {
-		mlog.Info("User is not part of the ORG", mlog.String("User", user))
-		return false
+func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
+	opts := &github.ListMembersOptions{
+		ListOptions: github.ListOptions{},
 	}
-	if err != nil {
-		return false
+	var allUsers []*github.User
+	for {
+		users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
+		if err != nil {
+			return nil, err
+		}
+		allUsers = append(allUsers, users...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			return nil, errors.Errorf("failed listing org members: got http status %s", r.Status)
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
 	}
 
-	return true
+	members := make([]string, len(allUsers))
+	for i, user := range allUsers {
+		members[i] = user.GetLogin()
+	}
+
+	return members, nil
 }
 
-func (s *Server) isOrgMember(org, user string) (bool, error) {
-	isOrgMember, _, err := s.GithubClient.Organizations.IsMember(context.Background(), org, user)
-	return isOrgMember, err
+func (s *Server) IsOrgMember(user string) bool {
+	for _, member := range s.OrgMembers {
+		if user == member {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
@@ -182,10 +202,10 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 		return false, err
 	}
 
-	if response.StatusCode == 200 {
+	if response.StatusCode == http.StatusOK {
 		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return true, nil
-	} else if response.StatusCode == 404 {
+	} else if response.StatusCode == http.StatusNotFound {
 		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return false, nil
 	} else {

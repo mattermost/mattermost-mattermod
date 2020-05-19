@@ -21,17 +21,12 @@ func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
 		return
 	}
 
-	isContributorOrgMember, err := s.isOrgMember(s.Config.Org, pr.Username)
-	if err != nil {
-		mlog.Error("Error getting org membership", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
-		return
-	}
 	// Don't apply label if the contributors is a core committer
-	if isContributorOrgMember {
+	if s.IsOrgMember(pr.Username) {
 		return
 	}
 
-	_, _, err = s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
+	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
 	if err != nil {
 		mlog.Error("Error applying Hacktoberfest label", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return

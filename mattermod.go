@@ -22,25 +22,53 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		errors.Wrap(err, "unable to load server config")
+		err = errors.Wrap(err, "unable to load server config")
+		mlog.Error("unable to load server config", mlog.Err(err))
+		panic(err)
 	}
 	server.SetupLogging(config)
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
 
-	s := server.New(config)
+	s, err := server.New(config)
+	if err != nil {
+		panic("failed creating server")
+	}
 
 	s.Start()
 	defer s.Stop()
 
 	c := cron.New()
-	c.AddFunc("@daily", s.CheckPRActivity)
-	c.AddFunc("@midnight", s.CleanOutdatedPRs)
-	c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
-	c.AddFunc("@every 30m", s.AutoMergePR)
+
+	_, err = c.AddFunc("@daily", s.CheckPRActivity)
+	if err != nil {
+		mlog.Error("failed adding CheckPRActivity cron", mlog.Err(err))
+	}
+
+	_, err = c.AddFunc("@daily", s.RefreshMembers)
+	if err != nil {
+		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
+	}
+
+	_, err = c.AddFunc("@midnight", s.CleanOutdatedPRs)
+	if err != nil {
+		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
+	}
+
+	_, err = c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
+	if err != nil {
+		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
+	}
+	_, err = c.AddFunc("@every 30m", s.AutoMergePR)
+	if err != nil {
+		mlog.Error("failed adding AutoMergePR cron", mlog.Err(err))
+	}
 
 	cronTicker := fmt.Sprintf("@every %dm", s.Config.TickRateMinutes)
-	c.AddFunc(cronTicker, s.Tick)
+	_, err = c.AddFunc(cronTicker, s.Tick)
+	if err != nil {
+		mlog.Error("failed adding Ticker cron", mlog.Err(err))
+	}
 
 	c.Start()
 	sig := make(chan os.Signal)

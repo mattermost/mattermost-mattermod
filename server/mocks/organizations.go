@@ -66,3 +66,19 @@ func (mr *MockOrganizationsServiceMockRecorder) IsMember(arg0, arg1, arg2 interf
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsMember", reflect.TypeOf((*MockOrganizationsService)(nil).IsMember), arg0, arg1, arg2)
 }
+
+// ListMembers mocks base method
+func (m *MockOrganizationsService) ListMembers(arg0 context.Context, arg1 string, arg2 *github.ListMembersOptions) ([]*github.User, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMembers", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*github.User)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListMembers indicates an expected call of ListMembers
+func (mr *MockOrganizationsServiceMockRecorder) ListMembers(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMembers", reflect.TypeOf((*MockOrganizationsService)(nil).ListMembers), arg0, arg1, arg2)
+}

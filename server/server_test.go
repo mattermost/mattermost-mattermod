@@ -26,12 +26,15 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	config, err = GetConfig(configFile)
 	if err != nil {
-		mlog.Err(err)
+		panic(err)
 	}
 	SetupLogging(config)
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
 
-	s = New(config)
+	s, err = New(config)
+	if err != nil {
+		panic(err)
+	}
 	s.Start()
 
 	exitVal := m.Run()

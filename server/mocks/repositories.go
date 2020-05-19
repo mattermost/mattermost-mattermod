@@ -67,6 +67,22 @@ func (mr *MockRepositoriesServiceMockRecorder) Get(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepositoriesService)(nil).Get), arg0, arg1, arg2)
 }
 
+// GetBranch mocks base method
+func (m *MockRepositoriesService) GetBranch(arg0 context.Context, arg1, arg2, arg3 string) (*github.Branch, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBranch", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*github.Branch)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetBranch indicates an expected call of GetBranch
+func (mr *MockRepositoriesServiceMockRecorder) GetBranch(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), arg0, arg1, arg2, arg3)
+}
+
 // GetCombinedStatus mocks base method
 func (m *MockRepositoriesService) GetCombinedStatus(arg0 context.Context, arg1, arg2, arg3 string, arg4 *github.ListOptions) (*github.CombinedStatus, *github.Response, error) {
 	m.ctrl.T.Helper()

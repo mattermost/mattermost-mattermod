@@ -36,6 +36,7 @@ type GitService interface {
 type OrganizationsService interface {
 	GetOrgMembership(ctx context.Context, user, org string) (*github.Membership, *github.Response, error)
 	IsMember(ctx context.Context, org, user string) (bool, *github.Response, error)
+	ListMembers(ctx context.Context, org string, opts *github.ListMembersOptions) ([]*github.User, *github.Response, error)
 }
 
 type PullRequestsService interface {
