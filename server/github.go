@@ -161,7 +161,7 @@ func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, err
 
 func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
 	opts := &github.ListMembersOptions{
-		ListOptions: github.ListOptions{PerPage: 30},
+		ListOptions: github.ListOptions{},
 	}
 	var allUsers []*github.User
 	for {
