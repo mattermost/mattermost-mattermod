@@ -23,7 +23,7 @@ func TestIsOrgMember(t *testing.T) {
 	}
 
 	opts := &github.ListMembersOptions{
-		ListOptions: github.ListOptions{PerPage: 30},
+		ListOptions: github.ListOptions{},
 	}
 	expectedUserSize := 66
 	dummyUsers := make([]*github.User, expectedUserSize)
