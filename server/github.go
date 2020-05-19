@@ -171,8 +171,7 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 		}
 		allUsers = append(allUsers, users...)
 		if r != nil && r.StatusCode != http.StatusOK {
-			err := errors.New("failed listing org members: got http status " + r.Status)
-			return nil, err
+			return nil, errors.Errorf("failed listing org members: got http status %s", r.Status)
 		}
 		if r.NextPage == 0 {
 			break
