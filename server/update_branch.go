@@ -26,6 +26,7 @@ func (s *Server) handleUpdateBranch(eventIssueComment IssueComment) {
 	commenter := eventIssueComment.Comment.User.GetLogin()
 	// If the commenter is not the PR submitter, check if the PR submitter is an org member
 	if commenter != pr.Username && !s.IsOrgMember(commenter) {
+		mlog.Debug("not org member", mlog.String("user", commenter))
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for the PR submitter and org members")
 		return
 	}

@@ -28,6 +28,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 	}
 
 	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
+		mlog.Debug("not org member", mlog.String("user", eventIssueComment.Comment.User.GetLogin()))
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
@@ -149,6 +150,7 @@ func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
 	} else {
 		// We have to get a random reviewer from the original PR
 		// Get the reviewers from the cherry pick PR
+		mlog.Debug("not org member", mlog.String("user", pr.Username))
 		reviewersFromPR, _, err := s.GithubClient.PullRequests.ListReviews(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 		if err != nil {
 			mlog.Error("Error getting the reviewers from the original PR", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))

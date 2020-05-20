@@ -36,7 +36,7 @@ func (s *Server) sendToWebhook(webhookRequest *WebhookRequest, url string) error
 
 	if response.StatusCode != http.StatusOK {
 		contents, _ := ioutil.ReadAll(response.Body)
-		return errors.Errorf("received non-200 status code posting to mattermost: %v", contents)
+		return errors.Errorf("received non-200 status code posting to mattermost: %v %v", contents, response.StatusCode)
 	}
 
 	return nil
