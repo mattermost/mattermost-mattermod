@@ -7,7 +7,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) logErrorToMattermost(msg string, args ...interface{}) {
+func (s *Server) logToMattermost(msg string, args ...interface{}) {
 	if s.Config.MattermostWebhookURL == "" {
 		mlog.Warn("No Mattermost webhook URL set: unable to send message")
 		return
@@ -20,9 +20,9 @@ func (s *Server) logErrorToMattermost(msg string, args ...interface{}) {
 		webhookMessage += "\n---\n" + s.Config.MattermostWebhookFooter
 	}
 
-	webhookRequest := &WebhookRequest{Username: "Mattermod", Text: webhookMessage}
+	webhookRequest := &Payload{Username: "Mattermod", Text: webhookMessage}
 
-	if err := s.sendToWebhook(webhookRequest, s.Config.MattermostWebhookURL); err != nil {
+	if err := s.sendToWebhook(webhookRequest); err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 	}
 }
@@ -47,9 +47,9 @@ func (s *Server) logPrettyErrorToMattermost(msg string, pr *model.PullRequest, e
 	}
 	fullMessage = fullMessage + s.Config.MattermostWebhookFooter
 
-	webhookRequest := &WebhookRequest{Username: "Mattermod", Text: fullMessage}
+	webhookRequest := &Payload{Username: "Mattermod", Text: fullMessage}
 
-	if err := s.sendToWebhook(webhookRequest, s.Config.MattermostWebhookURL); err != nil {
+	if err := s.sendToWebhook(webhookRequest); err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 	}
 }

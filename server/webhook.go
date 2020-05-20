@@ -6,37 +6,37 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/pkg/errors"
 )
 
-type WebhookRequest struct {
+type Payload struct {
 	Username string `json:"username"`
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(webhookRequest *WebhookRequest, url string) error {
-	b, err := json.Marshal(webhookRequest)
+func (s *Server) sendToWebhook(payload *Payload) error {
+	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
+	body := bytes.NewReader(payloadBytes)
 
-	client := http.Client{}
-	request, err := http.NewRequest("POST", s.Config.MattermostWebhookURL, bytes.NewReader(b))
+	req, err := http.NewRequest("POST", s.Config.MattermostWebhookURL, body)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 
-	response, err := client.Do(request)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
+	defer r.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		contents, _ := ioutil.ReadAll(response.Body)
-		return errors.Errorf("received non-200 status code posting to mattermost: %v %v", contents, response.StatusCode)
+	if r.StatusCode != http.StatusOK {
+		return errors.Errorf("received non-200 status code posting to mattermost: %v, %v", r.StatusCode, r.Body)
 	}
 
 	return nil

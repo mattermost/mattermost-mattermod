@@ -88,7 +88,7 @@ func (s *Server) Start() {
 		mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
 		err := manners.ListenAndServe(s.Config.ListenAddress, handler)
 		if err != nil {
-			s.logErrorToMattermost(err.Error())
+			s.logToMattermost(err.Error())
 			mlog.Critical("server_error", mlog.Err(err))
 			panic(err.Error())
 		}
@@ -106,7 +106,7 @@ func (s *Server) RefreshMembers() {
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
-		s.logErrorToMattermost(err.Error())
+		s.logToMattermost(err.Error())
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		return
 	}
@@ -116,7 +116,7 @@ func (s *Server) RefreshMembers() {
 	for _, member := range s.OrgMembers {
 		msg += "- " + member + "\n  "
 	}
-	s.logErrorToMattermost(msg)
+	s.logToMattermost(msg)
 }
 
 // Tick runs a check on objects in the database

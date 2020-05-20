@@ -143,7 +143,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		var errInstance error
 		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
-			s.logErrorToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			s.logToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
@@ -165,7 +165,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	publicDNS, internalIP := s.getIPsForInstance(*instance.InstanceId)
 
 	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
-		s.logErrorToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
+		s.logToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
