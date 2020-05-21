@@ -106,8 +106,9 @@ func (s *Server) RefreshMembers() {
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
-		s.logToMattermost(err.Error())
 		mlog.Error("failed to refresh org members", mlog.Err(err))
+		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		members = s.OrgMembers
 		return
 	}
 	s.OrgMembers = members
