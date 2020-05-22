@@ -45,7 +45,7 @@ func main() {
 		mlog.Error("failed adding CheckPRActivity cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("10 * * * *", s.RefreshMembers)
+	_, err = c.AddFunc("0 2 * * *", s.RefreshMembers)
 	if err != nil {
 		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
 	}
