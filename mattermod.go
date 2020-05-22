@@ -40,17 +40,17 @@ func main() {
 
 	c := cron.New()
 
-	_, err = c.AddFunc("@daily", s.CheckPRActivity)
+	_, err = c.AddFunc("0 1 * * *", s.CheckPRActivity)
 	if err != nil {
 		mlog.Error("failed adding CheckPRActivity cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("@daily", s.RefreshMembers)
+	_, err = c.AddFunc("0 17 * * *", s.RefreshMembers)
 	if err != nil {
 		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("@midnight", s.CleanOutdatedPRs)
+	_, err = c.AddFunc("0 3 * * *", s.CleanOutdatedPRs)
 	if err != nil {
 		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
 	}

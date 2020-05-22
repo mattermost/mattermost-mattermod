@@ -6,6 +6,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -108,9 +109,16 @@ func (s *Server) RefreshMembers() {
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
-		members = s.OrgMembers
 		return
 	}
+
+	if members == nil {
+		err = errors.New("no members found")
+		mlog.Error("failed to refresh org members", mlog.Err(err))
+		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		return
+	}
+
 	s.OrgMembers = members
 
 	msg := "#Members " + time.Now().Format(time.RFC850) + "\n  "
@@ -124,7 +132,7 @@ func (s *Server) RefreshMembers() {
 func (s *Server) Tick() {
 	mlog.Info("tick")
 
-	aboveLimit := s.CheckLimitRateAndAbortRequest()
+	aboveLimit := s.hasReachedRateLimit()
 	if aboveLimit {
 		return
 	}
@@ -185,7 +193,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	overLimit := s.CheckLimitRateAndAbortRequest()
+	overLimit := s.hasReachedRateLimit()
 	if overLimit {
 		return
 	}

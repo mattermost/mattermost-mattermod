@@ -28,7 +28,7 @@ func (s *Server) CheckLimitRateAndSleep() {
 	}
 }
 
-func (s *Server) CheckLimitRateAndAbortRequest() bool {
+func (s *Server) hasReachedRateLimit() bool {
 	mlog.Info("Checking the rate limit on Github and will abort request if need...")
 	rate, _, err := s.GithubClient.RateLimits(context.Background())
 	if err != nil {
