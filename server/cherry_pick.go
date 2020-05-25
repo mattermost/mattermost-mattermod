@@ -81,12 +81,6 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
 
-			// todo: fix cherrypicking
-			if pr.RepoName == s.Config.EnterpriseReponame || pr.RepoName == s.Config.EnterpriseTriggerReponame {
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
-				return
-			}
-
 			milestoneNumber := prMilestone.GetNumber()
 			milestone := getMilestone(prMilestone.GetTitle())
 			cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
