@@ -166,6 +166,10 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 	var allUsers []*github.User
 	for {
 		users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
+		if _, ok := err.(*github.RateLimitError); ok {
+			s.sleepUntilRateLimitAboveTokenReserve()
+			users, r, err = s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
+		}
 		if err != nil {
 			return nil, err
 		}

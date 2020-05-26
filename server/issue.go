@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -107,28 +108,29 @@ func (s *Server) CleanOutdatedIssues() {
 		issues = result.Data.([]*model.Issue)
 	}
 
-	mlog.Info("Will process the Issues", mlog.Int("Issues Count", len(issues)))
+	mlog.Info("Processing Issues", mlog.Int("Issues Count", len(issues)))
 
 	for _, issue := range issues {
-		ghIssue, _, errIssue := s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
-		if errIssue != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(errIssue))
-			if _, ok := errIssue.(*github.RateLimitError); ok {
-				mlog.Error("GitHub rate limit reached")
-				s.CheckLimitRateAndSleep()
-			}
+		ghIssue, _, err := s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
+		if _, ok := err.(*github.RateLimitError); ok {
+			s.sleepUntilRateLimitAboveTokenReserve()
+			ghIssue, _, err = s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
+		}
+		if err != nil {
+			s.logToMattermost("Error getting PR: " + strconv.Itoa(issue.Number) + "Error: " + err.Error())
+			mlog.Error("Error getting PR", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(err))
 		}
 
-		if *ghIssue.State == "closed" {
+		if ghIssue.GetState() == "closed" {
 			mlog.Info("Issue is closed, updating the status in the database", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
-			issue.State = *ghIssue.State
+			issue.State = ghIssue.GetState()
 			if result := <-s.Store.Issue().Save(issue); result.Err != nil {
 				mlog.Error(result.Err.Error())
 			}
 		} else {
-			mlog.Info("Nothing do to", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
+			mlog.Info("Nothing to do", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
 		}
 		time.Sleep(5 * time.Second)
 	}
-	mlog.Info("Finished update the outdated issues in the mattermod database....")
+	mlog.Info("Finished updating outdated issues in the mattermod database....")
 }

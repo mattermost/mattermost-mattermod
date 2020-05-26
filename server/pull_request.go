@@ -416,7 +416,7 @@ func (s *Server) CheckPRActivity() {
 }
 
 func (s *Server) CleanOutdatedPRs() {
-	mlog.Info("Cleaning outdated prs in the mattermod database....")
+	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 
 	var prs []*model.PullRequest
 	if result := <-s.Store.PullRequest().ListOpen(); result.Err != nil {
@@ -426,26 +426,26 @@ func (s *Server) CleanOutdatedPRs() {
 		prs = result.Data.([]*model.PullRequest)
 	}
 
-	mlog.Info("Will process the PRs", mlog.Int("PRs Count", len(prs)))
+	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
 	for _, pr := range prs {
-		pull, _, errPull := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
-		if errPull != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(errPull))
-			if _, ok := errPull.(*github.RateLimitError); ok {
-				mlog.Error("GitHub rate limit reached")
-				s.CheckLimitRateAndSleep()
-			}
+		pull, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		if _, ok := err.(*github.RateLimitError); ok {
+			s.sleepUntilRateLimitAboveTokenReserve()
+			pull, _, err = s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		}
+		if err != nil {
+			mlog.Error("Error getting PR", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(err))
 		}
 
-		if *pull.State == model.STATE_CLOSED {
+		if pull.GetState() == model.STATE_CLOSED {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-			pr.State = *pull.State
+			pr.State = pull.GetState()
 			if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
 				mlog.Error(result.Err.Error())
 			}
 		} else {
-			mlog.Info("Nothing do to", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 		}
 
 		time.Sleep(5 * time.Second)

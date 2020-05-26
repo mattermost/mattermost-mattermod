@@ -132,8 +132,7 @@ func (s *Server) RefreshMembers() {
 func (s *Server) Tick() {
 	mlog.Info("tick")
 
-	aboveLimit := s.hasReachedRateLimit()
-	if aboveLimit {
+	if s.shouldStopRequests() {
 		return
 	}
 
@@ -193,8 +192,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	overLimit := s.hasReachedRateLimit()
-	if overLimit {
+	if s.shouldStopRequests() {
 		return
 	}
 
