@@ -189,7 +189,11 @@ func (s *Server) initializeRouter() {
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(msg))
+
+	_, err := w.Write([]byte(msg))
+	if err != nil {
+		mlog.Error("Failed to write ping", mlog.Err(err))
+	}
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +202,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf, _ := ioutil.ReadAll(r.Body)
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		mlog.Error("Failed to read body", mlog.Err(err))
+		return
+	}
 
 	receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
 	if receivedHash[0] != "sha1" {
@@ -206,7 +214,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
+	err = ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 	if err != nil {
 		mlog.Error(err.Error())
 		return

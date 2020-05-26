@@ -21,7 +21,6 @@ func TestWorkingValidateSignature(t *testing.T) {
 
 	err := ValidateSignature(ValidReceivedHash, validPayload, secretKey)
 	if err != nil {
-
 		t.Errorf("Test or ValidSignature failed with error: %s", err.Error())
 	}
 }

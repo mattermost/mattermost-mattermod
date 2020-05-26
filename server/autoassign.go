@@ -44,7 +44,6 @@ func (s *Server) handleAutoassign(eventIssueComment IssueComment) {
 		msg := fmt.Sprintf("In response to [this](%s)\n\n The auto assigner is not configured for this repository. Please talk with a Mattermost Github admin. thanks!", eventIssueComment.Comment.GetHTMLURL())
 		s.sendGitHubComment(*eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, msg)
 	}
-
 }
 
 func (s *Server) autoAssignerPostError(repoOwner, repoName string, number int, requestCommentURL string) {

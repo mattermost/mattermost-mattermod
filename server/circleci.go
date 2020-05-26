@@ -226,8 +226,7 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 				}
 			}
 
-			areAll := areAllExpectedJobs(builds, expectedJobNames)
-			if areAll == false {
+			if !areAllExpectedJobs(builds, expectedJobNames) {
 				continue
 			}
 
@@ -271,8 +270,5 @@ func areAllExpectedJobs(builds []*circleci.Build, jobNames []string) bool {
 		}
 	}
 
-	if len(jobNames) == c {
-		return true
-	}
-	return false
+	return len(jobNames) == c
 }

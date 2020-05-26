@@ -142,16 +142,6 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 	s.createRepoStatus(ctx, pr, enterpriseStatus)
 }
 
-func (s *Server) createEnterpriseTestsBlockedStatus(ctx context.Context, pr *model.PullRequest, description string) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String(description),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(ctx, pr, enterpriseStatus)
-}
-
 func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
 	enterpriseErrorStatus := &github.RepoStatus{
 		State:       github.String("error"),

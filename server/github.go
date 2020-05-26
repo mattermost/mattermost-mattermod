@@ -131,6 +131,11 @@ func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), owner, repoName, prNumber)
+	if err != nil {
+		mlog.Error("Failed to get PR for update check", mlog.Err(err))
+		return nil, err
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -142,21 +147,6 @@ func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.P
 	}
 
 	return pr, nil
-}
-
-func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, error) {
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return nil, err
-	}
-
-	var filenames = make([]string, len(prFiles))
-	for _, file := range prFiles {
-		filenames = append(filenames, file.GetFilename())
-	}
-
-	return filenames, nil
 }
 
 func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
@@ -202,13 +192,14 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 		return false, err
 	}
 
-	if response.StatusCode == http.StatusOK {
+	switch response.StatusCode {
+	case http.StatusOK:
 		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return true, nil
-	} else if response.StatusCode == http.StatusNotFound {
+	case http.StatusNotFound:
 		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return false, nil
-	} else {
+	default:
 		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
 		return false, nil
 	}
@@ -232,13 +223,18 @@ func (s *Server) createRef(pr *model.PullRequest, ref string) {
 }
 
 func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
-	cStatus, _, _ := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	if err != nil {
+		return err
+	}
+
 	if cStatus.GetState() == "success" {
 		_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 

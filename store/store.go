@@ -37,21 +37,17 @@ type Store interface {
 type PullRequestStore interface {
 	Save(pr *model.PullRequest) StoreChannel
 	Get(repoOwner, repoName string, number int) StoreChannel
-	List() StoreChannel
 	ListOpen() StoreChannel
 }
 
 type IssueStore interface {
 	Save(issue *model.Issue) StoreChannel
 	Get(repoOwner, repoName string, number int) StoreChannel
-	List() StoreChannel
-	ListOpen() StoreChannel
 }
 
 type SpinmintStore interface {
 	Save(spinmint *model.Spinmint) StoreChannel
 	Delete(instanceID string) StoreChannel
 	Get(prNumber int, repoName string) StoreChannel
-	GetTestServer(instanceID string) StoreChannel
 	List() StoreChannel
 }

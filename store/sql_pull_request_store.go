@@ -105,30 +105,6 @@ func (s SqlPullRequestStore) Get(repoOwner, repoName string, number int) StoreCh
 	return storeChannel
 }
 
-func (s SqlPullRequestStore) List() StoreChannel {
-	storeChannel := make(StoreChannel)
-
-	go func() {
-		result := StoreResult{}
-
-		var prs []*model.PullRequest
-		if _, err := s.GetReplica().Select(&prs,
-			`SELECT
-				*
-			FROM
-				PullRequests`); err != nil {
-			result.Err = model.NewLocAppError("SqlPullRequestStore.List", "Could not list PRs", nil, err.Error())
-		} else {
-			result.Data = prs
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
-}
-
 func (s SqlPullRequestStore) ListOpen() StoreChannel {
 	storeChannel := make(StoreChannel)
 

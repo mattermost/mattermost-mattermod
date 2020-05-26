@@ -25,9 +25,15 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	}
 
 	if isReadyToBeBuilt {
-		exists, _ := s.checkIfRefExists(pr, s.Config.Org, ref)
+		exists, err := s.checkIfRefExists(pr, s.Config.Org, ref)
+		if err != nil {
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
+				"Failed to check ref. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+			return
+		}
+
 		if exists {
-			err := s.deleteRef(s.Config.Org, prRepoName, ref)
+			err = s.deleteRef(s.Config.Org, prRepoName, ref)
 			if err != nil {
 				s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 					"Failed to delete already existing build branch. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
@@ -42,7 +48,11 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		defer cancel()
 		s.build(ctx, pr, s.Config.Org)
 
-		_ = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Org, prRepoName, ref)
+		err = s.deleteRefWhereCombinedStateEqualsSuccess(s.Config.Org, prRepoName, ref)
+		if err != nil {
+			s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
+				"Failed to delete ref. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+		}
 	} else {
 		s.sendGitHubComment(prRepoOwner, prRepoName, prNumber,
 			"Not triggering the mobile app build workflow, because PR checks are failing. ")

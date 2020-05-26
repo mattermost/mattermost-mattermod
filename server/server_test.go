@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -44,16 +46,16 @@ func TestMain(m *testing.M) {
 
 func TestPing(t *testing.T) {
 	defer s.Stop()
-	req, _ := http.NewRequest("GET", config.ListenAddress, nil)
+	req, err := http.NewRequest("GET", config.ListenAddress, nil)
+	require.NoError(t, err)
 	w := httptest.NewRecorder()
 	s.ping(w, req)
 
-	var body []byte
-	var err error
-	if body, err = ioutil.ReadAll(w.Result().Body); err != nil {
-		mlog.Err(err)
-	}
-	bytesLoader := gojsonschema.NewBytesLoader(body)
+	body := w.Result().Body
+	defer body.Close()
+	bytes, err := ioutil.ReadAll(body)
+	require.NoError(t, err)
+	bytesLoader := gojsonschema.NewBytesLoader(bytes)
 
 	dir, err := filepath.Abs(filepath.Dir(""))
 	if err != nil {

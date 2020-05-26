@@ -21,6 +21,11 @@ import (
 
 func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	if err != nil {
+		mlog.Error("Failed to get cherry pick PR", mlog.Err(err))
+		return
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -80,7 +85,6 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-
 			milestoneNumber := prMilestone.GetNumber()
 			milestone := getMilestone(prMilestone.GetTitle())
 			cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
@@ -218,5 +222,8 @@ func returnToMaster(dir string) {
 		os.Environ(),
 		os.Getenv("PATH"),
 	)
-	cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		mlog.Error("Failed to return to master", mlog.Err(err))
+	}
 }

@@ -17,6 +17,11 @@ import (
 
 func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	if err != nil {
+		mlog.Error("Failed to get PR for CLA", mlog.Err(err))
+		return
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -114,8 +119,6 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
 	}
-	return
-
 }
 
 func checkCLAComment(comments []*github.IssueComment, username string) (int64, bool) {

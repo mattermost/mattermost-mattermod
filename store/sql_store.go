@@ -51,7 +51,6 @@ const (
 
 type SqlStore struct {
 	master        *gorp.DbMap
-	replicas      []*gorp.DbMap
 	pullRequest   PullRequestStore
 	issue         IssueStore
 	spinmint      SpinmintStore
@@ -164,7 +163,6 @@ func (ss *SqlStore) CreateColumnIfNotExists(tableName string, columnName string,
 }
 
 func (ss *SqlStore) RemoveColumnIfExists(tableName string, columnName string) bool {
-
 	if !ss.DoesColumnExist(tableName, columnName) {
 		return false
 	}
@@ -200,8 +198,7 @@ func (ss *SqlStore) GetMaxLengthOfColumnIfExists(tableName string, columnName st
 		return ""
 	}
 
-	result, err := ss.GetMaster().SelectStr("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_name = '" + tableName + "' AND COLUMN_NAME = '" + columnName + "'")
-
+	result, err := ss.GetMaster().SelectStr("SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_name = '?' AND COLUMN_NAME = '?'", tableName, columnName)
 	if err != nil {
 		mlog.Critical("failed to get max length of column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
@@ -240,7 +237,6 @@ func (ss *SqlStore) CreateFullTextIndexIfNotExists(indexName string, tableName s
 }
 
 func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, columnName string, indexType string, unique bool) bool {
-
 	uniqueStr := ""
 	if unique {
 		uniqueStr = "UNIQUE "
@@ -339,26 +335,28 @@ func (ss *SqlStore) Spinmint() SpinmintStore {
 }
 
 func (ss *SqlStore) DropAllTables() {
-	ss.master.TruncateTables()
+	err := ss.master.TruncateTables()
+	if err != nil {
+		mlog.Error("failed to drop all tabels", mlog.Err(err))
+	}
 }
 
 type mattermConverter struct{}
 
 func (me mattermConverter) ToDb(val interface{}) (interface{}, error) {
-	switch val.(type) {
-	case []string:
-		if b, err := json.Marshal(val); err != nil {
+	if _, ok := val.([]string); ok {
+		b, err := json.Marshal(val)
+		if err != nil {
 			return nil, err
-		} else {
-			return string(b), nil
 		}
+
+		return string(b), nil
 	}
 	return val, nil
 }
 
 func (me mattermConverter) FromDb(target interface{}) (gorp.CustomScanner, bool) {
-	switch target.(type) {
-	case *[]string:
+	if _, ok := target.(*[]string); ok {
 		binder := func(holder, target interface{}) error {
 			s, ok := holder.(*string)
 			if !ok {
@@ -366,7 +364,6 @@ func (me mattermConverter) FromDb(target interface{}) (gorp.CustomScanner, bool)
 			}
 
 			if s == nil {
-				target = []string{}
 				return nil
 			}
 
@@ -377,17 +374,4 @@ func (me mattermConverter) FromDb(target interface{}) (gorp.CustomScanner, bool)
 	}
 
 	return gorp.CustomScanner{}, false
-}
-
-func convertMySQLFullTextColumnsToPostgres(columnNames string) string {
-	columns := strings.Split(columnNames, ", ")
-	concatenatedColumnNames := ""
-	for i, c := range columns {
-		concatenatedColumnNames += c
-		if i < len(columns)-1 {
-			concatenatedColumnNames += " || ' ' || "
-		}
-	}
-
-	return concatenatedColumnNames
 }
