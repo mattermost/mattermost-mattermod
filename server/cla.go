@@ -40,7 +40,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		return
 	}
 
-	if s.isAlreadySigned(ctx, pr) {
+	if s.IsAlreadySigned(ctx, pr) {
 		return
 	}
 
@@ -77,8 +77,8 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		return
 	}
 
-	if !s.isNameInCLAList(strings.Split(string(body), "\n"), username) {
-		_, found := s.findNeedsToSignCLAComment(comments, s.Config.Username)
+	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
+		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
 		if !found {
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 		}
@@ -86,7 +86,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 			State:       github.String(stateError),
 			Description: github.String(fmt.Sprintf("%v needs to sign the CLA", username)),
 			TargetURL:   github.String(s.Config.SignedCLAURL),
-			Context:     github.String("cla/mattermost"),
+			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
 		_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
@@ -102,7 +102,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		State:       github.String(stateSuccess),
 		Description: github.String(fmt.Sprintf("%s authorized", username)),
 		TargetURL:   github.String(s.Config.SignedCLAURL),
-		Context:     github.String("cla/mattermost"),
+		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
 	_, _, err = s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
@@ -112,8 +112,8 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 	}
 }
 
-func (s *Server) isAlreadySigned(ctx context.Context, pr *model.PullRequest) bool {
-	status, err := s.getStatus(ctx, pr, "cla/mattermost")
+func (s *Server) IsAlreadySigned(ctx context.Context, pr *model.PullRequest) bool {
+	status, err := s.GetStatus(ctx, pr, s.Config.CLAGithubStatusContext)
 	if err != nil || status == nil {
 		return false
 	}
@@ -121,10 +121,10 @@ func (s *Server) isAlreadySigned(ctx context.Context, pr *model.PullRequest) boo
 	return status.GetState() == stateSuccess
 }
 
-func (s *Server) isNameInCLAList(usersWhoSignedCLA []string, author string) bool {
+func isNameInCLAList(usersWhoSignedCLA []string, author string) bool {
 	authorLowerCase := strings.ToLower(author)
-	for _, user := range usersWhoSignedCLA {
-		user := strings.TrimSpace(user)
+	for _, userToTrim := range usersWhoSignedCLA {
+		user := strings.TrimSpace(userToTrim)
 		if strings.Compare(user, author) == 0 || strings.Compare(user, authorLowerCase) == 0 || strings.Compare(strings.ToLower(user), authorLowerCase) == 0 {
 			return true
 		}
@@ -132,7 +132,7 @@ func (s *Server) isNameInCLAList(usersWhoSignedCLA []string, author string) bool
 	return false
 }
 
-func (s *Server) findNeedsToSignCLAComment(comments []*github.IssueComment, username string) (id int64, found bool) {
+func findNeedsToSignCLAComment(comments []*github.IssueComment, username string) (id int64, found bool) {
 	for _, comment := range comments {
 		if *comment.User.Login == username && strings.Contains(*comment.Body, "Please help complete the Mattermost") {
 			return *comment.ID, true
@@ -143,7 +143,7 @@ func (s *Server) findNeedsToSignCLAComment(comments []*github.IssueComment, user
 
 func (s *Server) cleanupCLAMissingReportComments(pr *model.PullRequest, comments []*github.IssueComment) {
 	mlog.Info("will clean some comments regarding the CLA")
-	commentToRemove, found := s.findNeedsToSignCLAComment(comments, s.Config.Username)
+	commentToRemove, found := findNeedsToSignCLAComment(comments, s.Config.Username)
 	if found {
 		mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
 		_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
@@ -156,9 +156,9 @@ func (s *Server) cleanupCLAMissingReportComments(pr *model.PullRequest, comments
 func (s *Server) createCLAPendingStatus(ctx context.Context, pr *model.PullRequest) {
 	status := &github.RepoStatus{
 		State:       github.String(statePending),
-		Description: github.String("Checking if "+pr.Username+" signed CLA"),
+		Description: github.String("Checking if " + pr.Username + " signed CLA"),
 		TargetURL:   github.String(s.Config.SignedCLAURL),
-		Context:     github.String("cla/mattermost"),
+		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	s.createRepoStatus(ctx, pr, status)
 }

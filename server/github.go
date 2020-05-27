@@ -306,7 +306,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 	}
 }
 
-func (s *Server) getStatus(ctx context.Context, pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
+func (s *Server) GetStatus(ctx context.Context, pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
 	statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		return nil, err

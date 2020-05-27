@@ -1,15 +1,10 @@
-package server_test
+package server
 
 import (
-	"github.com/mattermost/mattermost-mattermod/server/mocks"
-	"net/http"
-	"strconv"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v31/github"
 
-	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,25 +58,14 @@ func TestCheckCLACommentDoesNotExist(t *testing.T) {
 	assert.Equal(t, id, *NewInt64(0))
 }
 
-func TestIsAlreadySigned(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func TestIsNameInCLAList(t *testing.T) {
+	usersWhoSignedCLA := []string{"a", "b"}
+	author := "A"
+	assert.True(t, isNameInCLAList(usersWhoSignedCLA, author))
+}
 
-	orgMocks := mocks.NewMockOrganizationsService(ctrl)
-	mockedClient := &server.GithubClient{
-	}
-
-	orgMocks.EXPECT().isAlreadySigned(gomock.Any(), gomock.Any(), opts).Return(dummyUsers, ghR, nil)
-
-	s := &server.Server{
-		Config: &server.Config{
-			Org: "mattertest",
-		},
-		GithubClient: mockedClient,
-		OrgMembers:   nil,
-	}
-	s.isAlreadySigned()
-
-	assert.Equal(t, false, s.IsOrgMember("test123"))
-	assert.Equal(t, true, s.IsOrgMember("test1"))
+func TestIsNotNameInCLAList(t *testing.T) {
+	usersWhoSignedCLA := []string{"a", "b"}
+	author := "c"
+	assert.False(t, isNameInCLAList(usersWhoSignedCLA, author))
 }

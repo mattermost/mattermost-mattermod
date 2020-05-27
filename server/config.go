@@ -102,7 +102,9 @@ type Config struct {
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 
-	CLAExclusionsList     []string
+	CLAExclusionsList      []string
+	CLAGithubStatusContext string
+
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
 
