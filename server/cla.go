@@ -28,7 +28,7 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 		return
 	}
 
-	if *prGitHub.State == "closed" {
+	if *prGitHub.State == model.StateClosed {
 		return
 	}
 
@@ -36,7 +36,7 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 }
 
 func (s *Server) checkCLA(pr *model.PullRequest) {
-	if pr.State == "closed" {
+	if pr.State == model.StateClosed {
 		return
 	}
 
@@ -85,7 +85,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		itemCLA := strings.TrimSpace(item)
 		if strings.Compare(itemCLA, username) == 0 || strings.Compare(itemCLA, lowerUsername) == 0 || strings.Compare(strings.ToLower(itemCLA), lowerUsername) == 0 {
 			mlog.Info("will post success on CLA", mlog.String("user", username))
-			claStatus.State = github.String("success")
+			claStatus.State = github.String(stateSuccess)
 			userMsg := fmt.Sprintf("%s authorized", username)
 			claStatus.Description = github.String(userMsg)
 			_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
@@ -110,7 +110,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	if !existComment {
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 	}
-	claStatus.State = github.String("error")
+	claStatus.State = github.String(stateError)
 	userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
 	claStatus.Description = github.String(userMsg)
 	mlog.Info("will post error on CLA", mlog.String("user", username))

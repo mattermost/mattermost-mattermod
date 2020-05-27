@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Server) blockPRMerge(pr *model.PullRequest) {
-	if pr.State == "closed" {
+	if pr.State == model.StateClosed {
 		return
 	}
 
@@ -44,13 +44,13 @@ func (s *Server) getBlockLabelFromPR(prLabels []string) string {
 }
 
 func (s *Server) unblockPRMerge(pr *model.PullRequest) {
-	if pr.State == "closed" {
+	if pr.State == model.StateClosed {
 		return
 	}
 
 	mergeStatus := &github.RepoStatus{
 		Context:     github.String("merge/blocked"),
-		State:       github.String("success"),
+		State:       github.String(stateSuccess),
 		Description: github.String("Merged allowed"),
 		TargetURL:   github.String(""),
 	}

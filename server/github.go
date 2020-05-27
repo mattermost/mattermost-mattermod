@@ -14,6 +14,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	stateSuccess = "success"
+	stateError   = "error"
+)
+
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
@@ -231,7 +236,7 @@ func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repo
 		return err
 	}
 
-	if cStatus.GetState() == "success" {
+	if cStatus.GetState() == stateSuccess {
 		_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
 			return err
@@ -257,7 +262,7 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return false, err
 	}
 	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == "success" || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
+	if cStatus.GetState() == stateSuccess || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
 		return true, nil
 	}
 	return false, nil

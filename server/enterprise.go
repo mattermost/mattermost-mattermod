@@ -144,7 +144,7 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 
 func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
 	enterpriseErrorStatus := &github.RepoStatus{
-		State:       github.String("error"),
+		State:       github.String(stateError),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("Enterprise tests error"),
 		TargetURL:   github.String(""),
@@ -156,7 +156,7 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 
 func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, desc string) {
 	eeTriggeredStatus := &github.RepoStatus{
-		State:       github.String("success"),
+		State:       github.String(stateSuccess),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
@@ -164,7 +164,7 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 	s.createRepoStatus(ctx, pr, eeTriggeredStatus)
 
 	eeReportStatus := &github.RepoStatus{
-		State:       github.String("success"),
+		State:       github.String(stateSuccess),
 		Context:     github.String(s.Config.EnterpriseGithubStatusEETests),
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
