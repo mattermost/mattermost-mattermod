@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"net/http"
 	"strconv"
 	"testing"
@@ -9,7 +10,6 @@ import (
 	"github.com/google/go-github/v31/github"
 
 	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -82,7 +82,6 @@ func TestIsAlreadySigned(t *testing.T) {
 	}
 	s.isAlreadySigned()
 
-	assert.Equal(t, expectedUserSize, len(s.OrgMembers))
 	assert.Equal(t, false, s.IsOrgMember("test123"))
 	assert.Equal(t, true, s.IsOrgMember("test1"))
 }

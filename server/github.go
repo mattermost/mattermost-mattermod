@@ -202,20 +202,14 @@ func (s *Server) IsOrgMember(user string) bool {
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
 	_, r, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
 	if err != nil {
-		return false, err
+		if r == nil || r.StatusCode != http.StatusNotFound {
+			mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+			return false, err
+		}
+		return false, nil // do not err if ref is not found
 	}
-
-	switch r.StatusCode {
-	case http.StatusOK:
-		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
-		return true, nil
-	case http.StatusNotFound:
-		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
-		return false, nil
-	default:
-		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", r.StatusCode), mlog.String("ref", ref))
-		return false, nil
-	}
+	mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
+	return true, nil
 }
 
 func (s *Server) createRef(pr *model.PullRequest, ref string) {
