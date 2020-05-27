@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	statePending = "pending"
 	stateSuccess = "success"
 	stateError   = "error"
 )
@@ -199,12 +200,12 @@ func (s *Server) IsOrgMember(user string) bool {
 }
 
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
-	_, response, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
+	_, r, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
 	if err != nil {
 		return false, err
 	}
 
-	switch response.StatusCode {
+	switch r.StatusCode {
 	case http.StatusOK:
 		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return true, nil
@@ -212,7 +213,7 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return false, nil
 	default:
-		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
+		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", r.StatusCode), mlog.String("ref", ref))
 		return false, nil
 	}
 }
@@ -266,7 +267,7 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return false, err
 	}
 	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == stateSuccess || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
+	if cStatus.GetState() == stateSuccess || cStatus.GetState() == statePending || cStatus.GetState() == "" {
 		return true, nil
 	}
 	return false, nil
@@ -309,4 +310,18 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return nil
 		}
 	}
+}
+
+func (s *Server) getStatus(ctx context.Context, pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
+	statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, status := range statuses {
+		if status.GetContext() == statusContext {
+			return status, nil
+		}
+	}
+	return nil, errors.Errorf("status not found for context %v", statusContext)
 }

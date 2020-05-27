@@ -25,7 +25,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.createCLAPendingStatus(context.TODO(), pr)
+		s.checkCLA(context.TODO(), pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
 
@@ -41,7 +42,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.createCLAPendingStatus(context.TODO(), pr)
+		s.checkCLA(context.TODO(), pr)
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -119,7 +121,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
+		s.checkCLA(context.TODO(), pr)
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {

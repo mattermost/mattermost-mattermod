@@ -134,7 +134,7 @@ func (s *Server) getBranchFromForkOrUpstreamRepo(ctx context.Context, serverPR *
 
 func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *model.PullRequest) {
 	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
+		State:       github.String(statePending),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
 		TargetURL:   github.String(""),
@@ -174,7 +174,7 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 
 func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetURL string) {
 	status := &github.RepoStatus{
-		State:       github.String("pending"),
+		State:       github.String(statePending),
 		Context:     github.String(context),
 		Description: github.String("Testing EE. SHA: " + pr.Sha),
 		TargetURL:   github.String(targetURL),
