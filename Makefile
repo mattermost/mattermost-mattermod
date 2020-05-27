@@ -34,7 +34,7 @@ build:
 	cp config/config-mattermod.default.json dist/mattermod/config-mattermod.json
 
 
-package: gofmt goimports govet build
+package: build
 	tar -C dist -czf dist/mattermod.tar.gz mattermod
 
 ## Runs tests. For local usage, run `make test CONFIG_TEST="-config=config-mattermod.test-local.json"`
