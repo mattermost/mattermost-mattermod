@@ -55,7 +55,7 @@ func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Reposito
 
 	client := jenkins.NewJenkins(&jenkins.Auth{
 		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
+		ApiToken: credentials.APIToken,
 	}, credentials.URL)
 
 	return repo, client, nil

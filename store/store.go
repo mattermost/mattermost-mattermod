@@ -9,14 +9,14 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 
-type StoreResult struct {
+type Result struct {
 	Data interface{}
 	Err  *model.AppError
 }
 
-type StoreChannel chan StoreResult
+type Channel chan Result
 
-func Must(sc StoreChannel) interface{} {
+func Must(sc Channel) interface{} {
 	r := <-sc
 	if r.Err != nil {
 		time.Sleep(time.Second)
@@ -35,19 +35,19 @@ type Store interface {
 }
 
 type PullRequestStore interface {
-	Save(pr *model.PullRequest) StoreChannel
-	Get(repoOwner, repoName string, number int) StoreChannel
-	ListOpen() StoreChannel
+	Save(pr *model.PullRequest) Channel
+	Get(repoOwner, repoName string, number int) Channel
+	ListOpen() Channel
 }
 
 type IssueStore interface {
-	Save(issue *model.Issue) StoreChannel
-	Get(repoOwner, repoName string, number int) StoreChannel
+	Save(issue *model.Issue) Channel
+	Get(repoOwner, repoName string, number int) Channel
 }
 
 type SpinmintStore interface {
-	Save(spinmint *model.Spinmint) StoreChannel
-	Delete(instanceID string) StoreChannel
-	Get(prNumber int, repoName string) StoreChannel
-	List() StoreChannel
+	Save(spinmint *model.Spinmint) Channel
+	Delete(instanceID string) Channel
+	Get(prNumber int, repoName string) Channel
+	List() Channel
 }

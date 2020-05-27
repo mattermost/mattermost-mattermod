@@ -112,10 +112,10 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			}
 
 			spinmint := result.Data.(*model.Spinmint)
-			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceId))
+			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 			mlog.Info("Will destroy the test server for a merged/closed PR.")
 			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
-			go s.destroySpinmint(pr, spinmint.InstanceId)
+			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
@@ -149,12 +149,12 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 
 		spinmint := result.Data.(*model.Spinmint)
-		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceId))
+		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceID))
 		mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
-		if strings.Contains(spinmint.InstanceId, "i-") {
-			go s.destroySpinmint(pr, spinmint.InstanceId)
+		if strings.Contains(spinmint.InstanceID, "i-") {
+			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	}
 
@@ -324,11 +324,11 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		}
 
 		spinmint := result.Data.(*model.Spinmint)
-		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceId))
+		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 		mlog.Info("Will destroy the test server for a merged/closed PR.")
 
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
-		go s.destroySpinmint(pr, spinmint.InstanceId)
+		go s.destroySpinmint(pr, spinmint.InstanceID)
 	}
 }
 
@@ -376,7 +376,7 @@ func (s *Server) CheckPRActivity() {
 			break
 		}
 
-		if *pull.State == model.STATE_CLOSED {
+		if *pull.State == model.StateClosed {
 			mlog.Info("PR/Issue is closed will not comment", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.String("State", *pull.State))
 			continue
 		}
@@ -426,13 +426,12 @@ func (s *Server) CheckPRActivity() {
 func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated prs in the mattermod database....")
 
-	var prs []*model.PullRequest
-	if result := <-s.Store.PullRequest().ListOpen(); result.Err != nil {
+	result := <-s.Store.PullRequest().ListOpen()
+	if result.Err != nil {
 		mlog.Error(result.Err.Error())
 		return
-	} else {
-		prs = result.Data.([]*model.PullRequest)
 	}
+	prs := result.Data.([]*model.PullRequest)
 
 	mlog.Info("Will process the PRs", mlog.Int("PRs Count", len(prs)))
 
@@ -446,7 +445,7 @@ func (s *Server) CleanOutdatedPRs() {
 			}
 		}
 
-		if *pull.State == model.STATE_CLOSED {
+		if *pull.State == model.StateClosed {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			pr.State = *pull.State
 			if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {

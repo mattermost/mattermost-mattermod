@@ -172,12 +172,12 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 	s.createRepoStatus(ctx, pr, eeReportStatus)
 }
 
-func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetUrl string) {
+func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetURL string) {
 	status := &github.RepoStatus{
 		State:       github.String("pending"),
 		Context:     github.String(context),
 		Description: github.String("Testing EE. SHA: " + pr.Sha),
-		TargetURL:   github.String(targetUrl),
+		TargetURL:   github.String(targetURL),
 	}
 	s.createRepoStatus(ctx, pr, status)
 }

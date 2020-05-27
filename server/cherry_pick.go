@@ -34,7 +34,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 
 	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
 		mlog.Debug("not org member", mlog.String("user", eventIssueComment.Comment.User.GetLogin()))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
 

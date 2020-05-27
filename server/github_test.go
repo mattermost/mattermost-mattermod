@@ -40,7 +40,7 @@ func TestIsOrgMember(t *testing.T) {
 	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(dummyUsers, ghR, nil)
 
 	s := &server.Server{
-		Config: &server.ServerConfig{
+		Config: &server.Config{
 			Org: "mattertest",
 		},
 		GithubClient: mockedClient,
@@ -88,7 +88,7 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(newUsers, ghR, nil)
 
 	s := &server.Server{
-		Config: &server.ServerConfig{
+		Config: &server.Config{
 			Org: "mattertest",
 		},
 		GithubClient: mockedClient,

@@ -18,7 +18,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var config *ServerConfig
+var config *Config
 var err error
 var s *Server
 

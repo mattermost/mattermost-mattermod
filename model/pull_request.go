@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	STATE_OPEN   = "open"
-	STATE_CLOSED = "closed"
+	StateOpen   = "open"
+	StateClosed = "closed"
 )
 
 type PullRequest struct {
@@ -31,20 +31,21 @@ type PullRequest struct {
 	CreatedAt       time.Time
 }
 
-func (o *PullRequest) ToJson() (string, error) {
-	if b, err := json.Marshal(o); err != nil {
+func (o *PullRequest) ToJSON() (string, error) {
+	b, err := json.Marshal(o)
+	if err != nil {
 		return "", err
-	} else {
-		return string(b), nil
 	}
+
+	return string(b), nil
 }
 
-func PullRequestFromJson(data io.Reader) (*PullRequest, error) {
+func PullRequestFromJSON(data io.Reader) (*PullRequest, error) {
 	var pr PullRequest
-
-	if err := json.NewDecoder(data).Decode(&pr); err != nil {
+	err := json.NewDecoder(data).Decode(&pr)
+	if err != nil {
 		return nil, err
-	} else {
-		return &pr, nil
 	}
+
+	return &pr, nil
 }

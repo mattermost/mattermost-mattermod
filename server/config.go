@@ -31,7 +31,7 @@ type Repository struct {
 type JenkinsCredentials struct {
 	URL      string
 	Username string
-	ApiToken string
+	APIToken string
 }
 
 type Integration struct {
@@ -46,7 +46,7 @@ type BuildMobileAppJob struct {
 	ExpectedArtifacts int
 }
 
-type ServerConfig struct {
+type Config struct {
 	ListenAddress               string
 	MattermodURL                string
 	GithubAccessToken           string
@@ -77,7 +77,7 @@ type ServerConfig struct {
 	SetupSpinmintFailedMessage         string
 	DestroyedSpinmintMessage           string
 	DestroyedExpirationSpinmintMessage string
-	SpinmintsUseHttps                  bool
+	SpinmintsUseHTTPS                  bool
 
 	SetupSpinmintUpgradeTag         string
 	SetupSpinmintUpgradeMessage     string
@@ -120,29 +120,29 @@ type ServerConfig struct {
 	BlacklistPaths []string
 
 	AWSCredentials struct {
-		Id     string
+		ID     string
 		Secret string
 		Token  string
 	}
 
 	AWSRegion        string
-	AWSImageId       string
+	AWSImageID       string
 	AWSKeyName       string
 	AWSInstanceType  string
-	AWSHostedZoneId  string
+	AWSHostedZoneID  string
 	AWSSecurityGroup string
 	AWSDnsSuffix     string
-	AWSSubNetId      string
+	AWSSubNetID      string
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
 
 	LogSettings struct {
 		EnableConsole bool
-		ConsoleJson   bool
+		ConsoleJSON   bool
 		ConsoleLevel  string
 		EnableFile    bool
-		FileJson      bool
+		FileJSON      bool
 		FileLevel     string
 		FileLocation  string
 	}
@@ -167,8 +167,8 @@ func findConfigFile(fileName string) string {
 	return fileName
 }
 
-func GetConfig(fileName string) (*ServerConfig, error) {
-	config := &ServerConfig{}
+func GetConfig(fileName string) (*Config, error) {
+	config := &Config{}
 	fileName = findConfigFile(fileName)
 
 	file, err := os.Open(fileName)
@@ -197,9 +197,9 @@ func GetRepository(repositories []*Repository, owner, name string) (*Repository,
 
 func (s *Server) GetAwsConfig() *aws.Config {
 	var creds *credentials.Credentials = nil
-	if s.Config.AWSCredentials.Id != "" {
+	if s.Config.AWSCredentials.ID != "" {
 		creds = credentials.NewStaticCredentials(
-			s.Config.AWSCredentials.Id,
+			s.Config.AWSCredentials.ID,
 			s.Config.AWSCredentials.Secret,
 			s.Config.AWSCredentials.Token,
 		)

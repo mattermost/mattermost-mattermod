@@ -34,38 +34,41 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
-		if combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		if err != nil {
 			return nil, err
-		} else {
-			for _, status := range combined.Statuses {
-				if *status.Context == repo.BuildStatusContext {
-					pr.BuildStatus = *status.State
-					pr.BuildLink = *status.TargetURL
-					break
-				}
+		}
+
+		for _, status := range combined.Statuses {
+			if *status.Context == repo.BuildStatusContext {
+				pr.BuildStatus = *status.State
+				pr.BuildLink = *status.TargetURL
+				break
 			}
 		}
 
 		// for the repos using circleci we have the checks now
-		if checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		if err != nil {
 			return nil, err
-		} else {
-			for _, status := range checks.CheckRuns {
-				if *status.Name == repo.BuildStatusContext {
-					pr.BuildStatus = status.GetStatus()
-					pr.BuildConclusion = status.GetConclusion()
-					pr.BuildLink = status.GetHTMLURL()
-					break
-				}
+		}
+
+		for _, status := range checks.CheckRuns {
+			if *status.Name == repo.BuildStatusContext {
+				pr.BuildStatus = status.GetStatus()
+				pr.BuildConclusion = status.GetConclusion()
+				pr.BuildLink = status.GetHTMLURL()
+				break
 			}
 		}
 	}
 
-	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		pr.Labels = labelsToStringArray(labels)
 	}
+
+	pr.Labels = labelsToStringArray(labels)
 
 	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
 		mlog.Error(result.Err.Error())
@@ -83,11 +86,11 @@ func (s *Server) GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.
 		State:     *ghIssue.State,
 	}
 
-	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		issue.Labels = labelsToStringArray(labels)
 	}
+	issue.Labels = labelsToStringArray(labels)
 
 	return issue, nil
 }

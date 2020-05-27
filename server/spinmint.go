@@ -59,7 +59,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 			return
 		}
 		spinmint := &model.Spinmint{
-			InstanceId: *instance.InstanceId,
+			InstanceID: *instance.InstanceId,
 			RepoOwner:  pr.RepoOwner,
 			RepoName:   pr.RepoName,
 			Number:     pr.Number,
@@ -69,7 +69,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	} else {
 		spinmint := result.Data.(*model.Spinmint)
 		instance = &ec2.Instance{
-			InstanceId: aws.String(spinmint.InstanceId),
+			InstanceId: aws.String(spinmint.InstanceID),
 		}
 	}
 
@@ -84,7 +84,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	}
 
 	smLink := fmt.Sprintf("%v.%v", *instance.InstanceId, s.Config.AWSDnsSuffix)
-	if s.Config.SpinmintsUseHttps {
+	if s.Config.SpinmintsUseHTTPS {
 		smLink = "https://" + smLink
 	} else {
 		smLink = "http://" + smLink
@@ -97,9 +97,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		message = s.Config.SetupSpinmintDoneMessage
 	}
 
-	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
-	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
-	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
+	message = strings.Replace(message, templateSpinmintLink, smLink, 1)
+	message = strings.Replace(message, templateInstanceID, instanceIDMessage+*instance.InstanceId, 1)
+	message = strings.Replace(message, templateInternalIP, internalIP, 1)
 
 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
@@ -126,7 +126,7 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 		return nil, err
 	}
 	sdata := string(data)
-	// with circleci if the PR is opened in upstream we dont have the PR number and we have the branch name instead.
+	// with circleci if the PR is opened in upstream we don't have the PR number and we have the branch name instead.
 	// so we will use the commit hash that we upload too
 	partialURL := fmt.Sprintf("commit/%s", pr.Sha)
 	sdata = strings.Replace(sdata, "PR-BUILD_NUMBER", partialURL, -1)
@@ -139,13 +139,13 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 
 	var one int64 = 1
 	params := &ec2.RunInstancesInput{
-		ImageId:          &s.Config.AWSImageId,
+		ImageId:          &s.Config.AWSImageID,
 		MaxCount:         &one,
 		MinCount:         &one,
 		InstanceType:     &s.Config.AWSInstanceType,
 		UserData:         &sdata,
 		SecurityGroupIds: []*string{&s.Config.AWSSecurityGroup},
-		SubnetId:         &s.Config.AWSSubNetId,
+		SubnetId:         &s.Config.AWSSubNetID,
 	}
 
 	resp, err := svc.RunInstances(params)
@@ -269,7 +269,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 				},
 			},
 		},
-		HostedZoneId: &s.Config.AWSHostedZoneId,
+		HostedZoneId: &s.Config.AWSHostedZoneID,
 	}
 
 	_, err = svc.ChangeResourceRecordSets(params)
@@ -283,26 +283,26 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 // CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
-	testServers := []*model.Spinmint{}
-	if result := <-s.Store.Spinmint().List(); result.Err != nil {
+
+	result := <-s.Store.Spinmint().List()
+	if result.Err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
-	} else {
-		testServers = result.Data.([]*model.Spinmint)
 	}
+	testServers := result.Data.([]*model.Spinmint)
 
 	for _, testServer := range testServers {
-		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
+		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceID), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 		testServerCreated := time.Unix(testServer.CreatedAt, 0)
 		duration := time.Since(testServerCreated)
 		if int(duration.Hours()) > s.Config.SpinmintExpirationHour {
-			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
+			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceID), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 			pr := &model.PullRequest{
 				RepoOwner: testServer.RepoOwner,
 				RepoName:  testServer.RepoName,
 				Number:    testServer.Number,
 			}
-			go s.destroySpinmint(pr, testServer.InstanceId)
-			s.removeTestServerFromDB(testServer.InstanceId)
+			go s.destroySpinmint(pr, testServer.InstanceID)
+			s.removeTestServerFromDB(testServer.InstanceID)
 			s.sendGitHubComment(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
@@ -316,8 +316,8 @@ func (s *Server) storeSpinmintInfo(spinmint *model.Spinmint) {
 	}
 }
 
-func (s *Server) removeTestServerFromDB(instanceId string) {
-	if result := <-s.Store.Spinmint().Delete(instanceId); result.Err != nil {
+func (s *Server) removeTestServerFromDB(instanceID string) {
+	if result := <-s.Store.Spinmint().Delete(instanceID); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
 }

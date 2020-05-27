@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config       *ServerConfig
+	Config       *Config
 	Store        store.Store
 	Router       *mux.Router
 	GithubClient *GithubClient
@@ -39,25 +38,22 @@ type Server struct {
 }
 
 const (
-	INSTANCE_ID_MESSAGE = "Instance ID: "
-	LOG_FILENAME        = "mattermod.log"
+	instanceIDMessage = "Instance ID: "
+	logFilename       = "mattermod.log"
 
 	// buildOverride overrides the buildsInterface of the server for development
 	// and testing.
 	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
+
+	templateSpinmintLink = "SPINMINT_LINK"
+	templateInstanceID   = "INSTANCE_ID"
+	templateInternalIP   = "INTERNAL_IP"
 )
 
-var (
-	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
-	INSTANCE_ID         = "INSTANCE_ID"
-	INTERNAL_IP         = "INTERNAL_IP"
-	SPINMINT_LINK       = "SPINMINT_LINK"
-)
-
-func New(config *ServerConfig) (server *Server, err error) {
+func New(config *Config) (server *Server, err error) {
 	s := &Server{
 		Config:    config,
-		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
+		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
 		Router:    mux.NewRouter(),
 		StartTime: time.Now(),
 	}
@@ -222,11 +218,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	var pingEvent *github.PingEvent
 	if r.Header.Get("X-GitHub-Event") == "ping" {
-		pingEvent = PingEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+		pingEvent = PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	}
 
-	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	eventIssueComment := IssueCommentFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
@@ -273,16 +269,16 @@ func GetLogFileLocation(fileLocation string) string {
 		fileLocation, _ = fileutils.FindDir("logs")
 	}
 
-	return filepath.Join(fileLocation, LOG_FILENAME)
+	return filepath.Join(fileLocation, logFilename)
 }
 
-func SetupLogging(config *ServerConfig) {
+func SetupLogging(config *Config) {
 	loggingConfig := &mlog.LoggerConfiguration{
 		EnableConsole: config.LogSettings.EnableConsole,
-		ConsoleJson:   config.LogSettings.ConsoleJson,
+		ConsoleJson:   config.LogSettings.ConsoleJSON,
 		ConsoleLevel:  strings.ToLower(config.LogSettings.ConsoleLevel),
 		EnableFile:    config.LogSettings.EnableFile,
-		FileJson:      config.LogSettings.FileJson,
+		FileJson:      config.LogSettings.FileJSON,
 		FileLevel:     strings.ToLower(config.LogSettings.FileLevel),
 		FileLocation:  GetLogFileLocation(config.LogSettings.FileLocation),
 	}

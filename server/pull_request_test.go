@@ -97,7 +97,7 @@ func TestCleanUpLabels(t *testing.T) {
 			defer ctrl.Finish()
 
 			s := &server.Server{
-				Config: &server.ServerConfig{
+				Config: &server.Config{
 					IssueLabelsToCleanUp: []string{"AutoMerge", "Do Not Merge", "Work In Progress"},
 				},
 				GithubClient: test.SetupClient(ctrl),

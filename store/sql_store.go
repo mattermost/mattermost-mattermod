@@ -12,44 +12,32 @@ import (
 	"time"
 
 	"github.com/go-gorp/gorp"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // Load MySQL Driver
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 const (
-	INDEX_TYPE_FULL_TEXT = "full_text"
-	INDEX_TYPE_DEFAULT   = "default"
-	MAX_DB_CONN_LIFETIME = 15
+	indexTypeFullText = "full_text"
+	indexTypeDefault  = "default"
 )
 
 const (
-	EXIT_CREATE_TABLE                = 100
-	EXIT_DB_OPEN                     = 101
-	EXIT_PING                        = 102
-	EXIT_NO_DRIVER                   = 103
-	EXIT_TABLE_EXISTS                = 104
-	EXIT_TABLE_EXISTS_MYSQL          = 105
-	EXIT_COLUMN_EXISTS               = 106
-	EXIT_DOES_COLUMN_EXISTS_POSTGRES = 107
-	EXIT_DOES_COLUMN_EXISTS_MYSQL    = 108
-	EXIT_DOES_COLUMN_EXISTS_MISSING  = 109
-	EXIT_CREATE_COLUMN_POSTGRES      = 110
-	EXIT_CREATE_COLUMN_MYSQL         = 111
-	EXIT_CREATE_COLUMN_MISSING       = 112
-	EXIT_REMOVE_COLUMN               = 113
-	EXIT_RENAME_COLUMN               = 114
-	EXIT_MAX_COLUMN                  = 115
-	EXIT_ALTER_COLUMN                = 116
-	EXIT_CREATE_INDEX_POSTGRES       = 117
-	EXIT_CREATE_INDEX_MYSQL          = 118
-	EXIT_CREATE_INDEX_FULL_MYSQL     = 119
-	EXIT_CREATE_INDEX_MISSING        = 120
-	EXIT_REMOVE_INDEX_POSTGRES       = 121
-	EXIT_REMOVE_INDEX_MYSQL          = 122
-	EXIT_REMOVE_INDEX_MISSING        = 123
+	exitCreateTable          = 100
+	exitDBOpen               = 101
+	exitPing                 = 102
+	exitTableExistsMySQL     = 105
+	exitColumExistsMySQL     = 108
+	exitCreateColumMySQL     = 111
+	exitRemoveColumn         = 113
+	exitRenameColumn         = 114
+	exitMaxColumn            = 115
+	exitAlterColumn          = 116
+	exitCreateIndexMySQL     = 118
+	exitCreateIndexFullMySQL = 119
+	exitRemoveIndexMySQL     = 122
 )
 
-type SqlStore struct {
+type SQLStore struct {
 	master        *gorp.DbMap
 	pullRequest   PullRequestStore
 	issue         IssueStore
@@ -57,14 +45,14 @@ type SqlStore struct {
 	SchemaVersion string
 }
 
-func initConnection(driverName, dataSource string) *SqlStore {
-	sqlStore := &SqlStore{}
+func initConnection(driverName, dataSource string) *SQLStore {
+	sqlStore := &SQLStore{}
 
 	db, err := dbsql.Open(driverName, dataSource)
 	if err != nil {
 		mlog.Critical("failed to open db connection", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_DB_OPEN)
+		os.Exit(exitDBOpen)
 	}
 
 	mlog.Info("pinging db")
@@ -72,7 +60,7 @@ func initConnection(driverName, dataSource string) *SqlStore {
 	if err != nil {
 		mlog.Critical("could not ping db", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_PING)
+		os.Exit(exitPing)
 	}
 
 	sqlStore.master = &gorp.DbMap{Db: db, TypeConverter: mattermConverter{}, Dialect: gorp.MySQLDialect{Engine: "InnoDB", Encoding: "UTF8MB4"}}
@@ -80,29 +68,29 @@ func initConnection(driverName, dataSource string) *SqlStore {
 	return sqlStore
 }
 
-func NewSqlStore(driverName, dataSource string) Store {
+func NewSQLStore(driverName, dataSource string) Store {
 	sqlStore := initConnection(driverName, dataSource)
 
-	sqlStore.pullRequest = NewSqlPullRequestStore(sqlStore)
-	sqlStore.issue = NewSqlIssueStore(sqlStore)
-	sqlStore.spinmint = NewSqlSpinmintStore(sqlStore)
+	sqlStore.pullRequest = NewSQLPullRequestStore(sqlStore)
+	sqlStore.issue = NewSQLIssueStore(sqlStore)
+	sqlStore.spinmint = NewSQLSpinmintStore(sqlStore)
 
 	if err := sqlStore.master.CreateTablesIfNotExists(); err != nil {
 		mlog.Critical("error creating tables", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_CREATE_TABLE)
+		os.Exit(exitCreateTable)
 	}
 
 	// UpgradeDatabase(sqlStore)
 
-	sqlStore.pullRequest.(*SqlPullRequestStore).CreateIndexesIfNotExists()
-	sqlStore.issue.(*SqlIssueStore).CreateIndexesIfNotExists()
-	sqlStore.spinmint.(*SqlSpinmintStore).CreateIndexesIfNotExists()
+	sqlStore.pullRequest.(*SQLPullRequestStore).CreateIndexesIfNotExists()
+	sqlStore.issue.(*SQLIssueStore).CreateIndexesIfNotExists()
+	sqlStore.spinmint.(*SQLSpinmintStore).CreateIndexesIfNotExists()
 
 	return sqlStore
 }
 
-func (ss *SqlStore) DoesTableExist(tableName string) bool {
+func (ss *SQLStore) DoesTableExist(tableName string) bool {
 	count, err := ss.GetMaster().SelectInt(
 		`SELECT
 	    COUNT(0) AS table_exists
@@ -118,13 +106,13 @@ func (ss *SqlStore) DoesTableExist(tableName string) bool {
 	if err != nil {
 		mlog.Critical("failed to check if table exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_TABLE_EXISTS_MYSQL)
+		os.Exit(exitTableExistsMySQL)
 	}
 
 	return count > 0
 }
 
-func (ss *SqlStore) DoesColumnExist(tableName string, columnName string) bool {
+func (ss *SQLStore) DoesColumnExist(tableName string, columnName string) bool {
 	count, err := ss.GetMaster().SelectInt(
 		`SELECT
 		    COUNT(0) AS column_exists
@@ -141,28 +129,28 @@ func (ss *SqlStore) DoesColumnExist(tableName string, columnName string) bool {
 	if err != nil {
 		mlog.Critical("failed to check if column exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_DOES_COLUMN_EXISTS_MYSQL)
+		os.Exit(exitColumExistsMySQL)
 	}
 
 	return count > 0
 }
 
-func (ss *SqlStore) CreateColumnIfNotExists(tableName string, columnName string, mySqlColType string, postgresColType string, defaultValue string) bool {
+func (ss *SQLStore) CreateColumnIfNotExists(tableName string, columnName string, mySQLColType string, postgresColType string, defaultValue string) bool {
 	if ss.DoesColumnExist(tableName, columnName) {
 		return false
 	}
 
-	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " ADD " + columnName + " " + mySqlColType + " DEFAULT '" + defaultValue + "'")
+	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " ADD " + columnName + " " + mySQLColType + " DEFAULT '" + defaultValue + "'")
 	if err != nil {
 		mlog.Critical("failed to create column if not exists: %v", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_CREATE_COLUMN_MYSQL)
+		os.Exit(exitCreateColumMySQL)
 	}
 
 	return true
 }
 
-func (ss *SqlStore) RemoveColumnIfExists(tableName string, columnName string) bool {
+func (ss *SQLStore) RemoveColumnIfExists(tableName string, columnName string) bool {
 	if !ss.DoesColumnExist(tableName, columnName) {
 		return false
 	}
@@ -171,13 +159,13 @@ func (ss *SqlStore) RemoveColumnIfExists(tableName string, columnName string) bo
 	if err != nil {
 		mlog.Critical("failed to remove column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_REMOVE_COLUMN)
+		os.Exit(exitRemoveColumn)
 	}
 
 	return true
 }
 
-func (ss *SqlStore) RenameColumnIfExists(tableName string, oldColumnName string, newColumnName string, colType string) bool {
+func (ss *SQLStore) RenameColumnIfExists(tableName string, oldColumnName string, newColumnName string, colType string) bool {
 	if !ss.DoesColumnExist(tableName, oldColumnName) {
 		return false
 	}
@@ -187,13 +175,13 @@ func (ss *SqlStore) RenameColumnIfExists(tableName string, oldColumnName string,
 	if err != nil {
 		mlog.Critical("failed to rename column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_RENAME_COLUMN)
+		os.Exit(exitRenameColumn)
 	}
 
 	return true
 }
 
-func (ss *SqlStore) GetMaxLengthOfColumnIfExists(tableName string, columnName string) string {
+func (ss *SQLStore) GetMaxLengthOfColumnIfExists(tableName string, columnName string) string {
 	if !ss.DoesColumnExist(tableName, columnName) {
 		return ""
 	}
@@ -202,41 +190,41 @@ func (ss *SqlStore) GetMaxLengthOfColumnIfExists(tableName string, columnName st
 	if err != nil {
 		mlog.Critical("failed to get max length of column if exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_MAX_COLUMN)
+		os.Exit(exitMaxColumn)
 	}
 
 	return result
 }
 
-func (ss *SqlStore) AlterColumnTypeIfExists(tableName string, columnName string, mySqlColType string, postgresColType string) bool {
+func (ss *SQLStore) AlterColumnTypeIfExists(tableName string, columnName string, mySQLColType string, postgresColType string) bool {
 	if !ss.DoesColumnExist(tableName, columnName) {
 		return false
 	}
 
-	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " MODIFY " + columnName + " " + mySqlColType)
+	_, err := ss.GetMaster().Exec("ALTER TABLE " + tableName + " MODIFY " + columnName + " " + mySQLColType)
 
 	if err != nil {
 		mlog.Critical("failed to alter column type if exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_ALTER_COLUMN)
+		os.Exit(exitAlterColumn)
 	}
 
 	return true
 }
 
-func (ss *SqlStore) CreateUniqueIndexIfNotExists(indexName string, tableName string, columnName string) bool {
-	return ss.createIndexIfNotExists(indexName, tableName, columnName, INDEX_TYPE_DEFAULT, true)
+func (ss *SQLStore) CreateUniqueIndexIfNotExists(indexName string, tableName string, columnName string) bool {
+	return ss.createIndexIfNotExists(indexName, tableName, columnName, indexTypeDefault, true)
 }
 
-func (ss *SqlStore) CreateIndexIfNotExists(indexName string, tableName string, columnName string) bool {
-	return ss.createIndexIfNotExists(indexName, tableName, columnName, INDEX_TYPE_DEFAULT, false)
+func (ss *SQLStore) CreateIndexIfNotExists(indexName string, tableName string, columnName string) bool {
+	return ss.createIndexIfNotExists(indexName, tableName, columnName, indexTypeDefault, false)
 }
 
-func (ss *SqlStore) CreateFullTextIndexIfNotExists(indexName string, tableName string, columnName string) bool {
-	return ss.createIndexIfNotExists(indexName, tableName, columnName, INDEX_TYPE_FULL_TEXT, false)
+func (ss *SQLStore) CreateFullTextIndexIfNotExists(indexName string, tableName string, columnName string) bool {
+	return ss.createIndexIfNotExists(indexName, tableName, columnName, indexTypeFullText, false)
 }
 
-func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, columnName string, indexType string, unique bool) bool {
+func (ss *SQLStore) createIndexIfNotExists(indexName string, tableName string, columnName string, indexType string, unique bool) bool {
 	uniqueStr := ""
 	if unique {
 		uniqueStr = "UNIQUE "
@@ -246,7 +234,7 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 	if err != nil {
 		mlog.Critical("can't check for index", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_CREATE_INDEX_MYSQL)
+		os.Exit(exitCreateIndexMySQL)
 	}
 
 	if count > 0 {
@@ -254,7 +242,7 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 	}
 
 	fullTextIndex := ""
-	if indexType == INDEX_TYPE_FULL_TEXT {
+	if indexType == indexTypeFullText {
 		fullTextIndex = " FULLTEXT "
 	}
 
@@ -262,18 +250,18 @@ func (ss *SqlStore) createIndexIfNotExists(indexName string, tableName string, c
 	if err != nil {
 		mlog.Critical("failed to create index if not exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_CREATE_INDEX_FULL_MYSQL)
+		os.Exit(exitCreateIndexFullMySQL)
 	}
 
 	return true
 }
 
-func (ss *SqlStore) RemoveIndexIfExists(indexName string, tableName string) bool {
+func (ss *SQLStore) RemoveIndexIfExists(indexName string, tableName string) bool {
 	count, err := ss.GetMaster().SelectInt("SELECT COUNT(0) AS index_exists FROM information_schema.statistics WHERE TABLE_SCHEMA = DATABASE() and table_name = ? AND index_name = ?", tableName, indexName)
 	if err != nil {
 		mlog.Critical("can't check index to remove", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_REMOVE_INDEX_MYSQL)
+		os.Exit(exitRemoveIndexMySQL)
 	}
 
 	if count <= 0 {
@@ -284,7 +272,7 @@ func (ss *SqlStore) RemoveIndexIfExists(indexName string, tableName string) bool
 	if err != nil {
 		mlog.Critical("failed to remove index if exists", mlog.Err(err))
 		time.Sleep(time.Second)
-		os.Exit(EXIT_REMOVE_INDEX_MYSQL)
+		os.Exit(exitRemoveIndexMySQL)
 	}
 
 	return true
@@ -303,38 +291,38 @@ func IsUniqueConstraintError(err string, indexName []string) bool {
 	return unique && field
 }
 
-func (ss *SqlStore) GetMaster() *gorp.DbMap {
+func (ss *SQLStore) GetMaster() *gorp.DbMap {
 	return ss.master
 }
 
-func (ss *SqlStore) GetReplica() *gorp.DbMap {
+func (ss *SQLStore) GetReplica() *gorp.DbMap {
 	return ss.master
 }
 
-func (ss *SqlStore) GetAllConns() []*gorp.DbMap {
+func (ss *SQLStore) GetAllConns() []*gorp.DbMap {
 	all := make([]*gorp.DbMap, 1)
 	all[0] = ss.master
 	return all
 }
 
-func (ss *SqlStore) Close() {
+func (ss *SQLStore) Close() {
 	mlog.Info("closing db")
 	ss.master.Db.Close()
 }
 
-func (ss *SqlStore) PullRequest() PullRequestStore {
+func (ss *SQLStore) PullRequest() PullRequestStore {
 	return ss.pullRequest
 }
 
-func (ss *SqlStore) Issue() IssueStore {
+func (ss *SQLStore) Issue() IssueStore {
 	return ss.issue
 }
 
-func (ss *SqlStore) Spinmint() SpinmintStore {
+func (ss *SQLStore) Spinmint() SpinmintStore {
 	return ss.spinmint
 }
 
-func (ss *SqlStore) DropAllTables() {
+func (ss *SQLStore) DropAllTables() {
 	err := ss.master.TruncateTables()
 	if err != nil {
 		mlog.Error("failed to drop all tabels", mlog.Err(err))
