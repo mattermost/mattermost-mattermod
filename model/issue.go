@@ -17,20 +17,21 @@ type Issue struct {
 	Labels    []string
 }
 
-func (o *Issue) ToJson() (string, error) {
-	if b, err := json.Marshal(o); err != nil {
+func (o *Issue) ToJSON() (string, error) {
+	b, err := json.Marshal(o)
+	if err != nil {
 		return "", err
-	} else {
-		return string(b), nil
 	}
+
+	return string(b), nil
 }
 
-func IssueFromJson(data io.Reader) (*Issue, error) {
+func IssueFromJSON(data io.Reader) (*Issue, error) {
 	var issue Issue
-
-	if err := json.NewDecoder(data).Decode(&issue); err != nil {
+	err := json.NewDecoder(data).Decode(&issue)
+	if err != nil {
 		return nil, err
-	} else {
-		return &issue, nil
 	}
+
+	return &issue, nil
 }

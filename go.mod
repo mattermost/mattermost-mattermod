@@ -3,7 +3,7 @@ module github.com/mattermost/mattermost-mattermod
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.30.25
+	github.com/aws/aws-sdk-go v1.31.5
 	github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/go-gorp/gorp v2.2.0+incompatible
@@ -12,7 +12,7 @@ require (
 	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
-	github.com/mattermost/mattermost-server/v5 v5.22.3
+	github.com/mattermost/mattermost-server/v5 v5.23.0
 	github.com/metanerd/go-circleci v0.3.2
 	github.com/pkg/errors v0.9.1
 	github.com/poy/onpar v1.0.0 // indirect

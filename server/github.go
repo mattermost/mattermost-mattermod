@@ -14,6 +14,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	stateSuccess = "success"
+	stateError   = "error"
+)
+
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
@@ -34,38 +39,41 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
-		if combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		if err != nil {
 			return nil, err
-		} else {
-			for _, status := range combined.Statuses {
-				if *status.Context == repo.BuildStatusContext {
-					pr.BuildStatus = *status.State
-					pr.BuildLink = *status.TargetURL
-					break
-				}
+		}
+
+		for _, status := range combined.Statuses {
+			if *status.Context == repo.BuildStatusContext {
+				pr.BuildStatus = *status.State
+				pr.BuildLink = *status.TargetURL
+				break
 			}
 		}
 
 		// for the repos using circleci we have the checks now
-		if checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil); err != nil {
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		if err != nil {
 			return nil, err
-		} else {
-			for _, status := range checks.CheckRuns {
-				if *status.Name == repo.BuildStatusContext {
-					pr.BuildStatus = status.GetStatus()
-					pr.BuildConclusion = status.GetConclusion()
-					pr.BuildLink = status.GetHTMLURL()
-					break
-				}
+		}
+
+		for _, status := range checks.CheckRuns {
+			if *status.Name == repo.BuildStatusContext {
+				pr.BuildStatus = status.GetStatus()
+				pr.BuildConclusion = status.GetConclusion()
+				pr.BuildLink = status.GetHTMLURL()
+				break
 			}
 		}
 	}
 
-	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil); err != nil {
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		pr.Labels = labelsToStringArray(labels)
 	}
+
+	pr.Labels = labelsToStringArray(labels)
 
 	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
 		mlog.Error(result.Err.Error())
@@ -83,11 +91,11 @@ func (s *Server) GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.
 		State:     *ghIssue.State,
 	}
 
-	if labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil); err != nil {
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	if err != nil {
 		return nil, err
-	} else {
-		issue.Labels = labelsToStringArray(labels)
 	}
+	issue.Labels = labelsToStringArray(labels)
 
 	return issue, nil
 }
@@ -131,6 +139,11 @@ func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), owner, repoName, prNumber)
+	if err != nil {
+		mlog.Error("Failed to get PR for update check", mlog.Err(err))
+		return nil, err
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -142,21 +155,6 @@ func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.P
 	}
 
 	return pr, nil
-}
-
-func (s *Server) getFilenamesInPullRequest(pr *model.PullRequest) ([]string, error) {
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return nil, err
-	}
-
-	var filenames = make([]string, len(prFiles))
-	for _, file := range prFiles {
-		filenames = append(filenames, file.GetFilename())
-	}
-
-	return filenames, nil
 }
 
 func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error) {
@@ -206,13 +204,14 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 		return false, err
 	}
 
-	if response.StatusCode == http.StatusOK {
+	switch response.StatusCode {
+	case http.StatusOK:
 		mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return true, nil
-	} else if response.StatusCode == http.StatusNotFound {
+	case http.StatusNotFound:
 		mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
 		return false, nil
-	} else {
+	default:
 		mlog.Debug("Unknown response code while trying to check for reference. ", mlog.Int("pr", pr.Number), mlog.Int("response_code", response.StatusCode), mlog.String("ref", ref))
 		return false, nil
 	}
@@ -236,13 +235,18 @@ func (s *Server) createRef(pr *model.PullRequest, ref string) {
 }
 
 func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
-	cStatus, _, _ := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
-	if cStatus.GetState() == "success" {
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+	if err != nil {
+		return err
+	}
+
+	if cStatus.GetState() == stateSuccess {
 		_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -262,7 +266,7 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return false, err
 	}
 	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == "success" || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
+	if cStatus.GetState() == stateSuccess || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
 		return true, nil
 	}
 	return false, nil

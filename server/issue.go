@@ -5,11 +5,8 @@ package server
 
 import (
 	"context"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
@@ -31,18 +28,20 @@ func (s *Server) handleIssueEvent(event *PullRequestEvent) {
 }
 
 func (s *Server) checkIssueForChanges(issue *model.Issue) {
-	var oldIssue *model.Issue
-	if result := <-s.Store.Issue().Get(issue.RepoOwner, issue.RepoName, issue.Number); result.Err != nil {
+	result := <-s.Store.Issue().Get(issue.RepoOwner, issue.RepoName, issue.Number)
+	if result.Err != nil {
 		mlog.Error(result.Err.Error())
 		return
-	} else if result.Data == nil {
+	}
+
+	if result.Data == nil {
 		if resultSave := <-s.Store.Issue().Save(issue); resultSave.Err != nil {
 			mlog.Error(resultSave.Err.Error())
 		}
 		return
-	} else {
-		oldIssue = result.Data.(*model.Issue)
 	}
+
+	oldIssue := result.Data.(*model.Issue)
 
 	hasChanges := false
 
@@ -95,42 +94,4 @@ func (s *Server) handleIssueLabeled(issue *model.Issue, addedLabel string) {
 			s.sendGitHubComment(issue.RepoOwner, issue.RepoName, issue.Number, finalMessage)
 		}
 	}
-}
-
-func (s *Server) CleanOutdatedIssues() {
-	mlog.Info("Cleaning outdated issues in the mattermod database....")
-
-	var issues []*model.Issue
-	if result := <-s.Store.Issue().ListOpen(); result.Err != nil {
-		mlog.Error(result.Err.Error())
-		return
-	} else {
-		issues = result.Data.([]*model.Issue)
-	}
-
-	mlog.Info("Processing Issues", mlog.Int("Issues Count", len(issues)))
-
-	for _, issue := range issues {
-		ghIssue, _, err := s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
-		if _, ok := err.(*github.RateLimitError); ok {
-			s.sleepUntilRateLimitAboveTokenReserve()
-			ghIssue, _, err = s.GithubClient.Issues.Get(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number)
-		}
-		if err != nil {
-			s.logToMattermost("Error getting PR: " + strconv.Itoa(issue.Number) + "Error: " + err.Error())
-			mlog.Error("Error getting PR", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("PRNumber", issue.Number), mlog.Err(err))
-		}
-
-		if ghIssue.GetState() == "closed" {
-			mlog.Info("Issue is closed, updating the status in the database", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
-			issue.State = ghIssue.GetState()
-			if result := <-s.Store.Issue().Save(issue); result.Err != nil {
-				mlog.Error(result.Err.Error())
-			}
-		} else {
-			mlog.Info("Nothing to do", mlog.String("RepoOwner", issue.RepoOwner), mlog.String("RepoName", issue.RepoName), mlog.Int("IssueNumber", issue.Number))
-		}
-		time.Sleep(5 * time.Second)
-	}
-	mlog.Info("Finished updating outdated issues in the mattermod database....")
 }

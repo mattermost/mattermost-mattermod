@@ -10,12 +10,12 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 
-type SqlPullRequestStore struct {
-	*SqlStore
+type SQLPullRequestStore struct {
+	*SQLStore
 }
 
-func NewSqlPullRequestStore(sqlStore *SqlStore) PullRequestStore {
-	s := &SqlPullRequestStore{sqlStore}
+func NewSQLPullRequestStore(sqlStore *SQLStore) PullRequestStore {
+	s := &SQLPullRequestStore{sqlStore}
 
 	for _, db := range sqlStore.GetAllConns() {
 		table := db.AddTableWithName(model.PullRequest{}, "PullRequests").SetKeys(false, "RepoOwner", "RepoName", "Number")
@@ -37,7 +37,7 @@ func NewSqlPullRequestStore(sqlStore *SqlStore) PullRequestStore {
 	return s
 }
 
-func (s SqlPullRequestStore) CreateIndexesIfNotExists() {
+func (s SQLPullRequestStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("PullRequests", "Ref", "varchar(128)", "varchar(128)", "")
 	s.CreateColumnIfNotExists("PullRequests", "Sha", "varchar(48)", "varchar(48)", "")
 	s.CreateColumnIfNotExists("PullRequests", "State", "varchar(8)", "varchar(8)", "")
@@ -48,15 +48,15 @@ func (s SqlPullRequestStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("PullRequests", "CreatedAt", "timestamp", "timestamp", "")
 }
 
-func (s SqlPullRequestStore) Save(pr *model.PullRequest) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLPullRequestStore) Save(pr *model.PullRequest) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		if err := s.GetMaster().Insert(pr); err != nil {
 			if _, err := s.GetMaster().Update(pr); err != nil {
-				result.Err = model.NewLocAppError("SqlPullRequestStore.Save", "Could not insert or update PR", nil,
+				result.Err = model.NewLocAppError("SQLPullRequestStore.Save", "Could not insert or update PR", nil,
 					fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", pr.RepoOwner, pr.RepoName, pr.Number, err.Error()))
 			}
 		}
@@ -72,11 +72,11 @@ func (s SqlPullRequestStore) Save(pr *model.PullRequest) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlPullRequestStore) Get(repoOwner, repoName string, number int) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var pr model.PullRequest
 		if err := s.GetReplica().SelectOne(&pr,
@@ -89,7 +89,7 @@ func (s SqlPullRequestStore) Get(repoOwner, repoName string, number int) StoreCh
 				AND RepoName = :RepoName
 				AND Number = :Number`, map[string]interface{}{"Number": number, "RepoOwner": repoOwner, "RepoName": repoName}); err != nil {
 			if err != sql.ErrNoRows {
-				result.Err = model.NewLocAppError("SqlPullRequestStore.Get", "Could not get PR", nil,
+				result.Err = model.NewLocAppError("SQLPullRequestStore.Get", "Could not get PR", nil,
 					fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", pr.RepoOwner, pr.RepoName, pr.Number, err.Error()))
 			} else {
 				result.Data = nil
@@ -105,35 +105,11 @@ func (s SqlPullRequestStore) Get(repoOwner, repoName string, number int) StoreCh
 	return storeChannel
 }
 
-func (s SqlPullRequestStore) List() StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLPullRequestStore) ListOpen() Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
-
-		var prs []*model.PullRequest
-		if _, err := s.GetReplica().Select(&prs,
-			`SELECT
-				*
-			FROM
-				PullRequests`); err != nil {
-			result.Err = model.NewLocAppError("SqlPullRequestStore.List", "Could not list PRs", nil, err.Error())
-		} else {
-			result.Data = prs
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
-}
-
-func (s SqlPullRequestStore) ListOpen() StoreChannel {
-	storeChannel := make(StoreChannel)
-
-	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var prs []*model.PullRequest
 		if _, err := s.GetReplica().Select(&prs,
@@ -143,7 +119,7 @@ func (s SqlPullRequestStore) ListOpen() StoreChannel {
 				PullRequests
 			WHERE
 				State = 'open'`); err != nil {
-			result.Err = model.NewLocAppError("SqlPullRequestStore.ListOpen", "Could not list openPRs", nil, err.Error())
+			result.Err = model.NewLocAppError("SQLPullRequestStore.ListOpen", "Could not list openPRs", nil, err.Error())
 		} else {
 			result.Data = prs
 		}

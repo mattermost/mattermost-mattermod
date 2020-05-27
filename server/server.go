@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config       *ServerConfig
+	Config       *Config
 	Store        store.Store
 	Router       *mux.Router
 	GithubClient *GithubClient
@@ -39,25 +38,22 @@ type Server struct {
 }
 
 const (
-	INSTANCE_ID_MESSAGE = "Instance ID: "
-	LOG_FILENAME        = "mattermod.log"
+	instanceIDMessage = "Instance ID: "
+	logFilename       = "mattermod.log"
 
 	// buildOverride overrides the buildsInterface of the server for development
 	// and testing.
 	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
+
+	templateSpinmintLink = "SPINMINT_LINK"
+	templateInstanceID   = "INSTANCE_ID"
+	templateInternalIP   = "INTERNAL_IP"
 )
 
-var (
-	INSTANCE_ID_PATTERN = regexp.MustCompile(INSTANCE_ID_MESSAGE + "(i-[a-z0-9]+)")
-	INSTANCE_ID         = "INSTANCE_ID"
-	INTERNAL_IP         = "INTERNAL_IP"
-	SPINMINT_LINK       = "SPINMINT_LINK"
-)
-
-func New(config *ServerConfig) (server *Server, err error) {
+func New(config *Config) (server *Server, err error) {
 	s := &Server{
 		Config:    config,
-		Store:     store.NewSqlStore(config.DriverName, config.DataSource),
+		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
 		Router:    mux.NewRouter(),
 		StartTime: time.Now(),
 	}
@@ -181,14 +177,18 @@ func (s *Server) Tick() {
 }
 
 func (s *Server) initializeRouter() {
-	s.Router.HandleFunc("/", s.ping).Methods("GET")
-	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
+	s.Router.HandleFunc("/", s.ping).Methods(http.MethodGet)
+	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(msg))
+
+	_, err := w.Write([]byte(msg))
+	if err != nil {
+		mlog.Error("Failed to write ping", mlog.Err(err))
+	}
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +196,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf, _ := ioutil.ReadAll(r.Body)
+	buf, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		mlog.Error("Failed to read body", mlog.Err(err))
+		return
+	}
 
 	receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
 	if receivedHash[0] != "sha1" {
@@ -204,7 +208,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
+	err = ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 	if err != nil {
 		mlog.Error(err.Error())
 		return
@@ -212,11 +216,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	var pingEvent *github.PingEvent
 	if r.Header.Get("X-GitHub-Event") == "ping" {
-		pingEvent = PingEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+		pingEvent = PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	}
 
-	event := PullRequestEventFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	eventIssueComment := IssueCommentFromJson(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	eventIssueComment := IssueCommentFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 
 	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
@@ -263,16 +267,16 @@ func GetLogFileLocation(fileLocation string) string {
 		fileLocation, _ = fileutils.FindDir("logs")
 	}
 
-	return filepath.Join(fileLocation, LOG_FILENAME)
+	return filepath.Join(fileLocation, logFilename)
 }
 
-func SetupLogging(config *ServerConfig) {
+func SetupLogging(config *Config) {
 	loggingConfig := &mlog.LoggerConfiguration{
 		EnableConsole: config.LogSettings.EnableConsole,
-		ConsoleJson:   config.LogSettings.ConsoleJson,
+		ConsoleJson:   config.LogSettings.ConsoleJSON,
 		ConsoleLevel:  strings.ToLower(config.LogSettings.ConsoleLevel),
 		EnableFile:    config.LogSettings.EnableFile,
-		FileJson:      config.LogSettings.FileJson,
+		FileJson:      config.LogSettings.FileJSON,
 		FileLevel:     strings.ToLower(config.LogSettings.FileLevel),
 		FileLocation:  GetLogFileLocation(config.LogSettings.FileLocation),
 	}

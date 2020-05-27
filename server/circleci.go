@@ -25,9 +25,9 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
-		// It is from upstream mattermost repo dont need to trigger the circleci because org members
+		// It is from upstream mattermost repo don't need to trigger the circleci because org members
 		// have permissions
-		mlog.Info("Dont need to trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+		mlog.Info("Don't need to trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		return
 	}
 
@@ -37,13 +37,13 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
 	}
-	// if builds are 0 means no build ran for master and most problaby this is not setup, so skipping.
+	// If builds are 0 means no build ran for master and most probably this is not setup, so skipping.
 	if len(builds) == 0 {
 		mlog.Debug("looks like there is not circleci setup or master never ran. Skipping")
 		return
 	}
 
-	// List th files that was modified or added in the PullRequest
+	// List the files that was modified or added in the PullRequest
 	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
@@ -80,15 +80,15 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 		return err
 	}
 
-	workflowId, err := s.waitForWorkflowId(ctx, r.Id, s.Config.EnterpriseWorkflowName)
+	workflowID, err := s.waitForWorkflowID(ctx, r.ID, s.Config.EnterpriseWorkflowName)
 	if err != nil {
 		return err
 	}
 
-	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowId
+	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowID
 	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
 
-	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, "success")
+	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return err
@@ -101,7 +101,7 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 type PipelineTriggeredResponse struct {
 	Number    int       `json:"number"`
 	State     string    `json:"state"`
-	Id        string    `json:"id"`
+	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -114,7 +114,7 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 			`&parameters[tbs_server_branch]=` + info.ServerBranch +
 			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
 			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return nil, err
 	}
@@ -147,11 +147,11 @@ type PipelineItem struct {
 	StoppedAt   time.Time `json:"stopped_at"`
 	Number      int       `json:"pipeline_number"`
 	Status      string    `json:"status"`
-	WorkflowId  string    `json:"id"`
+	WorkflowID  string    `json:"id"`
 	Name        string    `json:"name"`
 	ProjectSlug string    `json:"project_slug"`
 	CreatedAt   time.Time `json:"created_at"`
-	Id          string    `json:"pipeline_id"`
+	ID          string    `json:"pipeline_id"`
 }
 
 type PipelineWorkflowResponse struct {
@@ -159,7 +159,7 @@ type PipelineWorkflowResponse struct {
 	NextPageToken string         `json:"next_page_token"`
 }
 
-func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName string) (string, error) {
+func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName string) (string, error) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -167,7 +167,7 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 		case <-ctx.Done():
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			req, err := http.NewRequestWithContext(ctx, "GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
 			if err != nil {
 				return "", err
 			}
@@ -186,18 +186,18 @@ func (s *Server) waitForWorkflowId(ctx context.Context, id string, workflowName 
 				return "", err
 			}
 
-			workflowId := ""
+			workflowID := ""
 			for _, pip := range r.Pipelines {
 				if pip.Name == workflowName {
-					workflowId = pip.WorkflowId
+					workflowID = pip.WorkflowID
 				}
 			}
 
-			if workflowId == "" {
+			if workflowID == "" {
 				return "", errors.Errorf("workflow for pip %s not found", id)
 			}
 
-			return workflowId, nil
+			return workflowID, nil
 		}
 	}
 }
@@ -226,8 +226,7 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 				}
 			}
 
-			areAll := areAllExpectedJobs(builds, expectedJobNames)
-			if areAll == false {
+			if !areAllExpectedJobs(builds, expectedJobNames) {
 				continue
 			}
 
@@ -266,13 +265,10 @@ func areAllExpectedJobs(builds []*circleci.Build, jobNames []string) bool {
 	for _, build := range builds {
 		for _, jobName := range jobNames {
 			if build.Workflows.JobName == jobName {
-				c += 1
+				c++
 			}
 		}
 	}
 
-	if len(jobNames) == c {
-		return true
-	}
-	return false
+	return len(jobNames) == c
 }

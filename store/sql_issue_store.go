@@ -10,12 +10,12 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 
-type SqlIssueStore struct {
-	*SqlStore
+type SQLIssueStore struct {
+	*SQLStore
 }
 
-func NewSqlIssueStore(sqlStore *SqlStore) IssueStore {
-	s := &SqlIssueStore{sqlStore}
+func NewSQLIssueStore(sqlStore *SQLStore) IssueStore {
+	s := &SQLIssueStore{sqlStore}
 
 	for _, db := range sqlStore.GetAllConns() {
 		table := db.AddTableWithName(model.Issue{}, "Issues").SetKeys(false, "RepoOwner", "RepoName", "Number")
@@ -29,19 +29,19 @@ func NewSqlIssueStore(sqlStore *SqlStore) IssueStore {
 	return s
 }
 
-func (s SqlIssueStore) CreateIndexesIfNotExists() {
+func (s SQLIssueStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("Issues", "State", "varchar(8)", "varchar(8)", "")
 }
 
-func (s SqlIssueStore) Save(issue *model.Issue) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLIssueStore) Save(issue *model.Issue) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		if err := s.GetMaster().Insert(issue); err != nil {
 			if _, err := s.GetMaster().Update(issue); err != nil {
-				result.Err = model.NewLocAppError("SqlIssueStore.Save", "Could not insert or update issue", nil,
+				result.Err = model.NewLocAppError("SQLIssueStore.Save", "Could not insert or update issue", nil,
 					fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", issue.RepoOwner, issue.RepoName, issue.Number, err.Error()))
 			}
 		}
@@ -57,11 +57,11 @@ func (s SqlIssueStore) Save(issue *model.Issue) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlIssueStore) Get(repoOwner, repoName string, number int) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLIssueStore) Get(repoOwner, repoName string, number int) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var issue model.Issue
 		if err := s.GetReplica().SelectOne(&issue,
@@ -81,56 +81,6 @@ func (s SqlIssueStore) Get(repoOwner, repoName string, number int) StoreChannel 
 			}
 		} else {
 			result.Data = &issue
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
-}
-
-func (s SqlIssueStore) List() StoreChannel {
-	storeChannel := make(StoreChannel)
-
-	go func() {
-		result := StoreResult{}
-
-		var issues []*model.Issue
-		if _, err := s.GetReplica().Select(&issues,
-			`SELECT
-				*
-			FROM
-				Issues`); err != nil {
-			result.Err = model.NewLocAppError("SqlIssueStore.List", "Could not list issues", nil, err.Error())
-		} else {
-			result.Data = issues
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
-}
-
-func (s SqlIssueStore) ListOpen() StoreChannel {
-	storeChannel := make(StoreChannel)
-
-	go func() {
-		result := StoreResult{}
-
-		var issues []*model.Issue
-		if _, err := s.GetReplica().Select(&issues,
-			`SELECT
-				*
-			FROM
-				Issues
-			WHERE
-				State = 'open'`); err != nil {
-			result.Err = model.NewLocAppError("SqlIssueStore.ListOpen", "Could not list open issues", nil, err.Error())
-		} else {
-			result.Data = issues
 		}
 
 		storeChannel <- result

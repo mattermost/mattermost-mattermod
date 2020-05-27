@@ -10,13 +10,16 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var config *ServerConfig
+var config *Config
 var err error
 var s *Server
 
@@ -44,16 +47,22 @@ func TestMain(m *testing.M) {
 
 func TestPing(t *testing.T) {
 	defer s.Stop()
-	req, _ := http.NewRequest("GET", config.ListenAddress, nil)
+
+	split := strings.Split(config.ListenAddress, ":")
+	require.Len(t, split, 2)
+
+	url := "http://localhost:" + split[1]
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.NoError(t, err)
 	w := httptest.NewRecorder()
 	s.ping(w, req)
 
-	var body []byte
-	var err error
-	if body, err = ioutil.ReadAll(w.Result().Body); err != nil {
-		mlog.Err(err)
-	}
-	bytesLoader := gojsonschema.NewBytesLoader(body)
+	body := w.Result().Body
+	defer body.Close()
+	bytes, err := ioutil.ReadAll(body)
+	require.NoError(t, err)
+	bytesLoader := gojsonschema.NewBytesLoader(bytes)
 
 	dir, err := filepath.Abs(filepath.Dir(""))
 	if err != nil {
