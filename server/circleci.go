@@ -114,7 +114,7 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 			`&parameters[tbs_server_branch]=` + info.ServerBranch +
 			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
 			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 		case <-ctx.Done():
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			req, err := http.NewRequestWithContext(ctx, "GET", "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
 			if err != nil {
 				return "", err
 			}

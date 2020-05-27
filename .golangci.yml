@@ -44,3 +44,9 @@ linters:
     - unused
     - varcheck
     - whitespace
+
+issues:
+  exclude:
+    # github.com/go-gorp/gorp.TypeConverter isn't golint compliant
+    - "ST1003: method ToDb should be ToDB"
+    - "ST1003: method FromDb should be FromD"

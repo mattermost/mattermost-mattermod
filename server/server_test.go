@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,13 @@ func TestMain(m *testing.M) {
 
 func TestPing(t *testing.T) {
 	defer s.Stop()
-	req, err := http.NewRequest("GET", config.ListenAddress, nil)
+
+	split := strings.Split(config.ListenAddress, ":")
+	require.Len(t, split, 2)
+
+	url := "http://localhost:" + split[1]
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 	w := httptest.NewRecorder()
 	s.ping(w, req)

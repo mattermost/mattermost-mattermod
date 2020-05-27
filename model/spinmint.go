@@ -9,7 +9,7 @@ import (
 )
 
 type Spinmint struct {
-	InstanceID string
+	InstanceID string `db:"InstanceId"`
 	RepoOwner  string
 	RepoName   string
 	Number     int

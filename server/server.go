@@ -178,8 +178,8 @@ func (s *Server) Tick() {
 }
 
 func (s *Server) initializeRouter() {
-	s.Router.HandleFunc("/", s.ping).Methods("GET")
-	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods("POST")
+	s.Router.HandleFunc("/", s.ping).Methods(http.MethodGet)
+	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
