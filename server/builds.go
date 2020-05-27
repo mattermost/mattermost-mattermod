@@ -55,7 +55,7 @@ func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Reposito
 
 	client := jenkins.NewJenkins(&jenkins.Auth{
 		Username: credentials.Username,
-		ApiToken: credentials.ApiToken,
+		ApiToken: credentials.APIToken,
 	}, credentials.URL)
 
 	return repo, client, nil
@@ -161,12 +161,13 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 						return pr, errors.Wrapf(err, "failed to get Jenkins build %d", build.Number)
 					}
 
-					if !build.Building && build.Result == "SUCCESS" {
+					switch {
+					case !build.Building && build.Result == "SUCCESS":
 						mlog.Info("build for PR succeeded!", mlog.Int("build_number", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 						return pr, nil
-					} else if build.Result == "FAILURE" || build.Result == "ABORTED" {
+					case build.Result == "FAILURE" || build.Result == "ABORTED":
 						return pr, errors.Errorf("build %d failed with status %q", build.Number, build.Result)
-					} else {
+					default:
 						mlog.Info("Build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
 					}
 				}

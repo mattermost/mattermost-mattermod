@@ -1,22 +1,33 @@
 version: 2.1
+
+orbs:
+  tools: gotest/tools@0.0.13
+
+executors:
+  default:
+    docker:
+      - image: circleci/golang:1.14
+
 jobs:
   lint:
-    docker:
-      - image: circleci/golang:1.13
+    executor:
+      name: default
     steps:
       - checkout
+      - tools/install-golangci-lint:
+          version: "1.27.0"
       - run: make check-style
 
   build:
-    docker:
-      - image: circleci/golang:1.13
+    executor:
+      name: default
     steps:
       - checkout
       - run: make build
 
   test:
     docker:
-      - image: circleci/golang:1.13
+      - image: circleci/golang:1.14
       - image: circleci/mysql:5.7
         environment:
           MYSQL_ROOT_PASSWORD: mattermod

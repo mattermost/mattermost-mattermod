@@ -17,13 +17,18 @@ import (
 
 func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	if err != nil {
+		mlog.Error("Failed to get PR for CLA", mlog.Err(err))
+		return
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
 	}
 
-	if *prGitHub.State == "closed" {
+	if *prGitHub.State == model.StateClosed {
 		return
 	}
 
@@ -31,7 +36,7 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 }
 
 func (s *Server) checkCLA(pr *model.PullRequest) {
-	if pr.State == "closed" {
+	if pr.State == model.StateClosed {
 		return
 	}
 
@@ -80,7 +85,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		itemCLA := strings.TrimSpace(item)
 		if strings.Compare(itemCLA, username) == 0 || strings.Compare(itemCLA, lowerUsername) == 0 || strings.Compare(strings.ToLower(itemCLA), lowerUsername) == 0 {
 			mlog.Info("will post success on CLA", mlog.String("user", username))
-			claStatus.State = github.String("success")
+			claStatus.State = github.String(stateSuccess)
 			userMsg := fmt.Sprintf("%s authorized", username)
 			claStatus.Description = github.String(userMsg)
 			_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
@@ -105,7 +110,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	if !existComment {
 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 	}
-	claStatus.State = github.String("error")
+	claStatus.State = github.String(stateError)
 	userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
 	claStatus.Description = github.String(userMsg)
 	mlog.Info("will post error on CLA", mlog.String("user", username))
@@ -114,8 +119,6 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
 		return
 	}
-	return
-
 }
 
 func checkCLAComment(comments []*github.IssueComment, username string) (int64, bool) {

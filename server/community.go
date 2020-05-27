@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
-	if pr.State == "closed" {
+	if pr.State == model.StateClosed {
 		return
 	}
 

@@ -11,10 +11,10 @@ import (
 )
 
 type AppError struct {
-	Id            string                 `json:"id"`
+	ID            string                 `json:"id"`
 	Message       string                 `json:"message"`               // Message to be display to the end user without debugging information
 	DetailedError string                 `json:"detailed_error"`        // Internal error string to help the developer
-	RequestId     string                 `json:"request_id,omitempty"`  // The RequestId that's also set in the header
+	RequestID     string                 `json:"request_id,omitempty"`  // The RequestID that's also set in the header
 	StatusCode    int                    `json:"status_code,omitempty"` // The http status code
 	Where         string                 `json:"-"`                     // The function where it happened in the form of Struct.Func
 	IsOAuth       bool                   `json:"is_oauth,omitempty"`    // Whether the error is OAuth specific
@@ -25,17 +25,17 @@ func (er *AppError) Error() string {
 	return er.Where + ": " + er.Message + ", " + er.DetailedError
 }
 
-func (er *AppError) ToJson() string {
+func (er *AppError) ToJSON() string {
 	b, err := json.Marshal(er)
 	if err != nil {
 		return ""
-	} else {
-		return string(b)
 	}
+
+	return string(b)
 }
 
 // AppErrorFromJson will decode the input and return an AppError
-func AppErrorFromJson(data io.Reader) *AppError {
+func AppErrorFromJSON(data io.Reader) *AppError {
 	str := ""
 	bytes, rerr := ioutil.ReadAll(data)
 	if rerr != nil {
@@ -47,16 +47,16 @@ func AppErrorFromJson(data io.Reader) *AppError {
 	decoder := json.NewDecoder(strings.NewReader(str))
 	var er AppError
 	err := decoder.Decode(&er)
-	if err == nil {
-		return &er
-	} else {
+	if err != nil {
 		return NewLocAppError("AppErrorFromJson", "model.utils.decode_json.app_error", nil, "body: "+str)
 	}
+
+	return &er
 }
 
 func NewAppError(where string, id string, params map[string]interface{}, details string, status int) *AppError {
 	ap := &AppError{}
-	ap.Id = id
+	ap.ID = id
 	ap.Params = params
 	ap.Message = id
 	ap.Where = where
@@ -68,7 +68,7 @@ func NewAppError(where string, id string, params map[string]interface{}, details
 
 func NewLocAppError(where string, id string, params map[string]interface{}, details string) *AppError {
 	ap := &AppError{}
-	ap.Id = id
+	ap.ID = id
 	ap.Params = params
 	ap.Message = id
 	ap.Where = where

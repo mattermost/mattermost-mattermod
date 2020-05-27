@@ -142,19 +142,9 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 	s.createRepoStatus(ctx, pr, enterpriseStatus)
 }
 
-func (s *Server) createEnterpriseTestsBlockedStatus(ctx context.Context, pr *model.PullRequest, description string) {
-	enterpriseStatus := &github.RepoStatus{
-		State:       github.String("pending"),
-		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
-		Description: github.String(description),
-		TargetURL:   github.String(""),
-	}
-	s.createRepoStatus(ctx, pr, enterpriseStatus)
-}
-
 func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
 	enterpriseErrorStatus := &github.RepoStatus{
-		State:       github.String("error"),
+		State:       github.String(stateError),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String("Enterprise tests error"),
 		TargetURL:   github.String(""),
@@ -166,7 +156,7 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 
 func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, desc string) {
 	eeTriggeredStatus := &github.RepoStatus{
-		State:       github.String("success"),
+		State:       github.String(stateSuccess),
 		Context:     github.String(s.Config.EnterpriseGithubStatusContext),
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
@@ -174,7 +164,7 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 	s.createRepoStatus(ctx, pr, eeTriggeredStatus)
 
 	eeReportStatus := &github.RepoStatus{
-		State:       github.String("success"),
+		State:       github.String(stateSuccess),
 		Context:     github.String(s.Config.EnterpriseGithubStatusEETests),
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
@@ -182,12 +172,12 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 	s.createRepoStatus(ctx, pr, eeReportStatus)
 }
 
-func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetUrl string) {
+func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetURL string) {
 	status := &github.RepoStatus{
 		State:       github.String("pending"),
 		Context:     github.String(context),
 		Description: github.String("Testing EE. SHA: " + pr.Sha),
-		TargetURL:   github.String(targetUrl),
+		TargetURL:   github.String(targetURL),
 	}
 	s.createRepoStatus(ctx, pr, status)
 }

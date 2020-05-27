@@ -34,7 +34,7 @@ func (s *Server) AutoMergePR() {
 			continue
 		}
 
-		if prToMerge.GetState() == "closed" {
+		if prToMerge.GetState() == model.StateClosed {
 			continue
 		}
 
@@ -55,7 +55,7 @@ func (s *Server) AutoMergePR() {
 			continue
 		}
 
-		if PRStatus.GetState() != "success" {
+		if PRStatus.GetState() != stateSuccess {
 			mlog.Error("PR is not ready to merge, not ready state", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.String("state", PRStatus.GetState()))
 			continue
 		}

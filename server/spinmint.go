@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -20,100 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	// "github.com/mattermost/mattermost-load-test/ltops"
-	// "github.com/mattermost/mattermost-load-test/ltparse"
-	// "github.com/mattermost/mattermost-load-test/terraform"
+	"github.com/pkg/errors"
 )
-
-// TODO FIXME
-// func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
-// 	repo, ok := s.Config.GetRepository(pr.RepoOwner, pr.RepoName)
-// 	if !ok || repo.JenkinsServer == "" {
-// 		LogError("Unable to set up loadtest for PR %v in %v/%v without Jenkins configured for server", pr.Number, pr.RepoOwner, pr.RepoName)
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-
-// 	credentials, ok := s.Config.JenkinsCredentials[repo.JenkinsServer]
-// 	if !ok {
-// 		LogError("No Jenkins credentials for server %v required for PR %v in %v/%v", repo.JenkinsServer, pr.Number, pr.RepoOwner, pr.RepoName)
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-
-// 	client := jenkins.NewJenkins(&jenkins.Auth{
-// 		Username: credentials.Username,
-// 		ApiToken: credentials.ApiToken,
-// 	}, credentials.URL)
-
-// 	LogInfo("Waiting for Jenkins to build to set up loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-
-// 	pr = waitForBuild(client, pr)
-
-// 	config := &ltops.ClusterConfig{
-// 		Name:                  fmt.Sprintf("pr-%v", pr.Number),
-// 		AppInstanceType:       "m4.xlarge",
-// 		AppInstanceCount:      4,
-// 		DBInstanceType:        "db.r4.xlarge",
-// 		DBInstanceCount:       4,
-// 		LoadtestInstanceCount: 1,
-// 	}
-// 	s.Config.WorkingDirectory = filepath.Join("./clusters/", s.Config.Name)
-
-// 	LogInfo("Creating terraform cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-// 	cluster, err := terraform.CreateCluster(config)
-// 	if err != nil {
-// 		LogError("Unable to setup cluster: " + err.Error())
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 	}
-// 	// Wait for the cluster to init
-// 	time.Sleep(time.Minute)
-
-// 	results := bytes.NewBuffer(nil)
-
-// 	LogInfo("Deploying to cluster for loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-// 	if err := cluster.Deploy("https://releases.mattermost.com/mattermost-platform-pr/"+strconv.Itoa(pr.Number)+"/mattermost-enterprise-linux-amd64.tar.gz", "mattermod.mattermost-license"); err != nil {
-// 		LogError("Unable to deploy cluster: " + err.Error())
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-// 	if err := cluster.Loadtest("https://releases.mattermost.com/mattermost-load-test/mattermost-load-test.tar.gz"); err != nil {
-// 		LogError("Unable to deploy loadtests to cluster: " + err.Error())
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-
-// 	// Wait for the cluster restart after deploy
-// 	time.Sleep(time.Minute)
-
-// 	LogInfo("Running loadtest for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-// 	if err := cluster.Loadtest(results); err != nil {
-// 		LogError("Unable to loadtest cluster: " + err.Error())
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-// 	LogInfo("Destroying cluster for PR %v in %v/%v", pr.Number, pr.RepoOwner, pr.RepoName)
-// 	if err := cluster.Destroy(); err != nil {
-// 		LogError("Unable to destroy cluster: " + err.Error())
-// 		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Failed to setup loadtest")
-// 		return
-// 	}
-
-// 	githubOutput := bytes.NewBuffer(nil)
-// 	cfg := ltparse.ResultsConfig{
-// 		Input:     results,
-// 		Output:    githubOutput,
-// 		Display:   "markdown",
-// 		Aggregate: false,
-// 	}
-
-// 	ltparse.ParseResults(&cfg)
-// 	LogInfo("Loadtest results for PR %v in %v/%v\n%v", pr.Number, pr.RepoOwner, pr.RepoName, githubOutput.String())
-// 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, githubOutput.String())
-// }
-func waitForBuildAndSetupLoadtest(pr *model.PullRequest) {
-	return
-}
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
@@ -136,9 +43,13 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	}
 
 	var instance *ec2.Instance
-	if result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName); result.Err != nil {
+	result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if result.Err != nil {
 		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
-	} else if result.Data == nil {
+		return
+	}
+
+	if result.Data == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
 		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
@@ -148,7 +59,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 			return
 		}
 		spinmint := &model.Spinmint{
-			InstanceId: *instance.InstanceId,
+			InstanceID: *instance.InstanceId,
 			RepoOwner:  pr.RepoOwner,
 			RepoName:   pr.RepoName,
 			Number:     pr.Number,
@@ -157,7 +68,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		s.storeSpinmintInfo(spinmint)
 	} else {
 		spinmint := result.Data.(*model.Spinmint)
-		instance.InstanceId = aws.String(spinmint.InstanceId)
+		instance = &ec2.Instance{
+			InstanceId: aws.String(spinmint.InstanceID),
+		}
 	}
 
 	mlog.Info("Waiting for instance to come up.")
@@ -171,7 +84,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	}
 
 	smLink := fmt.Sprintf("%v.%v", *instance.InstanceId, s.Config.AWSDnsSuffix)
-	if s.Config.SpinmintsUseHttps {
+	if s.Config.SpinmintsUseHTTPS {
 		smLink = "https://" + smLink
 	} else {
 		smLink = "http://" + smLink
@@ -184,74 +97,22 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		message = s.Config.SetupSpinmintDoneMessage
 	}
 
-	message = strings.Replace(message, SPINMINT_LINK, smLink, 1)
-	message = strings.Replace(message, INSTANCE_ID, INSTANCE_ID_MESSAGE+*instance.InstanceId, 1)
-	message = strings.Replace(message, INTERNAL_IP, internalIP, 1)
+	message = strings.Replace(message, templateSpinmintLink, smLink, 1)
+	message = strings.Replace(message, templateInstanceID, instanceIDMessage+*instance.InstanceId, 1)
+	message = strings.Replace(message, templateInternalIP, internalIP, 1)
 
 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, message)
-}
-
-func (s *Server) waitForMobileAppsBuild(pr *model.PullRequest) {
-	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
-	if err != nil {
-		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
-		return
-	}
-
-	mlog.Info("Waiting for Jenkins to build to start build the mobile app for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-
-	//Job that will build the apps for a PR
-	jobName := fmt.Sprintf("mm/job/%s", repo.JobName)
-	job, err := client.GetJob(jobName)
-	if err != nil {
-		mlog.Error("Failed to get Jenkins job", mlog.String("job", jobName), mlog.Err(err))
-		return
-	}
-
-	mlog.Info("Will start the job", mlog.String("job", jobName))
-	parameters := url.Values{}
-	parameters.Add("PR_NUMBER", strconv.Itoa(pr.Number))
-	err = client.Build(jobName, parameters)
-	if err != nil {
-		mlog.Error("Failed to build Jenkins job", mlog.String("job", jobName), mlog.Err(err))
-		return
-	}
-
-	job.Name = jobName
-	for {
-		build, err := client.GetLastBuild(job)
-		if err != nil {
-			mlog.Error("Failed to get the build Jenkins job", mlog.String("job", jobName), mlog.Err(err))
-			return
-		}
-		if !build.Building && build.Result == "SUCCESS" {
-			mlog.Info("build mobile app for PR succeeded!", mlog.Int("build", build.Number), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
-			break
-		} else if build.Result == "FAILURE" {
-			mlog.Error("build has status FAILURE aborting.", mlog.Int("build", build.Number), mlog.String("result", build.Result))
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.BuildMobileAppFailedMessage)
-			return
-		} else {
-			mlog.Info("build is running", mlog.Int("build", build.Number), mlog.Bool("building", build.Building))
-		}
-		time.Sleep(60 * time.Second)
-	}
-
-	prNumberStr := fmt.Sprintf("PR-%d", pr.Number)
-	msgMobile := s.Config.BuildMobileAppDoneMessage
-	msgMobile = strings.Replace(msgMobile, "PR_NUMBER", prNumberStr, 2)
-	msgMobile = strings.Replace(msgMobile, "ANDROID_APP", prNumberStr, 1)
-	msgMobile = strings.Replace(msgMobile, "IOS_APP", prNumberStr, 1)
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msgMobile)
-	return
 }
 
 // Returns instance ID of instance created
 func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
-	svc := ec2.New(session.New(), s.GetAwsConfig())
+	ses, err := session.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create aws session")
+	}
+	svc := ec2.New(ses, s.GetAwsConfig())
 
 	var setupScript string
 	if upgrade {
@@ -265,7 +126,7 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 		return nil, err
 	}
 	sdata := string(data)
-	// with circleci if the PR is opened in upstream we dont have the PR number and we have the branch name instead.
+	// with circleci if the PR is opened in upstream we don't have the PR number and we have the branch name instead.
 	// so we will use the commit hash that we upload too
 	partialURL := fmt.Sprintf("commit/%s", pr.Sha)
 	sdata = strings.Replace(sdata, "PR-BUILD_NUMBER", partialURL, -1)
@@ -278,13 +139,13 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 
 	var one int64 = 1
 	params := &ec2.RunInstancesInput{
-		ImageId:          &s.Config.AWSImageId,
+		ImageId:          &s.Config.AWSImageID,
 		MaxCount:         &one,
 		MinCount:         &one,
 		InstanceType:     &s.Config.AWSInstanceType,
 		UserData:         &sdata,
 		SecurityGroupIds: []*string{&s.Config.AWSSecurityGroup},
-		SubnetId:         &s.Config.AWSSubNetId,
+		SubnetId:         &s.Config.AWSSubNetID,
 	}
 
 	resp, err := svc.RunInstances(params)
@@ -325,7 +186,12 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	svc := ec2.New(session.New(), s.GetAwsConfig())
+	ses, err := session.NewSession()
+	if err != nil {
+		mlog.Error("failed to create aws session", mlog.Err(err))
+		return
+	}
+	svc := ec2.New(ses, s.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
@@ -333,7 +199,7 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 		},
 	}
 
-	_, err := svc.TerminateInstances(params)
+	_, err = svc.TerminateInstances(params)
 	if err != nil {
 		mlog.Error("Error terminating instances", mlog.Err(err))
 		return
@@ -350,7 +216,13 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 }
 
 func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
-	svc := ec2.New(session.New(), s.GetAwsConfig())
+	ses, err := session.NewSession()
+	if err != nil {
+		mlog.Error("failed to create aws session", mlog.Err(err))
+		return
+	}
+
+	svc := ec2.New(ses, s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
@@ -366,7 +238,12 @@ func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP 
 }
 
 func (s *Server) updateRoute53Subdomain(name, target, action string) error {
-	svc := route53.New(session.New(), s.GetAwsConfig())
+	ses, err := session.NewSession()
+	if err != nil {
+		return errors.Wrap(err, "failed to create aws session")
+	}
+
+	svc := route53.New(ses, s.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target
@@ -392,10 +269,10 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 				},
 			},
 		},
-		HostedZoneId: &s.Config.AWSHostedZoneId,
+		HostedZoneId: &s.Config.AWSHostedZoneID,
 	}
 
-	_, err := svc.ChangeResourceRecordSets(params)
+	_, err = svc.ChangeResourceRecordSets(params)
 	if err != nil {
 		return err
 	}
@@ -406,26 +283,26 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 // CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
-	testServers := []*model.Spinmint{}
-	if result := <-s.Store.Spinmint().List(); result.Err != nil {
+
+	result := <-s.Store.Spinmint().List()
+	if result.Err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
-	} else {
-		testServers = result.Data.([]*model.Spinmint)
 	}
+	testServers := result.Data.([]*model.Spinmint)
 
 	for _, testServer := range testServers {
-		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
+		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceID), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 		testServerCreated := time.Unix(testServer.CreatedAt, 0)
 		duration := time.Since(testServerCreated)
 		if int(duration.Hours()) > s.Config.SpinmintExpirationHour {
-			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceId), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
+			mlog.Info("Will destroy spinmint for PR", mlog.String("instance", testServer.InstanceID), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
 			pr := &model.PullRequest{
 				RepoOwner: testServer.RepoOwner,
 				RepoName:  testServer.RepoName,
 				Number:    testServer.Number,
 			}
-			go s.destroySpinmint(pr, testServer.InstanceId)
-			s.removeTestServerFromDB(testServer.InstanceId)
+			go s.destroySpinmint(pr, testServer.InstanceID)
+			s.removeTestServerFromDB(testServer.InstanceID)
 			s.sendGitHubComment(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
@@ -439,8 +316,8 @@ func (s *Server) storeSpinmintInfo(spinmint *model.Spinmint) {
 	}
 }
 
-func (s *Server) removeTestServerFromDB(instanceId string) {
-	if result := <-s.Store.Spinmint().Delete(instanceId); result.Err != nil {
+func (s *Server) removeTestServerFromDB(instanceID string) {
+	if result := <-s.Store.Spinmint().Delete(instanceID); result.Err != nil {
 		mlog.Error(result.Err.Error())
 	}
 }

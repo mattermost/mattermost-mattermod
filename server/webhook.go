@@ -23,7 +23,7 @@ func (s *Server) sendToWebhook(payload *Payload) error {
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest("POST", s.Config.MattermostWebhookURL, body)
+	req, err := http.NewRequest(http.MethodPost, s.Config.MattermostWebhookURL, body)
 	if err != nil {
 		return err
 	}

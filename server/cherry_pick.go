@@ -21,6 +21,11 @@ import (
 
 func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	if err != nil {
+		mlog.Error("Failed to get cherry pick PR", mlog.Err(err))
+		return
+	}
+
 	pr, err := s.GetPullRequestFromGithub(prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
@@ -29,7 +34,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 
 	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
 		mlog.Debug("not org member", mlog.String("user", eventIssueComment.Comment.User.GetLogin()))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you dont have permissions to trigger this command.\n Only available for Org members")
+		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
 
@@ -80,7 +85,6 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-
 			milestoneNumber := prMilestone.GetNumber()
 			milestone := getMilestone(prMilestone.GetTitle())
 			cmdOut, err := s.doCherryPick(milestone, &milestoneNumber, pr)
@@ -218,5 +222,8 @@ func returnToMaster(dir string) {
 		os.Environ(),
 		os.Getenv("PATH"),
 	)
-	cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		mlog.Error("Failed to return to master", mlog.Err(err))
+	}
 }

@@ -7,46 +7,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	username    = "mattermod"
+	bodySuccess = "Please help complete the Mattermost"
+	bodyFail    = "Fail"
+)
+
 func TestCheckCLACommentExists(t *testing.T) {
-	username := "mattermod"
-	bodySuccess := "Please help complete the Mattermost"
-	bodyFail := "Fail"
 	a := &github.IssueComment{
 		ID:   NewInt64(1),
-		Body: &bodyFail,
+		Body: github.String(bodyFail),
 		User: &github.User{
-			Login: &username,
+			Login: github.String(username),
 		},
 	}
 	b := &github.IssueComment{
 		ID:   NewInt64(23),
-		Body: &bodySuccess,
+		Body: github.String(bodySuccess),
 		User: &github.User{
-			Login: &username,
+			Login: github.String(username),
 		},
 	}
 	comments := []*github.IssueComment{a, b}
 
-	id, exists := checkCLAComment(comments, "mattermod")
+	id, exists := checkCLAComment(comments, username)
 	assert.True(t, exists)
 	assert.Equal(t, id, *NewInt64(23))
 }
 
 func TestCheckCLACommentDoesNotExist(t *testing.T) {
-	username := "mattermod"
-	bodyFail := "Fail"
 	a := &github.IssueComment{
 		ID:   NewInt64(1),
-		Body: &bodyFail,
+		Body: github.String(bodyFail),
 		User: &github.User{
-			Login: &username,
+			Login: github.String(username),
 		},
 	}
 	b := &github.IssueComment{
 		ID:   NewInt64(23),
-		Body: &bodyFail,
+		Body: github.String(bodyFail),
 		User: &github.User{
-			Login: &username,
+			Login: github.String(username),
 		},
 	}
 	comments := []*github.IssueComment{a, b}

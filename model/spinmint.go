@@ -9,27 +9,28 @@ import (
 )
 
 type Spinmint struct {
-	InstanceId string
+	InstanceID string `db:"InstanceId"`
 	RepoOwner  string
 	RepoName   string
 	Number     int
 	CreatedAt  int64
 }
 
-func (o *Spinmint) ToJson() (string, error) {
-	if b, err := json.Marshal(o); err != nil {
+func (o *Spinmint) ToJSON() (string, error) {
+	b, err := json.Marshal(o)
+	if err != nil {
 		return "", err
-	} else {
-		return string(b), nil
 	}
+
+	return string(b), nil
 }
 
-func SpinmintFromJson(data io.Reader) (*Spinmint, error) {
+func SpinmintFromJSON(data io.Reader) (*Spinmint, error) {
 	var pr Spinmint
-
-	if err := json.NewDecoder(data).Decode(&pr); err != nil {
+	err := json.NewDecoder(data).Decode(&pr)
+	if err != nil {
 		return nil, err
-	} else {
-		return &pr, nil
 	}
+
+	return &pr, nil
 }

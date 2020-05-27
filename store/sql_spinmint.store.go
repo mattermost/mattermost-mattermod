@@ -10,12 +10,12 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 
-type SqlSpinmintStore struct {
-	*SqlStore
+type SQLSpinmintStore struct {
+	*SQLStore
 }
 
-func NewSqlSpinmintStore(sqlStore *SqlStore) SpinmintStore {
-	s := &SqlSpinmintStore{sqlStore}
+func NewSQLSpinmintStore(sqlStore *SQLStore) SpinmintStore {
+	s := &SQLSpinmintStore{sqlStore}
 
 	for _, db := range sqlStore.GetAllConns() {
 		table := db.AddTableWithName(model.Spinmint{}, "Spinmint").SetKeys(false, "InstanceId")
@@ -25,20 +25,20 @@ func NewSqlSpinmintStore(sqlStore *SqlStore) SpinmintStore {
 	return s
 }
 
-func (s SqlSpinmintStore) CreateIndexesIfNotExists() {
+func (s SQLSpinmintStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("Spinmint", "InstanceId", "varchar(128)", "varchar(128)", "")
 }
 
-func (s SqlSpinmintStore) Save(spinmint *model.Spinmint) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		if err := s.GetMaster().Insert(spinmint); err != nil {
 			if _, err := s.GetMaster().Update(spinmint); err != nil {
-				result.Err = model.NewLocAppError("SqlSpinmintStore.Save", "Could not insert or update spinmint", nil,
-					fmt.Sprintf("instanceid=%v, owner=%v, name=%v, number=%v, err=%v", spinmint.InstanceId, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err.Error()))
+				result.Err = model.NewLocAppError("SQLSpinmintStore.Save", "Could not insert or update spinmint", nil,
+					fmt.Sprintf("instanceid=%v, owner=%v, name=%v, number=%v, err=%v", spinmint.InstanceID, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err.Error()))
 			}
 		}
 
@@ -53,11 +53,11 @@ func (s SqlSpinmintStore) Save(spinmint *model.Spinmint) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlSpinmintStore) List() StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLSpinmintStore) List() Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var spinmint []*model.Spinmint
 		if _, err := s.GetReplica().Select(&spinmint,
@@ -65,7 +65,7 @@ func (s SqlSpinmintStore) List() StoreChannel {
         *
       FROM
         Spinmint`); err != nil {
-			result.Err = model.NewLocAppError("SqlSpinmintStore.List", "Could not list spinmint", nil, err.Error())
+			result.Err = model.NewLocAppError("SQLSpinmintStore.List", "Could not list spinmint", nil, err.Error())
 		} else {
 			result.Data = spinmint
 		}
@@ -77,11 +77,11 @@ func (s SqlSpinmintStore) List() StoreChannel {
 	return storeChannel
 }
 
-func (s SqlSpinmintStore) Get(prNumber int, repoName string) StoreChannel {
-	storeChannel := make(StoreChannel)
+func (s SQLSpinmintStore) Get(prNumber int, repoName string) Channel {
+	storeChannel := make(Channel)
 
 	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var spinmint model.Spinmint
 		if err := s.GetReplica().SelectOne(&spinmint,
@@ -90,8 +90,8 @@ func (s SqlSpinmintStore) Get(prNumber int, repoName string) StoreChannel {
       WHERE
         Number = :prNumber AND RepoName = :repoName`, map[string]interface{}{"prNumber": prNumber, "repoName": repoName}); err != nil {
 			if err != sql.ErrNoRows {
-				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
-					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
+				result.Err = model.NewLocAppError("SQLSpinmintStore.Get", "Could not get the spinmint", nil,
+					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceID, err.Error()))
 			} else {
 				result.Data = nil
 			}
@@ -106,39 +106,10 @@ func (s SqlSpinmintStore) Get(prNumber int, repoName string) StoreChannel {
 	return storeChannel
 }
 
-func (s SqlSpinmintStore) GetTestServer(instanceID string) StoreChannel {
-	storeChannel := make(StoreChannel)
-
+func (s SQLSpinmintStore) Delete(instanceID string) Channel {
+	storeChannel := make(Channel)
 	go func() {
-		result := StoreResult{}
-
-		var spinmint model.Spinmint
-		if err := s.GetReplica().SelectOne(&spinmint,
-			`SELECT * FROM
-        Spinmint
-      WHERE
-        InstanceId = :instanceID`, map[string]interface{}{"instanceID": instanceID}); err != nil {
-			if err != sql.ErrNoRows {
-				result.Err = model.NewLocAppError("SqlSpinmintStore.Get", "Could not get the spinmint", nil,
-					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceId, err.Error()))
-			} else {
-				result.Data = nil
-			}
-		} else {
-			result.Data = &spinmint
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
-}
-
-func (s SqlSpinmintStore) Delete(instanceID string) StoreChannel {
-	storeChannel := make(StoreChannel)
-	go func() {
-		result := StoreResult{}
+		result := Result{}
 
 		var spinmint []*model.Spinmint
 		if _, err := s.GetReplica().Select(&spinmint,
@@ -146,7 +117,7 @@ func (s SqlSpinmintStore) Delete(instanceID string) StoreChannel {
         Spinmint
       WHERE
         InstanceId = :InstanceID`, map[string]interface{}{"InstanceID": instanceID}); err != nil {
-			result.Err = model.NewLocAppError("SqlSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
+			result.Err = model.NewLocAppError("SQLSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
 		} else {
 			result.Data = spinmint
 		}

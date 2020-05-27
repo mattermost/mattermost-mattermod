@@ -17,7 +17,7 @@ type PullRequestEvent struct {
 	Issue         *github.Issue       `json:"issue"`
 	Label         *github.Label       `json:"label"`
 	Repo          *github.Repository  `json:"repository"`
-	RepositoryUrl string              `json:"repository_url"`
+	RepositoryURL string              `json:"repository_url"`
 }
 
 type IssueComment struct {
@@ -27,7 +27,7 @@ type IssueComment struct {
 	Repository *github.Repository         `json:"repository"`
 }
 
-func PullRequestEventFromJson(data io.Reader) *PullRequestEvent {
+func PullRequestEventFromJSON(data io.Reader) *PullRequestEvent {
 	decoder := json.NewDecoder(data)
 	var event PullRequestEvent
 	if err := decoder.Decode(&event); err != nil {
@@ -37,7 +37,7 @@ func PullRequestEventFromJson(data io.Reader) *PullRequestEvent {
 	return &event
 }
 
-func IssueCommentFromJson(data io.Reader) *IssueComment {
+func IssueCommentFromJSON(data io.Reader) *IssueComment {
 	decoder := json.NewDecoder(data)
 	var event IssueComment
 	if err := decoder.Decode(&event); err != nil {
@@ -47,7 +47,7 @@ func IssueCommentFromJson(data io.Reader) *IssueComment {
 	return &event
 }
 
-func PingEventFromJson(data io.Reader) *github.PingEvent {
+func PingEventFromJSON(data io.Reader) *github.PingEvent {
 	decoder := json.NewDecoder(data)
 	var event github.PingEvent
 	if err := decoder.Decode(&event); err != nil {
