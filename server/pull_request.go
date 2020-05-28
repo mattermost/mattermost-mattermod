@@ -435,7 +435,7 @@ func (s *Server) CleanOutdatedPRs() {
 
 	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeoutGithub)
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
 	defer cancel()
 	for _, pr := range prs {
 		pull, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)

@@ -19,7 +19,7 @@ const (
 	stateSuccess = "success"
 	stateError   = "error"
 
-	requestTimeoutGithub = 5 * time.Second
+	timeoutRequestGithub = 5 * time.Second
 )
 
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {

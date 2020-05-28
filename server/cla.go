@@ -137,7 +137,7 @@ func (s *Server) createCLAPendingStatus(pr *model.PullRequest) {
 		TargetURL:   github.String(s.Config.SignedCLAURL),
 		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeoutGithub)
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
 	defer cancel()
 	err := s.createRepoStatus(ctx, pr, status)
 	if err != nil {
