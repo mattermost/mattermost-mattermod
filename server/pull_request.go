@@ -25,7 +25,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.createCLAPendingStatus(pr)
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
@@ -42,7 +41,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.createCLAPendingStatus(pr)
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
@@ -446,9 +444,10 @@ func (s *Server) CleanOutdatedPRs() {
 		}
 		if err != nil {
 			mlog.Error("Error getting PR", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(err))
+			continue
 		}
 
-		if *pull.State == model.StateClosed {
+		if pull.GetState() == model.StateClosed {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			pr.State = pull.GetState()
 			if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {

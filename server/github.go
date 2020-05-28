@@ -133,15 +133,13 @@ func (s *Server) removeLabel(repoOwner, repoName string, number int, label strin
 
 func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (comments []*github.IssueComment, err error) {
 	opts := &github.IssueListCommentsOptions{
-		ListOptions: github.ListOptions{},
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
 	}
 	var allComments []*github.IssueComment
 	for {
 		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
-		if _, ok := err.(*github.RateLimitError); ok {
-			s.sleepUntilRateLimitAboveTokenReserve()
-			commentsPerPage, r, err = s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -184,10 +182,6 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 	var allUsers []*github.User
 	for {
 		users, r, err := s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
-		if _, ok := err.(*github.RateLimitError); ok {
-			s.sleepUntilRateLimitAboveTokenReserve()
-			users, r, err = s.GithubClient.Organizations.ListMembers(ctx, s.Config.Org, opts)
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -289,7 +283,6 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) error {
 	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return err
 	}
 	return nil
