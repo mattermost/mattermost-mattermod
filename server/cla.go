@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v31/github"
@@ -16,7 +17,7 @@ import (
 )
 
 func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.TODO(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	if err != nil {
 		mlog.Error("Failed to get PR for CLA", mlog.Err(err))
 		return
@@ -36,6 +37,7 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 }
 
 func (s *Server) checkCLA(pr *model.PullRequest) {
+	go s.createCLAPendingStatus(pr)
 	if pr.State == model.StateClosed {
 		return
 	}
@@ -54,80 +56,91 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		return
 	}
 
+	body, errCSV := s.getCSV()
+	if errCSV != nil {
+		return
+	}
+
+	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
+		comments, err := s.getComments(context.TODO(), pr)
+		if err != nil {
+			mlog.Error("failed fetching comments", mlog.Err(err))
+			return
+		}
+		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
+		if !found {
+			go s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+		}
+		status := &github.RepoStatus{
+			State:       github.String(stateError),
+			Description: github.String(fmt.Sprintf("%v needs to sign the CLA", username)),
+			TargetURL:   github.String(s.Config.SignedCLAURL),
+			Context:     github.String(s.Config.CLAGithubStatusContext),
+		}
+		mlog.Debug("will post error on CLA", mlog.String("user", username))
+		_ = s.createRepoStatus(context.TODO(), pr, status)
+		return
+	}
+
+	status := &github.RepoStatus{
+		State:       github.String(stateSuccess),
+		Description: github.String(fmt.Sprintf("%s authorized", username)),
+		TargetURL:   github.String(s.Config.SignedCLAURL),
+		Context:     github.String(s.Config.CLAGithubStatusContext),
+	}
+	mlog.Debug("will post success on CLA", mlog.String("user", username))
+	_ = s.createRepoStatus(context.TODO(), pr, status)
+}
+
+func (s *Server) getCSV() ([]byte, error) {
 	resp, err := http.Get(s.Config.SignedCLAURL)
 	if err != nil {
 		mlog.Error("Unable to get CLA list", mlog.Err(err))
-		return
+		s.logToMattermost("unable to get CLA google csv file Error: ```" + err.Error() + "```")
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
 		mlog.Error("Unable to read response body", mlog.Err(err))
-		return
+		s.logToMattermost("unable to read CLA google csv file Error: ```" + err.Error() + "```")
+		return nil, err
 	}
-
-	claStatus := &github.RepoStatus{
-		TargetURL: github.String(s.Config.SignedCLAURL),
-		Context:   github.String("cla/mattermost"),
-	}
-
-	// Get Github comments
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		return
-	}
-
-	lowerUsername := strings.ToLower(username)
-	tempCLA := strings.Split(string(body), "\n")
-	for _, item := range tempCLA {
-		itemCLA := strings.TrimSpace(item)
-		if strings.Compare(itemCLA, username) == 0 || strings.Compare(itemCLA, lowerUsername) == 0 || strings.Compare(strings.ToLower(itemCLA), lowerUsername) == 0 {
-			mlog.Info("will post success on CLA", mlog.String("user", username))
-			claStatus.State = github.String(stateSuccess)
-			userMsg := fmt.Sprintf("%s authorized", username)
-			claStatus.Description = github.String(userMsg)
-			_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
-			if errStatus != nil {
-				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
-				return
-			}
-			mlog.Info("will clean some comments regarding the CLA")
-			commentToRemove, existComment := checkCLAComment(comments, s.Config.Username)
-			if existComment {
-				mlog.Info("Removing old comment with ID", mlog.Int64("ID", commentToRemove))
-				_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, commentToRemove)
-				if err != nil {
-					mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
-				}
-			}
-			return
-		}
-	}
-
-	_, existComment := checkCLAComment(comments, s.Config.Username)
-	if !existComment {
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
-	}
-	claStatus.State = github.String(stateError)
-	userMsg := fmt.Sprintf("%s needs to sign the CLA", username)
-	claStatus.Description = github.String(userMsg)
-	mlog.Info("will post error on CLA", mlog.String("user", username))
-	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, claStatus)
-	if errStatus != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
-		return
-	}
+	return body, nil
 }
 
-func checkCLAComment(comments []*github.IssueComment, username string) (int64, bool) {
+func isNameInCLAList(usersWhoSignedCLA []string, authorToTrim string) bool {
+	for _, userToTrim := range usersWhoSignedCLA {
+		user := strings.ToLower(strings.TrimSpace(userToTrim))
+		author := strings.ToLower(authorToTrim)
+		if user == author {
+			return true
+		}
+	}
+	return false
+}
+
+func findNeedsToSignCLAComment(comments []*github.IssueComment, username string) (id int64, found bool) {
 	for _, comment := range comments {
-		if *comment.User.Login == username {
-			if strings.Contains(*comment.Body, "Please help complete the Mattermost") {
-				return *comment.ID, true
-			}
+		if *comment.User.Login == username && strings.Contains(*comment.Body, "Please help complete the Mattermost") {
+			return *comment.ID, true
 		}
 	}
 	return 0, false
+}
+
+func (s *Server) createCLAPendingStatus(pr *model.PullRequest) {
+	status := &github.RepoStatus{
+		State:       github.String(statePending),
+		Description: github.String("Checking if " + pr.Username + " signed CLA"),
+		TargetURL:   github.String(s.Config.SignedCLAURL),
+		Context:     github.String(s.Config.CLAGithubStatusContext),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
+	defer cancel()
+	err := s.createRepoStatus(ctx, pr, status)
+	if err != nil {
+		s.logToMattermost("failed to create status for PR: " + strconv.Itoa(pr.Number) + " Context: " + s.Config.CLAGithubStatusContext + " Error: ```" + err.Error() + "```")
+	}
 }

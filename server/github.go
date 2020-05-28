@@ -15,8 +15,11 @@ import (
 )
 
 const (
+	statePending = "pending"
 	stateSuccess = "success"
 	stateError   = "error"
+
+	timeoutRequestGithub = 5 * time.Second
 )
 
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
@@ -128,13 +131,28 @@ func (s *Server) removeLabel(repoOwner, repoName string, number int, label strin
 	mlog.Info("Finished removing the label")
 }
 
-func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), repoOwner, repoName, number, nil)
-	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		return nil, err
+func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (comments []*github.IssueComment, err error) {
+	opts := &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
 	}
-	return comments, nil
+	var allComments []*github.IssueComment
+	for {
+		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
+		if err != nil {
+			return nil, err
+		}
+		allComments = append(allComments, commentsPerPage...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			return nil, errors.Errorf("failed fetching comments: got http status %s", r.Status)
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
+	}
+	return allComments, nil
 }
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
@@ -256,18 +274,18 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 		return false, err
 	}
 	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == stateSuccess || cStatus.GetState() == "pending" || cStatus.GetState() == "" {
+	if cStatus.GetState() == stateSuccess || cStatus.GetState() == statePending || cStatus.GetState() == "" {
 		return true, nil
 	}
 	return false, nil
 }
 
-func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) {
+func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) error {
 	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-		return
+		return err
 	}
+	return nil
 }
 
 func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {

@@ -19,7 +19,7 @@ func (s *Server) blockPRMerge(pr *model.PullRequest) {
 
 	mergeStatus := &github.RepoStatus{
 		Context:     github.String("merge/blocked"),
-		State:       github.String("pending"),
+		State:       github.String(statePending),
 		Description: github.String(fmt.Sprintf("Merge blocked due %s label", s.getBlockLabelFromPR(pr.Labels))),
 		TargetURL:   github.String(""),
 	}

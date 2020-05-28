@@ -118,7 +118,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
-		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
@@ -299,9 +299,9 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
+	comments, err := s.getComments(context.TODO(), pr)
 	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
+		mlog.Error("failed fetching comments", mlog.Err(err))
 		return
 	}
 
@@ -424,7 +424,7 @@ func (s *Server) CheckPRActivity() {
 }
 
 func (s *Server) CleanOutdatedPRs() {
-	mlog.Info("Cleaning outdated prs in the mattermod database....")
+	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 
 	result := <-s.Store.PullRequest().ListOpen()
 	if result.Err != nil {
@@ -433,26 +433,28 @@ func (s *Server) CleanOutdatedPRs() {
 	}
 	prs := result.Data.([]*model.PullRequest)
 
-	mlog.Info("Will process the PRs", mlog.Int("PRs Count", len(prs)))
+	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
+	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
+	defer cancel()
 	for _, pr := range prs {
-		pull, _, errPull := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
-		if errPull != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(errPull))
-			if _, ok := errPull.(*github.RateLimitError); ok {
-				mlog.Error("GitHub rate limit reached")
-				s.CheckLimitRateAndSleep()
-			}
+		pull, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+		if _, ok := err.(*github.RateLimitError); ok {
+			return
+		}
+		if err != nil {
+			mlog.Error("Error getting PR", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(err))
+			continue
 		}
 
-		if *pull.State == model.StateClosed {
+		if pull.GetState() == model.StateClosed {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-			pr.State = *pull.State
+			pr.State = pull.GetState()
 			if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
 				mlog.Error(result.Err.Error())
 			}
 		} else {
-			mlog.Info("Nothing do to", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 		}
 
 		time.Sleep(5 * time.Second)

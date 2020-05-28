@@ -30,7 +30,7 @@ func TestCheckCLACommentExists(t *testing.T) {
 	}
 	comments := []*github.IssueComment{a, b}
 
-	id, exists := checkCLAComment(comments, username)
+	id, exists := findNeedsToSignCLAComment(comments, username)
 	assert.True(t, exists)
 	assert.Equal(t, id, *NewInt64(23))
 }
@@ -52,7 +52,19 @@ func TestCheckCLACommentDoesNotExist(t *testing.T) {
 	}
 	comments := []*github.IssueComment{a, b}
 
-	id, exists := checkCLAComment(comments, username)
+	id, exists := findNeedsToSignCLAComment(comments, username)
 	assert.False(t, exists)
 	assert.Equal(t, id, *NewInt64(0))
+}
+
+func TestIsNameInCLAList(t *testing.T) {
+	usersWhoSignedCLA := []string{"a0", "b"}
+	author := "A0"
+	assert.True(t, isNameInCLAList(usersWhoSignedCLA, author))
+}
+
+func TestIsNotNameInCLAList(t *testing.T) {
+	usersWhoSignedCLA := []string{"a", "b"}
+	author := "c"
+	assert.False(t, isNameInCLAList(usersWhoSignedCLA, author))
 }
