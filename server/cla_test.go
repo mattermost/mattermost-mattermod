@@ -58,8 +58,8 @@ func TestCheckCLACommentDoesNotExist(t *testing.T) {
 }
 
 func TestIsNameInCLAList(t *testing.T) {
-	usersWhoSignedCLA := []string{"a", "b"}
-	author := "A"
+	usersWhoSignedCLA := []string{"a0", "b"}
+	author := "A0"
 	assert.True(t, isNameInCLAList(usersWhoSignedCLA, author))
 }
 
