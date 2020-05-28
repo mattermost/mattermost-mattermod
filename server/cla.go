@@ -113,8 +113,8 @@ func (s *Server) getCSV() ([]byte, error) {
 func isNameInCLAList(usersWhoSignedCLA []string, author string) bool {
 	authorLowerCase := strings.ToLower(author)
 	for _, userToTrim := range usersWhoSignedCLA {
-		user := strings.TrimSpace(userToTrim)
-		if strings.Compare(user, author) == 0 || strings.Compare(user, authorLowerCase) == 0 || strings.Compare(strings.ToLower(user), authorLowerCase) == 0 {
+		user := strings.ToLower(strings.TrimSpace(userToTrim))
+		if strings.Compare(user, author) == 0 {
 			return true
 		}
 	}
