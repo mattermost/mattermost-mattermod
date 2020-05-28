@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/google/go-github/v31/github"
@@ -28,7 +29,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 		return
 	}
 
-	isBaseBranchReleaseBranch, err := regexp.MatchString(`$release-*`, triggerInfo.BaseBranch)
+	isBaseBranchReleaseBranch, err := regexp.MatchString(`^release-*`, triggerInfo.BaseBranch)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return
@@ -139,7 +140,10 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 		Description: github.String("TODO as org member: After reviewing please trigger label \"" + s.Config.EnterpriseTriggerLabel + "\""),
 		TargetURL:   github.String(""),
 	}
-	s.createRepoStatus(ctx, pr, enterpriseStatus)
+	err := s.createRepoStatus(ctx, pr, enterpriseStatus)
+	if err != nil {
+		s.logToMattermost("failed to create status for PR: " + strconv.Itoa(pr.Number) + " Context: " + s.Config.EnterpriseGithubStatusContext + " Error: ```" + err.Error() + "```")
+	}
 }
 
 func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model.PullRequest, err error) {
@@ -149,9 +153,9 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 		Description: github.String("Enterprise tests error"),
 		TargetURL:   github.String(""),
 	}
-	s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
 		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+	_ = s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
 }
 
 func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, desc string) {
@@ -161,7 +165,7 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
 	}
-	s.createRepoStatus(ctx, pr, eeTriggeredStatus)
+	_ = s.createRepoStatus(ctx, pr, eeTriggeredStatus)
 
 	eeReportStatus := &github.RepoStatus{
 		State:       github.String(stateSuccess),
@@ -169,7 +173,7 @@ func (s *Server) succeedEEStatuses(ctx context.Context, pr *model.PullRequest, d
 		Description: github.String(desc),
 		TargetURL:   github.String(""),
 	}
-	s.createRepoStatus(ctx, pr, eeReportStatus)
+	_ = s.createRepoStatus(ctx, pr, eeReportStatus)
 }
 
 func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, context string, targetURL string) {
@@ -179,5 +183,5 @@ func (s *Server) updateBuildStatus(ctx context.Context, pr *model.PullRequest, c
 		Description: github.String("Testing EE. SHA: " + pr.Sha),
 		TargetURL:   github.String(targetURL),
 	}
-	s.createRepoStatus(ctx, pr, status)
+	_ = s.createRepoStatus(ctx, pr, status)
 }

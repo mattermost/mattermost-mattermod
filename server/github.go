@@ -18,6 +18,8 @@ const (
 	statePending = "pending"
 	stateSuccess = "success"
 	stateError   = "error"
+
+	requestTimeoutGithub = 5 * time.Second
 )
 
 func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
@@ -267,12 +269,13 @@ func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bo
 	return false, nil
 }
 
-func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) {
+func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) error {
 	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {
 		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-		return
+		return err
 	}
+	return nil
 }
 
 func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
@@ -306,7 +309,9 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 	}
 }
 
-func (s *Server) GetStatus(ctx context.Context, pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
+func (s *Server) GetStatus(pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeoutGithub)
+	defer cancel()
 	statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		return nil, err

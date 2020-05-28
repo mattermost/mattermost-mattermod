@@ -25,8 +25,9 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.createCLAPendingStatus(context.TODO(), pr)
-		s.checkCLA(context.TODO(), pr)
+		s.createCLAPendingStatus(pr)
+
+		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
 
@@ -42,8 +43,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.createCLAPendingStatus(context.TODO(), pr)
-		s.checkCLA(context.TODO(), pr)
+		s.createCLAPendingStatus(pr)
+		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -121,7 +122,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "synchronize":
 		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(context.TODO(), pr)
+		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -437,11 +438,13 @@ func (s *Server) CleanOutdatedPRs() {
 
 	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeoutGithub)
+	defer cancel()
 	for _, pr := range prs {
-		pull, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		pull, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if _, ok := err.(*github.RateLimitError); ok {
 			s.sleepUntilRateLimitAboveTokenReserve()
-			pull, _, err = s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+			pull, _, err = s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		}
 		if err != nil {
 			mlog.Error("Error getting PR", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(err))

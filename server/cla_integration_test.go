@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -59,8 +58,7 @@ func TestIsAlreadySigned(t *testing.T) {
 		NextPage: 0,
 	}
 
-	ctx := context.Background()
-	repoMocks.EXPECT().ListStatuses(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Sha), nil).Return(statuses, ghR, nil)
+	repoMocks.EXPECT().ListStatuses(gomock.Any(), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Sha), nil).Return(statuses, ghR, nil)
 
 	s := &server.Server{
 		Config: &server.Config{
@@ -69,7 +67,7 @@ func TestIsAlreadySigned(t *testing.T) {
 		GithubClient: mockedClient,
 	}
 
-	assert.True(t, s.IsAlreadySigned(context.Background(), pr))
+	assert.True(t, s.IsAlreadySigned(pr))
 }
 
 func TestIsNotAlreadySigned(t *testing.T) {
@@ -109,8 +107,7 @@ func TestIsNotAlreadySigned(t *testing.T) {
 		NextPage: 0,
 	}
 
-	ctx := context.Background()
-	repoMocks.EXPECT().ListStatuses(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Sha), nil).Return(statuses, ghR, nil)
+	repoMocks.EXPECT().ListStatuses(gomock.Any(), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Sha), nil).Return(statuses, ghR, nil)
 
 	s := &server.Server{
 		Config: &server.Config{
@@ -119,5 +116,5 @@ func TestIsNotAlreadySigned(t *testing.T) {
 		GithubClient: mockedClient,
 	}
 
-	assert.False(t, s.IsAlreadySigned(context.Background(), pr))
+	assert.False(t, s.IsAlreadySigned(pr))
 }
