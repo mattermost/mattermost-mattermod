@@ -69,7 +69,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		}
 		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
 		if !found {
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+			go s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
 		}
 		status := &github.RepoStatus{
 			State:       github.String(stateError),
