@@ -26,7 +26,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.createCLAPendingStatus(pr)
-
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
@@ -121,7 +120,8 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
-		mlog.Info("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		s.createCLAPendingStatus(pr)
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
