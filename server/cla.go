@@ -37,11 +37,8 @@ func (s *Server) handleCheckCLA(eventIssueComment IssueComment) {
 }
 
 func (s *Server) checkCLA(pr *model.PullRequest) {
+	go s.createCLAPendingStatus(pr)
 	if pr.State == model.StateClosed {
-		return
-	}
-
-	if s.IsAlreadySigned(pr) {
 		return
 	}
 
@@ -65,9 +62,9 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	}
 
 	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
-		comments, _, err := s.GithubClient.Issues.ListComments(context.TODO(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		comments, err := s.getComments(context.TODO(), pr)
 		if err != nil {
-			mlog.Error("pr_error", mlog.Err(err))
+			mlog.Error("failed fetching comments", mlog.Err(err))
 			return
 		}
 		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
@@ -119,15 +116,6 @@ func (s *Server) getCSV() ([]byte, error) {
 		return nil, err
 	}
 	return body, nil
-}
-
-func (s *Server) IsAlreadySigned(pr *model.PullRequest) bool {
-	status, err := s.GetStatus(pr, s.Config.CLAGithubStatusContext)
-	if err != nil || status == nil {
-		return false
-	}
-
-	return status.GetState() == stateSuccess
 }
 
 func isNameInCLAList(usersWhoSignedCLA []string, author string) bool {

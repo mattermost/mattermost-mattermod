@@ -131,13 +131,30 @@ func (s *Server) removeLabel(repoOwner, repoName string, number int, label strin
 	mlog.Info("Finished removing the label")
 }
 
-func (s *Server) getComments(repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), repoOwner, repoName, number, nil)
-	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		return nil, err
+func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (comments []*github.IssueComment, err error) {
+	opts := &github.IssueListCommentsOptions{
+		ListOptions: github.ListOptions{},
 	}
-	return comments, nil
+	var allComments []*github.IssueComment
+	for {
+		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
+		if _, ok := err.(*github.RateLimitError); ok {
+			s.sleepUntilRateLimitAboveTokenReserve()
+			commentsPerPage, r, err = s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
+		}
+		if err != nil {
+			return nil, err
+		}
+		allComments = append(allComments, commentsPerPage...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			return nil, errors.Errorf("failed fetching comments: got http status %s", r.Status)
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
+	}
+	return allComments, nil
 }
 
 func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
@@ -307,20 +324,4 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return nil
 		}
 	}
-}
-
-func (s *Server) GetStatus(pr *model.PullRequest, statusContext string) (status *github.RepoStatus, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeoutGithub)
-	defer cancel()
-	statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, status := range statuses {
-		if status.GetContext() == statusContext {
-			return status, nil
-		}
-	}
-	return nil, errors.Errorf("status not found for context %v", statusContext)
 }

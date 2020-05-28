@@ -121,7 +121,6 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.createCLAPendingStatus(pr)
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 
@@ -302,9 +301,9 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(pr.RepoOwner, pr.RepoName, pr.Number)
+	comments, err := s.getComments(context.TODO(), pr)
 	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
+		mlog.Error("failed fetching comments", mlog.Err(err))
 		return
 	}
 
