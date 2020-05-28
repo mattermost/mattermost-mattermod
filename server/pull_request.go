@@ -442,8 +442,7 @@ func (s *Server) CleanOutdatedPRs() {
 	for _, pr := range prs {
 		pull, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if _, ok := err.(*github.RateLimitError); ok {
-			s.sleepUntilRateLimitAboveTokenReserve()
-			pull, _, err = s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+			return
 		}
 		if err != nil {
 			mlog.Error("Error getting PR", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number), mlog.Err(err))
