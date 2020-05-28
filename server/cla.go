@@ -78,11 +78,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
-		_, _, errStatus := s.GithubClient.Repositories.CreateStatus(context.TODO(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
-		if errStatus != nil {
-			mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
-			return
-		}
+		_ = s.createRepoStatus(context.TODO(), pr, status)
 		return
 	}
 
@@ -93,11 +89,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
-	_, _, err := s.GithubClient.Repositories.CreateStatus(context.TODO(), pr.RepoOwner, pr.RepoName, pr.Sha, status)
-	if err != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-		return
-	}
+	_ = s.createRepoStatus(context.TODO(), pr, status)
 }
 
 func (s *Server) getCSV() ([]byte, error) {
