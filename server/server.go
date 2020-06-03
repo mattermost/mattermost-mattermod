@@ -116,12 +116,6 @@ func (s *Server) RefreshMembers() {
 	}
 
 	s.OrgMembers = members
-
-	msg := "#Members " + time.Now().Format(time.RFC850) + "\n  "
-	for _, member := range s.OrgMembers {
-		msg += "- " + member + "\n  "
-	}
-	s.logToMattermost(msg)
 }
 
 // Tick runs a check on objects in the database
