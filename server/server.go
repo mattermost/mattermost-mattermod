@@ -191,7 +191,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	stopRequests, timeUntilReset := s.shouldStopRequests()
 	if stopRequests {
-		if !s.hasReportedRateLimit {
+		if !s.hasReportedRateLimit && timeUntilReset != nil {
 			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
 		}
 		return
