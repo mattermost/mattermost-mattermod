@@ -27,14 +27,15 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config       *Config
-	Store        store.Store
-	Router       *mux.Router
-	GithubClient *GithubClient
-	OrgMembers   []string
-	Builds       buildsInterface
-	commentLock  sync.Mutex
-	StartTime    time.Time
+	Config               *Config
+	Store                store.Store
+	Router               *mux.Router
+	GithubClient         *GithubClient
+	OrgMembers           []string
+	Builds               buildsInterface
+	commentLock          sync.Mutex
+	StartTime            time.Time
+	hasReportedRateLimit bool
 }
 
 const (
@@ -52,10 +53,11 @@ const (
 
 func New(config *Config) (server *Server, err error) {
 	s := &Server{
-		Config:    config,
-		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
-		Router:    mux.NewRouter(),
-		StartTime: time.Now(),
+		Config:               config,
+		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
+		Router:               mux.NewRouter(),
+		StartTime:            time.Now(),
+		hasReportedRateLimit: false,
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
@@ -122,7 +124,8 @@ func (s *Server) RefreshMembers() {
 func (s *Server) Tick() {
 	mlog.Info("tick")
 
-	if s.shouldStopRequests() {
+	stopRequests, _ := s.shouldStopRequests()
+	if stopRequests {
 		return
 	}
 
@@ -186,9 +189,15 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	if s.shouldStopRequests() {
+	stopRequests, timeUntilReset := s.shouldStopRequests()
+	if stopRequests {
+		if !s.hasReportedRateLimit {
+			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
+		}
 		return
 	}
+
+	s.hasReportedRateLimit = false
 
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
