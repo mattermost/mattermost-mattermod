@@ -38,12 +38,6 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 		return
 	}
 
-	// todo: fix cherrypicking
-	if pr.RepoName == s.Config.EnterpriseReponame || pr.RepoName == s.Config.EnterpriseTriggerReponame {
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Automated cherry picking currently disabled. ")
-		return
-	}
-
 	args := strings.Split(*eventIssueComment.Comment.Body, " ")
 	mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
 	if !prGitHub.GetMerged() {
