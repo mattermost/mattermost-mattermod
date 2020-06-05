@@ -52,7 +52,14 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 	)
 
 	if contains(s.Config.CLAExclusionsList, username) {
-		mlog.Info(fmt.Sprintf("%s is excluded to sign the CLA", username))
+		status := &github.RepoStatus{
+			State:       github.String(stateSuccess),
+			Description: github.String(fmt.Sprintf("%s excluded", username)),
+			TargetURL:   github.String(s.Config.SignedCLAURL),
+			Context:     github.String(s.Config.CLAGithubStatusContext),
+		}
+		mlog.Debug("will succeed CLA status for excluded user", mlog.String("user", username))
+		_ = s.createRepoStatus(context.TODO(), pr, status)
 		return
 	}
 
