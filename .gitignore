@@ -2,6 +2,9 @@ mattermod
 mattermod.log
 vendor
 
+# Config file
+config/config-mattermod.json
+
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
 *.a
