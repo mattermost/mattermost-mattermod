@@ -14,6 +14,8 @@ import (
 
 func (s *Server) AutoMergePR() {
 	mlog.Info("Starting the process to auto merge PRs")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
 	var prs []*model.PullRequest
 	result := <-s.Store.PullRequest().ListOpen()
 	if result.Err != nil {
@@ -73,7 +75,7 @@ func (s *Server) AutoMergePR() {
 		}
 
 		msg := "Trying to auto merge this PR."
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 
 		// All good to merge
 		opt := &github.PullRequestOptions{
@@ -81,17 +83,17 @@ func (s *Server) AutoMergePR() {
 			MergeMethod: "squash",
 		}
 
-		merged, _, err := s.GithubClient.PullRequests.Merge(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
+		merged, _, err := s.GithubClient.PullRequests.Merge(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
-			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+			s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 			continue
 		}
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-		s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.AutoPRMergeLabel)
 	}
 
 	mlog.Info("Done the process to auto merge PRs")

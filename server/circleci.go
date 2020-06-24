@@ -20,7 +20,7 @@ import (
 	"github.com/metanerd/go-circleci"
 )
 
-func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
+func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
 	client := &circleci.Client{Token: s.Config.CircleCIToken}
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
@@ -55,7 +55,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 			if prFile.GetFilename() == blackListPath {
 				mlog.Error("File is on the blacklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
 				msg := fmt.Sprintf("The file `%s` is in the blacklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 				return
 			}
 		}

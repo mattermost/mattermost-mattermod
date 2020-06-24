@@ -22,23 +22,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
+func (s *Server) waitForBuildAndSetupSpinmint(ctx context.Context, pr *model.PullRequest, upgradeServer bool) {
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
 	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	ctxBuild, cancel := context.WithTimeout(ctx, 45*time.Minute)
 	defer cancel()
-
-	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
+	pr, err = s.Builds.waitForBuild(ctxBuild, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -55,7 +54,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
 		if errInstance != nil {
 			s.logToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
 		spinmint := &model.Spinmint{
@@ -79,7 +78,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 
 	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
 		s.logToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -101,7 +100,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	message = strings.Replace(message, templateInstanceID, instanceIDMessage+*instance.InstanceId, 1)
 	message = strings.Replace(message, templateInternalIP, internalIP, 1)
 
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, message)
+	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
 
 // Returns instance ID of instance created
@@ -284,6 +283,8 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
 
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
 	result := <-s.Store.Spinmint().List()
 	if result.Err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
@@ -303,7 +304,7 @@ func (s *Server) CheckTestServerLifeTime() {
 			}
 			go s.destroySpinmint(pr, testServer.InstanceID)
 			s.removeTestServerFromDB(testServer.InstanceID)
-			s.sendGitHubComment(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
+			s.sendGitHubComment(ctx, testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
 

@@ -19,14 +19,14 @@ import (
 	"github.com/google/go-github/v31/github"
 )
 
-func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
+func (s *Server) handleCherryPick(ctx context.Context, eventIssueComment IssueComment) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
 	if err != nil {
 		mlog.Error("Failed to get cherry pick PR", mlog.Err(err))
 		return
 	}
 
-	pr, err := s.GetPullRequestFromGithub(prGitHub)
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return
@@ -34,7 +34,7 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 
 	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
 		mlog.Debug("not org member", mlog.String("user", eventIssueComment.Comment.User.GetLogin()))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for Org members")
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for Org members")
 		return
 	}
 
@@ -48,13 +48,13 @@ func (s *Server) handleCherryPick(eventIssueComment IssueComment) {
 	if err != nil {
 		mlog.Error("Error doing the cherry pick", mlog.Err(err))
 		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 		return
 	}
 }
 
-func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
-	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+func (s *Server) checkIfNeedCherryPick(ctx context.Context, pr *model.PullRequest) {
+	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error getting the PR info", mlog.Err(err))
 		return
@@ -71,7 +71,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		return
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the labels for PR", mlog.Err(err))
 		return
@@ -85,7 +85,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			if err != nil {
 				mlog.Error("Error doing the cherry pick", mlog.Err(err))
 				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
 				return
 			}
 		}
