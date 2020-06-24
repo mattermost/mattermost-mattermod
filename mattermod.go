@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -72,6 +73,6 @@ func main() {
 
 	c.Start()
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, os.Interrupt)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-sig
 }
