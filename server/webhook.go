@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/mattermost/mattermost-server/v5/mlog"
+
 	"github.com/pkg/errors"
 )
 
@@ -16,14 +18,20 @@ type Payload struct {
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(payload *Payload) error {
+func (s *Server) sendToWebhook(webhookURL string, payload *Payload) error {
+	if webhookURL == "" {
+		err := errors.New("no Mattermost webhook URL set: unable to send message")
+		mlog.Err(err)
+		return err
+	}
+
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest(http.MethodPost, s.Config.MattermostWebhookURL, body)
+	req, err := http.NewRequest(http.MethodPost, webhookURL, body)
 	if err != nil {
 		return err
 	}

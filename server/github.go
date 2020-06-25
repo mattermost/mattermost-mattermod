@@ -212,6 +212,15 @@ func (s *Server) IsOrgMember(user string) bool {
 	return false
 }
 
+func (s *Server) IsKnownUser(user string) bool {
+	for _, knownUser := range s.Config.CLAExclusionsList {
+		if user == knownUser {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
 	_, r, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
 	if err != nil {

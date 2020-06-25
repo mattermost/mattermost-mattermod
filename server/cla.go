@@ -51,7 +51,7 @@ func (s *Server) checkCLA(pr *model.PullRequest) {
 		mlog.Int("pr n", pr.Number),
 	)
 
-	if contains(s.Config.CLAExclusionsList, username) {
+	if s.IsKnownUser(username) {
 		status := &github.RepoStatus{
 			State:       github.String(stateSuccess),
 			Description: github.String(fmt.Sprintf("%s excluded", username)),

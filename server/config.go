@@ -99,6 +99,10 @@ type Config struct {
 	EnterpriseGithubStatusEETests string
 	EnterpriseWorkflowName        string
 
+	TranslationsMattermostWebhookURL string
+	TranslationsMattermostMessage    string
+	TranslationsBot                  string
+
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 

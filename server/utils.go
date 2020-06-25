@@ -7,11 +7,6 @@ import (
 )
 
 func (s *Server) logToMattermost(msg string, args ...interface{}) {
-	if s.Config.MattermostWebhookURL == "" {
-		mlog.Warn("No Mattermost webhook URL set: unable to send message")
-		return
-	}
-
 	webhookMessage := fmt.Sprintf(msg, args...)
 	mlog.Debug("Sending Mattermost message", mlog.String("message", webhookMessage))
 
@@ -21,7 +16,7 @@ func (s *Server) logToMattermost(msg string, args ...interface{}) {
 
 	webhookRequest := &Payload{Username: "Mattermod", Text: webhookMessage}
 
-	if err := s.sendToWebhook(webhookRequest); err != nil {
+	if err := s.sendToWebhook(s.Config.MattermostWebhookURL, webhookRequest); err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 	}
 }
