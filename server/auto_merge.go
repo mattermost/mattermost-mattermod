@@ -14,13 +14,11 @@ import (
 
 func (s *Server) AutoMergePR() {
 	mlog.Info("Starting the process to auto merge PRs")
-	var prs []*model.PullRequest
-	result := <-s.Store.PullRequest().ListOpen()
-	if result.Err != nil {
-		mlog.Error(result.Err.Error())
+	prs, err := s.Store.PullRequest().ListOpen()
+	if err != nil {
+		mlog.Error(err.Error())
 		return
 	}
-	prs = result.Data.([]*model.PullRequest)
 
 	for _, pr := range prs {
 		if !s.isAutoMergeLabelInLabels(pr.Labels) {

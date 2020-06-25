@@ -4,27 +4,8 @@
 package store
 
 import (
-	"time"
-
 	"github.com/mattermost/mattermost-mattermod/model"
 )
-
-type Result struct {
-	Data interface{}
-	Err  *model.AppError
-}
-
-type Channel chan Result
-
-func Must(sc Channel) interface{} {
-	r := <-sc
-	if r.Err != nil {
-		time.Sleep(time.Second)
-		panic(r.Err)
-	}
-
-	return r.Data
-}
 
 type Store interface {
 	PullRequest() PullRequestStore
@@ -35,19 +16,19 @@ type Store interface {
 }
 
 type PullRequestStore interface {
-	Save(pr *model.PullRequest) Channel
-	Get(repoOwner, repoName string, number int) Channel
-	ListOpen() Channel
+	Save(pr *model.PullRequest) (*model.PullRequest, *model.AppError)
+	Get(repoOwner, repoName string, number int) (*model.PullRequest, *model.AppError)
+	ListOpen() ([]*model.PullRequest, *model.AppError)
 }
 
 type IssueStore interface {
-	Save(issue *model.Issue) Channel
-	Get(repoOwner, repoName string, number int) Channel
+	Save(issue *model.Issue) (*model.Issue, *model.AppError)
+	Get(repoOwner, repoName string, number int) (*model.Issue, *model.AppError)
 }
 
 type SpinmintStore interface {
-	Save(spinmint *model.Spinmint) Channel
-	Delete(instanceID string) Channel
-	Get(prNumber int, repoName string) Channel
-	List() Channel
+	Save(spinmint *model.Spinmint) (*model.Spinmint, *model.AppError)
+	Delete(instanceID string) ([]*model.Spinmint, *model.AppError)
+	Get(prNumber int, repoName string) (*model.Spinmint, *model.AppError)
+	List() ([]*model.Spinmint, *model.AppError)
 }
