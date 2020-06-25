@@ -6,6 +6,8 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -41,7 +43,10 @@ func (s *Server) sendToWebhook(webhookURL string, payload *Payload) error {
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer func() {
+		_, _ = io.Copy(ioutil.Discard, r.Body)
+		r.Body.Close()
+	}()
 
 	if r.StatusCode != http.StatusOK {
 		return errors.Errorf("received non-200 status code posting to mattermost: %v, %v", r.StatusCode, r.Body)
