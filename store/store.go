@@ -28,7 +28,7 @@ type IssueStore interface {
 
 type SpinmintStore interface {
 	Save(spinmint *model.Spinmint) (*model.Spinmint, *model.AppError)
-	Delete(instanceID string) ([]*model.Spinmint, *model.AppError)
+	Delete(instanceID string) *model.AppError
 	Get(prNumber int, repoName string) (*model.Spinmint, *model.AppError)
 	List() ([]*model.Spinmint, *model.AppError)
 }

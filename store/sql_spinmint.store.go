@@ -75,14 +75,12 @@ func (s SQLSpinmintStore) Get(prNumber int, repoName string) (*model.Spinmint, *
 	return &spinmint, nil
 }
 
-func (s SQLSpinmintStore) Delete(instanceID string) ([]*model.Spinmint, *model.AppError) {
-	var spinmints []*model.Spinmint
-	if _, err := s.GetReplica().Select(&spinmints,
-		`DELETE FROM
+func (s SQLSpinmintStore) Delete(instanceID string) *model.AppError {
+	if _, err := s.GetReplica().Exec(`DELETE FROM
         Spinmint
       WHERE
         InstanceId = :InstanceID`, map[string]interface{}{"InstanceID": instanceID}); err != nil {
-		return nil, model.NewLocAppError("SQLSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
+		return model.NewLocAppError("SQLSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
 	}
-	return spinmints, nil
+	return nil
 }

@@ -316,7 +316,7 @@ func (s *Server) storeSpinmintInfo(spinmint *model.Spinmint) {
 }
 
 func (s *Server) removeTestServerFromDB(instanceID string) {
-	if _, err := s.Store.Spinmint().Delete(instanceID); err != nil {
+	if err := s.Store.Spinmint().Delete(instanceID); err != nil {
 		mlog.Error(err.Error())
 	}
 }
