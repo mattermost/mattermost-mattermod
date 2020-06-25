@@ -28,20 +28,18 @@ func (s *Server) handleIssueEvent(event *PullRequestEvent) {
 }
 
 func (s *Server) checkIssueForChanges(issue *model.Issue) {
-	result := <-s.Store.Issue().Get(issue.RepoOwner, issue.RepoName, issue.Number)
-	if result.Err != nil {
-		mlog.Error(result.Err.Error())
+	oldIssue, err := s.Store.Issue().Get(issue.RepoOwner, issue.RepoName, issue.Number)
+	if err != nil {
+		mlog.Error(err.Error())
 		return
 	}
 
-	if result.Data == nil {
-		if resultSave := <-s.Store.Issue().Save(issue); resultSave.Err != nil {
-			mlog.Error(resultSave.Err.Error())
+	if oldIssue == nil {
+		if _, err := s.Store.Issue().Save(issue); err != nil {
+			mlog.Error(err.Error())
 		}
 		return
 	}
-
-	oldIssue := result.Data.(*model.Issue)
 
 	hasChanges := false
 
@@ -69,8 +67,8 @@ func (s *Server) checkIssueForChanges(issue *model.Issue) {
 	if hasChanges {
 		mlog.Info("issue has changes", mlog.Int("issue", issue.Number))
 
-		if result := <-s.Store.Issue().Save(issue); result.Err != nil {
-			mlog.Error(result.Err.Error())
+		if _, err := s.Store.Issue().Save(issue); err != nil {
+			mlog.Error(err.Error())
 			return
 		}
 	}

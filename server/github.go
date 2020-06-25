@@ -78,8 +78,8 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 
 	pr.Labels = labelsToStringArray(labels)
 
-	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if _, err := s.Store.PullRequest().Save(pr); err != nil {
+		mlog.Error(err.Error())
 	}
 
 	return pr, nil
@@ -168,8 +168,8 @@ func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.P
 		return nil, err
 	}
 
-	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if _, err := s.Store.PullRequest().Save(pr); err != nil {
+		mlog.Error(err.Error())
 	}
 
 	return pr, nil
