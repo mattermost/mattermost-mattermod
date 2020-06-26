@@ -14,7 +14,7 @@ import (
 
 func (s *Server) AutoMergePR() {
 	mlog.Info("Starting the process to auto merge PRs")
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
 	defer cancel()
 	var prs []*model.PullRequest
 	result := <-s.Store.PullRequest().ListOpen()

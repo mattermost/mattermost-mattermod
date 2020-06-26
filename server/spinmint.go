@@ -284,7 +284,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
 	defer cancel()
 	result := <-s.Store.Spinmint().List()
 	if result.Err != nil {

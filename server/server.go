@@ -52,9 +52,10 @@ const (
 )
 
 const (
-	defaultRequestTimeout = 30 * time.Second
-	buildMobileTimeout    = 2 * time.Hour
-	buildSpinMintTimeout  = 45 * time.Minute
+	defaultRequestTimeout  = 30 * time.Second
+	defaultCronTaskTimeout = 5 * time.Minute
+	buildMobileTimeout     = 2 * time.Hour
+	buildSpinMintTimeout   = 45 * time.Minute
 )
 
 func New(config *Config) (server *Server, err error) {
@@ -107,7 +108,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) RefreshMembers() {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
@@ -129,7 +130,7 @@ func (s *Server) RefreshMembers() {
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
 	mlog.Info("tick")
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
 	defer cancel()
 	stopRequests, _ := s.shouldStopRequests(ctx)
 	if stopRequests {
