@@ -18,8 +18,6 @@ const (
 	statePending = "pending"
 	stateSuccess = "success"
 	stateError   = "error"
-
-	timeoutRequestGithub = 5 * time.Second
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
