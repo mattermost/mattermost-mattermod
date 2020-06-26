@@ -18,7 +18,10 @@ func (s *Server) handleTranslationPr(pr *model.PullRequest) {
 	mlog.Debug("Sending Mattermost message", mlog.String("message", msg))
 
 	webhookRequest := &Payload{Username: "Weblate", Text: msg}
-	if err := s.sendToWebhook(s.Config.TranslationsMattermostWebhookURL, webhookRequest); err != nil {
+	r, err := s.sendToWebhook(s.Config.TranslationsMattermostWebhookURL, webhookRequest)
+	if err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
+		return
 	}
+	defer r.Body.Close()
 }

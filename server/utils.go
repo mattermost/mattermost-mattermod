@@ -16,9 +16,12 @@ func (s *Server) logToMattermost(msg string, args ...interface{}) {
 
 	webhookRequest := &Payload{Username: "Mattermod", Text: webhookMessage}
 
-	if err := s.sendToWebhook(s.Config.MattermostWebhookURL, webhookRequest); err != nil {
+	r, err := s.sendToWebhook(s.Config.MattermostWebhookURL, webhookRequest)
+	if err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
+		return
 	}
+	defer r.Body.Close()
 }
 
 func NewBool(b bool) *bool       { return &b }

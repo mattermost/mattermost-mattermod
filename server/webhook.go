@@ -6,9 +6,8 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
-
-	"github.com/mattermost/mattermost-server/v5/mlog"
 
 	"github.com/pkg/errors"
 )
@@ -18,34 +17,55 @@ type Payload struct {
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(webhookURL string, payload *Payload) error {
-	if webhookURL == "" {
-		err := errors.New("no Mattermost webhook URL set: unable to send message")
-		mlog.Err(err)
-		return err
+func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (r *http.Response, err error) {
+	err = validateSendToWebhookRequest(webhookURL, payload)
+	if err != nil {
+		badRequestR := &http.Response{
+			StatusCode: http.StatusBadRequest,
+			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
+		}
+		return badRequestR, err
 	}
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		internalServerErrorR := &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
+		}
+		return internalServerErrorR, err
 	}
 	body := bytes.NewReader(payloadBytes)
 
 	req, err := http.NewRequest(http.MethodPost, webhookURL, body)
 	if err != nil {
-		return err
+		internalServerErrorR := &http.Response{
+			StatusCode: http.StatusInternalServerError,
+			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
+		}
+		return internalServerErrorR, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	r, err := http.DefaultClient.Do(req)
+	r, err = http.DefaultClient.Do(req)
 	if err != nil {
-		return err
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode != http.StatusOK {
-		return errors.Errorf("received non-200 status code posting to mattermost: %v, %v", r.StatusCode, r.Body)
+		return r, err
 	}
 
+	return r, nil
+}
+
+func validateSendToWebhookRequest(webhookURL string, payload *Payload) (err error) {
+	if webhookURL == "" {
+		return errors.New("no Mattermost webhook URL set: unable to send message")
+	}
+
+	if payload.Username == "" {
+		return errors.New("username not set in webhook payload")
+	}
+
+	if payload.Text == "" {
+		return errors.New("text not set in webhook payload")
+	}
 	return nil
 }

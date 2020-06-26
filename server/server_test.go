@@ -39,15 +39,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	s.Start()
-
+	defer s.Stop()
 	exitVal := m.Run()
-
 	os.Exit(exitVal)
 }
 
 func TestPing(t *testing.T) {
-	defer s.Stop()
-
 	split := strings.Split(config.ListenAddress, ":")
 	require.Len(t, split, 2)
 
@@ -68,7 +65,7 @@ func TestPing(t *testing.T) {
 	if err != nil {
 		mlog.Error("unable to find project path")
 	}
-	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/schema/ping.schema.json")
+	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/testdata/schema/ping.schema.json")
 
 	result, err := gojsonschema.Validate(jsonLoader, bytesLoader)
 	if err != nil {
