@@ -6,22 +6,23 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
-	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
+func (s *Server) triggerEETestsForOrgMembers(ctx context.Context, pr *model.PullRequest) {
 	if s.IsOrgMember(pr.Username) {
-		s.triggerEnterpriseTests(pr)
+		s.triggerEnterpriseTests(ctx, pr)
 	}
 }
 
-func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
+func (s *Server) triggerEnterpriseTests(ctx context.Context, pr *model.PullRequest) {
+	// Looks like we're just doing regular requests so no need for a 5
+	// minutes timeout
+	// ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// defer cancel()
 
 	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
