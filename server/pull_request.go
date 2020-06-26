@@ -424,7 +424,7 @@ func (s *Server) CheckPRActivity() {
 func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
 	defer cancel()
 	result := <-s.Store.PullRequest().ListOpen()
 	if result.Err != nil {
