@@ -277,10 +277,6 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 		mlog.Info("Label to spin a test server for upgrade")
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
 		go s.waitForBuildAndSetupSpinmint(ctx, pr, true)
-		// } else if addedLabel == s.Config.StartLoadtestTag {
-		// 	mlog.Info("Label to spin a load test")
-		// 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
-		// 	go waitForBuildAndSetupLoadtest(pr)
 	} else {
 		mlog.Info("looking for other labels")
 
