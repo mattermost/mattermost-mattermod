@@ -17,8 +17,8 @@ type Payload struct {
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (r *http.Response, err error) {
-	err = validateSendToWebhookRequest(webhookURL, payload)
+func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (*http.Response, error) {
+	err := validateSendToWebhookRequest(webhookURL, payload)
 	if err != nil {
 		badRequestR := &http.Response{
 			StatusCode: http.StatusBadRequest,
@@ -47,7 +47,7 @@ func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (r *http.Res
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	r, err = http.DefaultClient.Do(req)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return r, err
 	}
@@ -55,7 +55,7 @@ func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (r *http.Res
 	return r, nil
 }
 
-func validateSendToWebhookRequest(webhookURL string, payload *Payload) (err error) {
+func validateSendToWebhookRequest(webhookURL string, payload *Payload) error {
 	if webhookURL == "" {
 		return errors.New("no Mattermost webhook URL set: unable to send message")
 	}
