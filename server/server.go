@@ -49,8 +49,12 @@ const (
 	templateSpinmintLink = "SPINMINT_LINK"
 	templateInstanceID   = "INSTANCE_ID"
 	templateInternalIP   = "INTERNAL_IP"
+)
 
+const (
 	defaultRequestTimeout = 30 * time.Second
+	buildMobileTimeout    = 2 * time.Hour
+	buildSpinMintTimeout  = 45 * time.Minute
 )
 
 func New(config *Config) (server *Server, err error) {

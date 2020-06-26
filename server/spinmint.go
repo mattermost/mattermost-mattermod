@@ -24,7 +24,7 @@ import (
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	// This needs its own context because is executing a heavy job
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), buildSpinMintTimeout)
 	defer cancel()
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
