@@ -22,7 +22,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Server) waitForBuildAndSetupSpinmint(ctx context.Context, pr *model.PullRequest, upgradeServer bool) {
+func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
+	// This needs its own context because is executing a heavy job
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
+	defer cancel()
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
@@ -32,9 +35,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(ctx context.Context, pr *model.Pul
 
 	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ctxBuild, cancel := context.WithTimeout(ctx, 45*time.Minute)
-	defer cancel()
-	pr, err = s.Builds.waitForBuild(ctxBuild, s, client, pr)
+	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)

@@ -13,7 +13,11 @@ import (
 	"github.com/metanerd/go-circleci"
 )
 
-func (s *Server) buildMobileApp(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) buildMobileApp(pr *model.PullRequest) {
+	// This needs its own context because is executing a heavy job
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	ref := "refs/heads/" + s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(prNumber)
 
@@ -43,10 +47,7 @@ func (s *Server) buildMobileApp(ctx context.Context, pr *model.PullRequest) {
 
 		s.createRef(ctx, pr, ref)
 		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage)
-
-		ctxBuild, cancel := context.WithTimeout(ctx, 2*time.Hour)
-		defer cancel()
-		s.build(ctxBuild, pr, s.Config.Org)
+		s.build(ctx, pr, s.Config.Org)
 
 		err = s.deleteRefWhereCombinedStateEqualsSuccess(ctx, s.Config.Org, prRepoName, ref)
 		if err != nil {

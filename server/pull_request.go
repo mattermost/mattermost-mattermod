@@ -62,7 +62,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if *event.Label.Name == s.Config.BuildMobileAppTag {
 			mlog.Info("Label to run mobile build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
 			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
-			go s.buildMobileApp(ctx, pr)
+			go s.buildMobileApp(pr)
 
 			s.removeLabel(ctx, mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
@@ -79,7 +79,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if event.Label.GetName() == s.Config.SetupSpinmintTag {
 			mlog.Info("Label to spin a old test server")
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
-			go s.waitForBuildAndSetupSpinmint(ctx, pr, false)
+			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.blockPRMerge(pr)
@@ -276,7 +276,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 	if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
 		mlog.Info("Label to spin a test server for upgrade")
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
-		go s.waitForBuildAndSetupSpinmint(ctx, pr, true)
+		go s.waitForBuildAndSetupSpinmint(pr, true)
 	} else {
 		mlog.Info("looking for other labels")
 
