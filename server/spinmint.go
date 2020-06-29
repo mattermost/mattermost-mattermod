@@ -14,12 +14,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 )
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
@@ -107,11 +105,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
-	ses, err := session.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create aws session")
-	}
-	svc := ec2.New(ses, s.GetAwsConfig())
+	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
 
 	var setupScript string
 	if upgrade {
@@ -185,12 +179,7 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ses, err := session.NewSession()
-	if err != nil {
-		mlog.Error("failed to create aws session", mlog.Err(err))
-		return
-	}
-	svc := ec2.New(ses, s.GetAwsConfig())
+	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
@@ -198,7 +187,7 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 		},
 	}
 
-	_, err = svc.TerminateInstances(params)
+	_, err := svc.TerminateInstances(params)
 	if err != nil {
 		mlog.Error("Error terminating instances", mlog.Err(err))
 		return
@@ -215,13 +204,7 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 }
 
 func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
-	ses, err := session.NewSession()
-	if err != nil {
-		mlog.Error("failed to create aws session", mlog.Err(err))
-		return
-	}
-
-	svc := ec2.New(ses, s.GetAwsConfig())
+	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
@@ -237,12 +220,7 @@ func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP 
 }
 
 func (s *Server) updateRoute53Subdomain(name, target, action string) error {
-	ses, err := session.NewSession()
-	if err != nil {
-		return errors.Wrap(err, "failed to create aws session")
-	}
-
-	svc := route53.New(ses, s.GetAwsConfig())
+	svc := route53.New(s.AWSSession, s.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target
@@ -271,8 +249,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 		HostedZoneId: &s.Config.AWSHostedZoneID,
 	}
 
-	_, err = svc.ChangeResourceRecordSets(params)
-	if err != nil {
+	if _, err := svc.ChangeResourceRecordSets(params); err != nil {
 		return err
 	}
 

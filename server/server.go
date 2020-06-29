@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/braintree/manners"
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
@@ -35,6 +36,7 @@ type Server struct {
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
+	AWSSession           *session.Session
 	hasReportedRateLimit bool
 }
 
@@ -61,6 +63,11 @@ func New(config *Config) (server *Server, err error) {
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	awsSession, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	s.AWSSession = awsSession
 
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
