@@ -24,7 +24,7 @@ import (
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
 	// This needs its own context because is executing a heavy job
-	ctx, cancel := context.WithTimeout(context.Background(), buildSpinMintTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetBuildMobileTimeout())
 	defer cancel()
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
@@ -284,7 +284,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
 	result := <-s.Store.Spinmint().List()
 	if result.Err != nil {

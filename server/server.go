@@ -51,13 +51,6 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-const (
-	defaultRequestTimeout  = 30 * time.Second
-	defaultCronTaskTimeout = 5 * time.Minute
-	buildMobileTimeout     = 2 * time.Hour
-	buildSpinMintTimeout   = 45 * time.Minute
-)
-
 func New(config *Config) (server *Server, err error) {
 	s := &Server{
 		Config:               config,
@@ -108,7 +101,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) RefreshMembers() {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
@@ -130,7 +123,7 @@ func (s *Server) RefreshMembers() {
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
 	mlog.Info("tick")
-	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
 	stopRequests, _ := s.shouldStopRequests(ctx)
 	if stopRequests {
@@ -197,7 +190,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetRequestTimeout())
 	defer cancel()
 	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
 	if stopRequests {

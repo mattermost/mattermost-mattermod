@@ -7,10 +7,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/pkg/errors"
+)
+
+const (
+	// In seconds
+	defaultRequestTimeout       = 30
+	defaultCronTaskTimeout      = 300
+	defaultBuildMobileTimeout   = 7200
+	defaultBuildSpinMintTimeout = 2700
 )
 
 type LabelResponse struct {
@@ -62,6 +71,11 @@ type Config struct {
 
 	TickRateMinutes        int
 	SpinmintExpirationHour int
+
+	requestTimeoutInSeconds           int
+	cronTaskTimeoutInSeconds          int
+	buildMobileTaskTimeoutInSeconds   int
+	buildSpinmintTaskTimeoutInSeconds int
 
 	DriverName string
 	DataSource string
@@ -184,7 +198,40 @@ func GetConfig(fileName string) (*Config, error) {
 		return config, errors.Wrap(err, "unable to decode config file")
 	}
 
+	config.setDefaults()
+
 	return config, nil
+}
+
+func (c *Config) setDefaults() {
+	if c.requestTimeoutInSeconds == "" || c.requestTimeoutInSeconds <= 0 {
+		c.requestTimeoutInSeconds = defaultRequestTimeout
+	}
+	if c.cronTaskTimeoutInSeconds == "" || c.cronTaskTimeoutInSeconds <= 0 {
+		c.cronTaskTimeoutInSeconds = defaultCronTaskTimeout
+	}
+	if c.buildMobileTaskTimeoutInSeconds == "" || c.buildMobileTaskTimeoutInSeconds <= 0 {
+		c.buildMobileTaskTimeoutInSeconds = defaultBuildMobileTimeout
+	}
+	if c.buildSpinmintTaskTimeoutInSeconds == "" || c.buildSpinmintTaskTimeoutInSeconds <= 0 {
+		c.buildSpinmintTaskTimeoutInSeconds = defaultBuildSpinMintTimeout
+	}
+}
+
+func (c *Config) GetRequestTimeout() time.Duration {
+	return c.requestTimeoutInSeconds * time.Second
+}
+
+func (c *Config) GetCronTaskTimeout() time.Duration {
+	return c.cronTaskTimeoutInSeconds * time.Second
+}
+
+func (c *Config) GetBuildMobileTimeout() time.Duration {
+	return c.buildMobileTaskTimeoutInSeconds * time.Second
+}
+
+func (c *Config) GetBuildSpinmintTimeout() time.Duration {
+	return c.buildSpinmintTaskTimeoutInSeconds * time.Second
 }
 
 func GetRepository(repositories []*Repository, owner, name string) (*Repository, bool) {

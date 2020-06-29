@@ -8,7 +8,7 @@
     "CircleCIToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true",
+    "DataSource": "mattermod:mattermod@tcp(192.168.254.4:3306)/mattermod?parseTime=true",
 
     "TickRateMinutes": 15,
     "SpinmintExpirationHour": 72,
@@ -109,6 +109,11 @@
 
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",
+
+    "RequestTimeoutInSeconds": 60,
+    "CronTaskTimeoutInSeconds": 300,
+    "BuildMobileTaskTimeoutInSeconds": 7200,
+    "BuildSpinmintTaskTimeoutInSeconds": 2700,
 
     "LogSettings": {
         "EnableConsole": true,

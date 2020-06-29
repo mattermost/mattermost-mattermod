@@ -14,7 +14,7 @@ import (
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	// This needs its own context because is executing a heavy job
-	ctx, cancel := context.WithTimeout(context.Background(), buildMobileTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetBuildMobileTimeout())
 	defer cancel()
 
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
