@@ -63,7 +63,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will succeed CLA status for excluded user", mlog.String("user", username))
-		_ = s.createRepoStatus(context.TODO(), pr, status)
+		_ = s.createRepoStatus(ctx, pr, status)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 	}
 
 	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
-		comments, err := s.getComments(context.TODO(), pr)
+		comments, err := s.getComments(ctx, pr)
 		if err != nil {
 			mlog.Error("failed fetching comments", mlog.Err(err))
 			return
@@ -89,7 +89,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
-		_ = s.createRepoStatus(context.TODO(), pr, status)
+		_ = s.createRepoStatus(ctx, pr, status)
 		return
 	}
 
@@ -100,7 +100,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
-	_ = s.createRepoStatus(context.TODO(), pr, status)
+	_ = s.createRepoStatus(ctx, pr, status)
 }
 
 func (s *Server) getCSV() ([]byte, error) {

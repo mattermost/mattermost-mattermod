@@ -295,7 +295,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(context.TODO(), pr)
+	comments, err := s.getComments(ctx, pr)
 	if err != nil {
 		mlog.Error("failed fetching comments", mlog.Err(err))
 		return
