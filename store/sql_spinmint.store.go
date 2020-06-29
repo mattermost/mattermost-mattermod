@@ -29,102 +29,58 @@ func (s SQLSpinmintStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("Spinmint", "InstanceId", "varchar(128)", "varchar(128)", "")
 }
 
-func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) Channel {
-	storeChannel := make(Channel)
-
-	go func() {
-		result := Result{}
-
-		if err := s.GetMaster().Insert(spinmint); err != nil {
-			if _, err := s.GetMaster().Update(spinmint); err != nil {
-				result.Err = model.NewLocAppError("SQLSpinmintStore.Save", "Could not insert or update spinmint", nil,
-					fmt.Sprintf("instanceid=%v, owner=%v, name=%v, number=%v, err=%v", spinmint.InstanceID, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err.Error()))
-			}
+func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, *model.AppError) {
+	if err := s.GetMaster().Insert(spinmint); err != nil {
+		if _, err := s.GetMaster().Update(spinmint); err != nil {
+			return nil, model.NewLocAppError("SQLSpinmintStore.Save",
+				"Could not insert or update spinmint",
+				nil,
+				fmt.Sprintf("instanceid=%v, owner=%v, name=%v, number=%v, err=%v",
+					spinmint.InstanceID, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err.Error()),
+			)
 		}
-
-		if result.Err == nil {
-			result.Data = spinmint
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+	}
+	return spinmint, nil
 }
 
-func (s SQLSpinmintStore) List() Channel {
-	storeChannel := make(Channel)
-
-	go func() {
-		result := Result{}
-
-		var spinmint []*model.Spinmint
-		if _, err := s.GetReplica().Select(&spinmint,
-			`SELECT
+func (s SQLSpinmintStore) List() ([]*model.Spinmint, *model.AppError) {
+	var spinmints []*model.Spinmint
+	_, err := s.GetReplica().Select(&spinmints,
+		`SELECT
         *
       FROM
-        Spinmint`); err != nil {
-			result.Err = model.NewLocAppError("SQLSpinmintStore.List", "Could not list spinmint", nil, err.Error())
-		} else {
-			result.Data = spinmint
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+        Spinmint`)
+	if err != nil {
+		return nil, model.NewLocAppError("SQLSpinmintStore.List", "Could not list spinmint", nil, err.Error())
+	}
+	return spinmints, nil
 }
 
-func (s SQLSpinmintStore) Get(prNumber int, repoName string) Channel {
-	storeChannel := make(Channel)
-
-	go func() {
-		result := Result{}
-
-		var spinmint model.Spinmint
-		if err := s.GetReplica().SelectOne(&spinmint,
-			`SELECT * FROM
+func (s SQLSpinmintStore) Get(prNumber int, repoName string) (*model.Spinmint, *model.AppError) {
+	var spinmint model.Spinmint
+	if err := s.GetReplica().SelectOne(&spinmint,
+		`SELECT * FROM
         Spinmint
       WHERE
         Number = :prNumber AND RepoName = :repoName`, map[string]interface{}{"prNumber": prNumber, "repoName": repoName}); err != nil {
-			if err != sql.ErrNoRows {
-				result.Err = model.NewLocAppError("SQLSpinmintStore.Get", "Could not get the spinmint", nil,
-					fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceID, err.Error()))
-			} else {
-				result.Data = nil
-			}
-		} else {
-			result.Data = &spinmint
+		if err != sql.ErrNoRows {
+			return nil, model.NewLocAppError("SQLSpinmintStore.Get",
+				"Could not get the spinmint",
+				nil,
+				fmt.Sprintf("owner=%v, name=%v, number=%v, instanceid=%v, err=%v", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceID, err.Error()),
+			)
 		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+		return nil, nil // row not found.
+	}
+	return &spinmint, nil
 }
 
-func (s SQLSpinmintStore) Delete(instanceID string) Channel {
-	storeChannel := make(Channel)
-	go func() {
-		result := Result{}
-
-		var spinmint []*model.Spinmint
-		if _, err := s.GetReplica().Select(&spinmint,
-			`DELETE FROM
+func (s SQLSpinmintStore) Delete(instanceID string) *model.AppError {
+	if _, err := s.GetReplica().Exec(`DELETE FROM
         Spinmint
       WHERE
         InstanceId = :InstanceID`, map[string]interface{}{"InstanceID": instanceID}); err != nil {
-			result.Err = model.NewLocAppError("SQLSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
-		} else {
-			result.Data = spinmint
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+		return model.NewLocAppError("SQLSpinmintStore.Delete", "Could not list spinmint", nil, err.Error())
+	}
+	return nil
 }

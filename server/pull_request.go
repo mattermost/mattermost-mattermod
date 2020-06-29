@@ -100,18 +100,17 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 
 		// TODO: remove the old test server code
 		if s.isSpinMintLabel(*event.Label.Name) {
-			result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-			if result.Err != nil {
-				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", result.Err.Error()))
+			spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+			if err != nil {
+				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err.Error()))
 				break
 			}
 
-			if result.Data == nil {
-				mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
+			if spinmint == nil {
+				mlog.Info("Nothing to do. There is no test server for this PR", mlog.Int("pr", pr.Number))
 				break
 			}
 
-			spinmint := result.Data.(*model.Spinmint)
 			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 			mlog.Info("Will destroy the test server for a merged/closed PR.")
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
@@ -137,18 +136,17 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		go s.checkIfNeedCherryPick(ctx, pr)
 		go s.CleanUpLabels(pr)
 
-		result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-		if result.Err != nil {
-			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", result.Err.Error()))
+		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+		if err != nil {
+			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", err.Error()))
 			break
 		}
 
-		if result.Data == nil {
+		if spinmint == nil {
 			mlog.Info("Nothing to do. There is no Spinmint for this PR", mlog.Int("pr", pr.Number))
 			break
 		}
 
-		spinmint := result.Data.(*model.Spinmint)
 		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceID))
 		mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
@@ -162,15 +160,15 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 }
 
 func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullRequest) {
-	result := <-s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-	if result.Err != nil {
-		mlog.Error(result.Err.Error())
+	oldPr, err := s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+	if err != nil {
+		mlog.Error(err.Error())
 		return
 	}
 
-	if result.Data == nil {
-		if resultSave := <-s.Store.PullRequest().Save(pr); resultSave.Err != nil {
-			mlog.Error(resultSave.Err.Error())
+	if oldPr == nil {
+		if _, err := s.Store.PullRequest().Save(pr); err != nil {
+			mlog.Error(err.Error())
 		}
 
 		for _, label := range pr.Labels {
@@ -180,7 +178,6 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		return
 	}
 
-	oldPr := result.Data.(*model.PullRequest)
 	prHasChanges := false
 
 	for _, label := range pr.Labels {
@@ -241,8 +238,8 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 
 	if prHasChanges {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
-		if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-			mlog.Error(result.Err.Error())
+		if _, err := s.Store.PullRequest().Save(pr); err != nil {
+			mlog.Error(err.Error())
 			return
 		}
 	}
@@ -308,18 +305,17 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 		// Old comments created by Mattermod user will be deleted here.
 		s.removeOldComments(comments, pr)
 
-		result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-		if result.Err != nil {
-			mlog.Error("Unable to get the test server information.", mlog.String("pr_error", result.Err.Error()))
+		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+		if err != nil {
+			mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err.Error()))
 			return
 		}
 
-		if result.Data == nil {
+		if spinmint == nil {
 			mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
 			return
 		}
 
-		spinmint := result.Data.(*model.Spinmint)
 		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 		mlog.Info("Will destroy the test server for a merged/closed PR.")
 
@@ -359,13 +355,11 @@ func (s *Server) CheckPRActivity() {
 	mlog.Info("Checking if need to Stale a Pull request")
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
-	var prs []*model.PullRequest
-	result := <-s.Store.PullRequest().ListOpen()
-	if result.Err != nil {
-		mlog.Error(result.Err.Error())
+	prs, err := s.Store.PullRequest().ListOpen()
+	if err != nil {
+		mlog.Error(err.Error())
 		return
 	}
-	prs = result.Data.([]*model.PullRequest)
 
 	for _, pr := range prs {
 		pull, _, errPull := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
@@ -426,12 +420,11 @@ func (s *Server) CleanOutdatedPRs() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
-	result := <-s.Store.PullRequest().ListOpen()
-	if result.Err != nil {
-		mlog.Error(result.Err.Error())
+	prs, err := s.Store.PullRequest().ListOpen()
+	if err != nil {
+		mlog.Error(err.Error())
 		return
 	}
-	prs := result.Data.([]*model.PullRequest)
 
 	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
@@ -448,8 +441,8 @@ func (s *Server) CleanOutdatedPRs() {
 		if pull.GetState() == model.StateClosed {
 			mlog.Info("PR is closed, updating the status in the database", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			pr.State = pull.GetState()
-			if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-				mlog.Error(result.Err.Error())
+			if _, err := s.Store.PullRequest().Save(pr); err != nil {
+				mlog.Error(err.Error())
 			}
 		} else {
 			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))

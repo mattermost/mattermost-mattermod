@@ -43,13 +43,13 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	}
 
 	var instance *ec2.Instance
-	result := <-s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-	if result.Err != nil {
-		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", result.Err.Error()))
+	spinmint, appErr := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if appErr != nil {
+		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", appErr.Error()))
 		return
 	}
 
-	if result.Data == nil {
+	if spinmint == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
 		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
@@ -58,7 +58,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
-		spinmint := &model.Spinmint{
+		spinmint = &model.Spinmint{
 			InstanceID: *instance.InstanceId,
 			RepoOwner:  pr.RepoOwner,
 			RepoName:   pr.RepoName,
@@ -67,7 +67,6 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		}
 		s.storeSpinmintInfo(spinmint)
 	} else {
-		spinmint := result.Data.(*model.Spinmint)
 		instance = &ec2.Instance{
 			InstanceId: aws.String(spinmint.InstanceID),
 		}
@@ -286,11 +285,11 @@ func (s *Server) CheckTestServerLifeTime() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
 	defer cancel()
-	result := <-s.Store.Spinmint().List()
-	if result.Err != nil {
-		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", result.Err.Error()))
+	testServers, err := s.Store.Spinmint().List()
+	if err != nil {
+		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", err.Error()))
+		return
 	}
-	testServers := result.Data.([]*model.Spinmint)
 
 	for _, testServer := range testServers {
 		mlog.Info("Check if need destroy Test Server for PR", mlog.String("instance", testServer.InstanceID), mlog.Int("TestServer", testServer.Number), mlog.String("repo_owner", testServer.RepoOwner), mlog.String("repo_name", testServer.RepoName))
@@ -313,14 +312,14 @@ func (s *Server) CheckTestServerLifeTime() {
 }
 
 func (s *Server) storeSpinmintInfo(spinmint *model.Spinmint) {
-	if result := <-s.Store.Spinmint().Save(spinmint); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if _, err := s.Store.Spinmint().Save(spinmint); err != nil {
+		mlog.Error(err.Error())
 	}
 }
 
 func (s *Server) removeTestServerFromDB(instanceID string) {
-	if result := <-s.Store.Spinmint().Delete(instanceID); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if err := s.Store.Spinmint().Delete(instanceID); err != nil {
+		mlog.Error(err.Error())
 	}
 }
 

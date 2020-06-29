@@ -76,8 +76,8 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 
 	pr.Labels = labelsToStringArray(labels)
 
-	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if _, err := s.Store.PullRequest().Save(pr); err != nil {
+		mlog.Error(err.Error())
 	}
 
 	return pr, nil
@@ -166,8 +166,8 @@ func (s *Server) GetUpdateChecks(ctx context.Context, owner, repoName string, pr
 		return nil, err
 	}
 
-	if result := <-s.Store.PullRequest().Save(pr); result.Err != nil {
-		mlog.Error(result.Err.Error())
+	if _, err := s.Store.PullRequest().Save(pr); err != nil {
+		mlog.Error(err.Error())
 	}
 
 	return pr, nil

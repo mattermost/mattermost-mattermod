@@ -33,39 +33,23 @@ func (s SQLIssueStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("Issues", "State", "varchar(8)", "varchar(8)", "")
 }
 
-func (s SQLIssueStore) Save(issue *model.Issue) Channel {
-	storeChannel := make(Channel)
-
-	go func() {
-		result := Result{}
-
-		if err := s.GetMaster().Insert(issue); err != nil {
-			if _, err := s.GetMaster().Update(issue); err != nil {
-				result.Err = model.NewLocAppError("SQLIssueStore.Save", "Could not insert or update issue", nil,
-					fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", issue.RepoOwner, issue.RepoName, issue.Number, err.Error()))
-			}
+func (s SQLIssueStore) Save(issue *model.Issue) (*model.Issue, *model.AppError) {
+	if err := s.GetMaster().Insert(issue); err != nil {
+		if _, err := s.GetMaster().Update(issue); err != nil {
+			return nil, model.NewLocAppError("SQLIssueStore.Save",
+				"Could not insert or update issue",
+				nil,
+				fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", issue.RepoOwner, issue.RepoName, issue.Number, err.Error()),
+			)
 		}
-
-		if result.Err == nil {
-			result.Data = issue
-		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+	}
+	return issue, nil
 }
 
-func (s SQLIssueStore) Get(repoOwner, repoName string, number int) Channel {
-	storeChannel := make(Channel)
-
-	go func() {
-		result := Result{}
-
-		var issue model.Issue
-		if err := s.GetReplica().SelectOne(&issue,
-			`SELECT
+func (s SQLIssueStore) Get(repoOwner, repoName string, number int) (*model.Issue, *model.AppError) {
+	var issue model.Issue
+	if err := s.GetReplica().SelectOne(&issue,
+		`SELECT
 				*
 			FROM
 				Issues
@@ -73,19 +57,14 @@ func (s SQLIssueStore) Get(repoOwner, repoName string, number int) Channel {
 				RepoOwner = :RepoOwner
 				AND RepoName = :RepoName
 				AND Number = :Number`, map[string]interface{}{"Number": number, "RepoOwner": repoOwner, "RepoName": repoName}); err != nil {
-			if err != sql.ErrNoRows {
-				result.Err = model.NewLocAppError("SqlPrStore.Get", "Could not get issue", nil,
-					fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", issue.RepoOwner, issue.RepoName, issue.Number, err.Error()))
-			} else {
-				result.Data = nil
-			}
-		} else {
-			result.Data = &issue
+		if err != sql.ErrNoRows {
+			return nil, model.NewLocAppError("SqlPrStore.Get",
+				"Could not get issue",
+				nil,
+				fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", issue.RepoOwner, issue.RepoName, issue.Number, err.Error()),
+			)
 		}
-
-		storeChannel <- result
-		close(storeChannel)
-	}()
-
-	return storeChannel
+		return nil, nil // row not found.
+	}
+	return &issue, nil
 }

@@ -110,9 +110,9 @@ func (s *Server) getCSV() ([]byte, error) {
 		s.logToMattermost("unable to get CLA google csv file Error: ```" + err.Error() + "```")
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
 	if err != nil {
 		mlog.Error("Unable to read response body", mlog.Err(err))
 		s.logToMattermost("unable to read CLA google csv file Error: ```" + err.Error() + "```")
