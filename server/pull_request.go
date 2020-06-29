@@ -31,7 +31,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsForOrgMembers(ctx, pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -46,7 +46,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsForOrgMembers(ctx, pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
@@ -70,7 +70,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
 			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
-			go s.triggerEnterpriseTests(ctx, pr)
+			go s.triggerEnterpriseTests(pr)
 
 			s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
@@ -123,8 +123,8 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		s.triggerCircleCiIfNeeded(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
-			go s.triggerEETestsForOrgMembers(ctx, pr)
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
+			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {

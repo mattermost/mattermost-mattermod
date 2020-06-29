@@ -16,7 +16,8 @@ import (
 
 const (
 	// In seconds
-	defaultRequestTimeout       = 30
+	defaultRequestTimeout       = 60
+	defaultEETaskTimeout        = 300
 	defaultCronTaskTimeout      = 300
 	defaultBuildMobileTimeout   = 7200
 	defaultBuildSpinMintTimeout = 2700
@@ -73,6 +74,7 @@ type Config struct {
 	SpinmintExpirationHour int
 
 	requestTimeoutInSeconds           int
+	eeTaskTimeoutInSeconds            int
 	cronTaskTimeoutInSeconds          int
 	buildMobileTaskTimeoutInSeconds   int
 	buildSpinmintTaskTimeoutInSeconds int
@@ -207,6 +209,9 @@ func (c *Config) setDefaults() {
 	if c.requestTimeoutInSeconds <= 0 {
 		c.requestTimeoutInSeconds = defaultRequestTimeout
 	}
+	if c.eeTaskTimeoutInSeconds <= 0 {
+		c.eeTaskTimeoutInSeconds = defaultEETaskTimeout
+	}
 	if c.cronTaskTimeoutInSeconds <= 0 {
 		c.cronTaskTimeoutInSeconds = defaultCronTaskTimeout
 	}
@@ -220,6 +225,10 @@ func (c *Config) setDefaults() {
 
 func (c *Config) GetRequestTimeout() time.Duration {
 	return time.Duration(c.requestTimeoutInSeconds) * time.Second
+}
+
+func (c *Config) GetEETaskTimeout() time.Duration {
+	return time.Duration(c.eeTaskTimeoutInSeconds) * time.Second
 }
 
 func (c *Config) GetCronTaskTimeout() time.Duration {
