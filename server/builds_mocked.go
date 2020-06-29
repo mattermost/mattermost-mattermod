@@ -22,10 +22,6 @@ func (b *MockedBuilds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Re
 	return nil, nil, nil
 }
 
-func (b *MockedBuilds) dockerRegistryClient(s *Server) (*registry.Registry, error) {
-	return nil, nil
-}
-
 func (b *MockedBuilds) waitForImage(ctx context.Context, s *Server, reg *registry.Registry, pr *model.PullRequest) (*model.PullRequest, error) {
 	return pr, nil
 }
