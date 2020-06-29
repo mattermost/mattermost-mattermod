@@ -4,11 +4,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -23,21 +25,16 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		err = errors.Wrap(err, "unable to load server config")
-		mlog.Error("unable to load server config", mlog.Err(err))
-		panic(err)
+		mlog.Error("unable to load server config", mlog.Err(errors.Wrap(err, "unable to load server config")))
+		os.Exit(1)
 	}
 	server.SetupLogging(config)
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
+	s := server.New(config)
 
-	s, err := server.New(config)
-	if err != nil {
-		panic("failed creating server")
-	}
-
-	s.Start()
-	defer s.Stop()
+	mlog.Info("Starting Mattermod Server")
+	errs := s.Start()
 
 	c := cron.New()
 
@@ -74,5 +71,18 @@ func main() {
 	c.Start()
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
+
+	select {
+	case <-sig:
+		mlog.Info("Stopping Mattermod Server")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.Stop(ctx); err != nil {
+			mlog.Error("Error while shutting down server", mlog.Err(err))
+			os.Exit(1)
+		}
+	case err := <-errs:
+		mlog.Error("Server exited with error", mlog.Err(err))
+		os.Exit(1)
+	}
 }

@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -135,6 +137,11 @@ func (s *Server) doCherryPick(version string, milestoneNumber *int, pr *model.Pu
 }
 
 func (s *Server) getAssignee(newPRNumber int, pr *model.PullRequest) string {
+	var once sync.Once
+	once.Do(func() {
+		rand.Seed(time.Now().Unix())
+	})
+
 	var assignee string
 	if s.IsOrgMember(pr.Username) {
 		// He/She can review the PR herself/himself

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/braintree/manners"
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/store"
@@ -29,13 +27,14 @@ import (
 type Server struct {
 	Config               *Config
 	Store                store.Store
-	Router               *mux.Router
 	GithubClient         *GithubClient
 	OrgMembers           []string
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
 	hasReportedRateLimit bool
+
+	server *http.Server
 }
 
 const (
@@ -51,11 +50,10 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config) (server *Server, err error) {
+func New(config *Config) *Server {
 	s := &Server{
 		Config:               config,
 		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
-		Router:               mux.NewRouter(),
 		StartTime:            time.Now(),
 		hasReportedRateLimit: false,
 	}
@@ -70,34 +68,37 @@ func New(config *Config) (server *Server, err error) {
 		}
 	}
 
-	return s, nil
+	r := mux.NewRouter()
+	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
+	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
+
+	s.server = &http.Server{
+		Addr:         s.Config.ListenAddress,
+		Handler:      r,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
+	return s
 }
 
 // Start starts a server
-func (s *Server) Start() {
-	mlog.Info("Starting Mattermod Server")
-
-	rand.Seed(time.Now().Unix())
-
-	s.initializeRouter()
+func (s *Server) Start() <-chan error {
 	s.RefreshMembers()
 
-	var handler http.Handler = s.Router
+	errc := make(chan error)
 	go func() {
 		mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
-		err := manners.ListenAndServe(s.Config.ListenAddress, handler)
-		if err != nil {
-			s.logToMattermost(err.Error())
-			mlog.Critical("server_error", mlog.Err(err))
-			panic(err.Error())
-		}
+		errc <- s.server.ListenAndServe()
 	}()
+
+	return errc
 }
 
 // Stop stops a server
-func (s *Server) Stop() {
-	mlog.Info("Stopping Mattermod")
-	manners.Close()
+func (s *Server) Stop(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
 }
 
 func (s *Server) RefreshMembers() {
@@ -171,11 +172,6 @@ func (s *Server) Tick() {
 			s.checkIssueForChanges(issue)
 		}
 	}
-}
-
-func (s *Server) initializeRouter() {
-	s.Router.HandleFunc("/", s.ping).Methods(http.MethodGet)
-	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
