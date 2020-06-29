@@ -204,34 +204,34 @@ func GetConfig(fileName string) (*Config, error) {
 }
 
 func (c *Config) setDefaults() {
-	if c.requestTimeoutInSeconds == "" || c.requestTimeoutInSeconds <= 0 {
+	if c.requestTimeoutInSeconds <= 0 {
 		c.requestTimeoutInSeconds = defaultRequestTimeout
 	}
-	if c.cronTaskTimeoutInSeconds == "" || c.cronTaskTimeoutInSeconds <= 0 {
+	if c.cronTaskTimeoutInSeconds <= 0 {
 		c.cronTaskTimeoutInSeconds = defaultCronTaskTimeout
 	}
-	if c.buildMobileTaskTimeoutInSeconds == "" || c.buildMobileTaskTimeoutInSeconds <= 0 {
+	if c.buildMobileTaskTimeoutInSeconds <= 0 {
 		c.buildMobileTaskTimeoutInSeconds = defaultBuildMobileTimeout
 	}
-	if c.buildSpinmintTaskTimeoutInSeconds == "" || c.buildSpinmintTaskTimeoutInSeconds <= 0 {
+	if c.buildSpinmintTaskTimeoutInSeconds <= 0 {
 		c.buildSpinmintTaskTimeoutInSeconds = defaultBuildSpinMintTimeout
 	}
 }
 
 func (c *Config) GetRequestTimeout() time.Duration {
-	return c.requestTimeoutInSeconds * time.Second
+	return time.Duration(c.requestTimeoutInSeconds) * time.Second
 }
 
 func (c *Config) GetCronTaskTimeout() time.Duration {
-	return c.cronTaskTimeoutInSeconds * time.Second
+	return time.Duration(c.cronTaskTimeoutInSeconds) * time.Second
 }
 
 func (c *Config) GetBuildMobileTimeout() time.Duration {
-	return c.buildMobileTaskTimeoutInSeconds * time.Second
+	return time.Duration(c.buildMobileTaskTimeoutInSeconds) * time.Second
 }
 
 func (c *Config) GetBuildSpinmintTimeout() time.Duration {
-	return c.buildSpinmintTaskTimeoutInSeconds * time.Second
+	return time.Duration(c.buildSpinmintTaskTimeoutInSeconds) * time.Second
 }
 
 func GetRepository(repositories []*Repository, owner, name string) (*Repository, bool) {
