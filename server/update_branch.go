@@ -12,7 +12,11 @@ import (
 )
 
 func (s *Server) handleUpdateBranch(ctx context.Context, eventIssueComment IssueComment) {
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
+		*eventIssueComment.Repository.Owner.Login,
+		*eventIssueComment.Repository.Name,
+		*eventIssueComment.Issue.Number,
+	)
 	if err != nil {
 		mlog.Error("Error getting the latest PR information from github", mlog.Err(err))
 		return

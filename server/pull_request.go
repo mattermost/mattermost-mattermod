@@ -27,7 +27,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
-		s.addHacktoberfestLabel(pr)
+		s.addHacktoberfestLabel(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
@@ -35,9 +35,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
@@ -50,9 +50,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "labeled":
 		if event.Label == nil {
@@ -82,7 +82,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		}
 		if s.isAutoMergeLabelInLabels(pr.Labels) {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
@@ -95,7 +95,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 
 		// TODO: remove the old test server code
@@ -127,9 +127,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
@@ -252,7 +252,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
@@ -263,7 +263,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 		if *comment.User.Login == s.Config.Username &&
 			strings.Contains(*comment.Body, s.Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, s.Config.DestroyedExpirationSpinmintMessage) {
 			mlog.Info("Removing old server deletion comment with ID", mlog.Int64("ID", *comment.ID))
-			_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
+			_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
 				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
 			}
@@ -303,7 +303,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 			messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, s.Config.Username, s.Config.DestroyedSpinmintMessage) {
 		// Old comments created by Mattermod user will be deleted here.
-		s.removeOldComments(comments, pr)
+		s.removeOldComments(ctx, comments, pr)
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
 		if err != nil {
@@ -324,7 +324,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 	}
 }
 
-func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
+func (s *Server) removeOldComments(ctx context.Context, comments []*github.IssueComment, pr *model.PullRequest) {
 	serverMessages := []string{s.Config.SetupSpinmintMessage,
 		s.Config.SetupSpinmintUpgradeMessage,
 		s.Config.SetupSpinmintFailedMessage,
@@ -340,7 +340,7 @@ func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.Pu
 			for _, message := range serverMessages {
 				if strings.Contains(*comment.Body, message) {
 					mlog.Info("Removing old comment with ID", mlog.Int64("ID", *comment.ID))
-					_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
+					_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
 					if err != nil {
 						mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
 					}

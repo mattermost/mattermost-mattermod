@@ -44,7 +44,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	// List the files that was modified or added in the PullRequest
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return

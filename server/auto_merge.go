@@ -28,7 +28,7 @@ func (s *Server) AutoMergePR() {
 			continue
 		}
 
-		prToMerge, _, err := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		prToMerge, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			mlog.Error("Error in getting the PR info", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue
@@ -44,7 +44,7 @@ func (s *Server) AutoMergePR() {
 		}
 
 		// Get the Statuses
-		PRStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, prToMerge.Head.GetSHA(), nil)
+		PRStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, pr.RepoOwner, pr.RepoName, prToMerge.Head.GetSHA(), nil)
 		if err != nil {
 			mlog.Error("Error in getting the PR Status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue
@@ -61,7 +61,7 @@ func (s *Server) AutoMergePR() {
 		}
 
 		// Check if all reviewers did the review
-		prReviewers, _, err := s.GithubClient.PullRequests.ListReviewers(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		prReviewers, _, err := s.GithubClient.PullRequests.ListReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 		if err != nil {
 			mlog.Error("Error to get the Reviewers for a PR", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName), mlog.Err(err))
 			continue

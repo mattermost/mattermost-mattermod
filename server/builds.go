@@ -180,7 +180,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRequest) (string, error) {
 	repo, _ := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	for {
-		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}
@@ -193,7 +193,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		}
 
 		// for the repos using circleci we have the checks now
-		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}

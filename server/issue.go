@@ -79,7 +79,7 @@ func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, add
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
 		mlog.Error("issue_error", mlog.Err(err))
 		return
