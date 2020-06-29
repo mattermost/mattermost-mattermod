@@ -37,10 +37,10 @@ build:
 package: build
 	tar -C dist -czf dist/mattermod.tar.gz mattermod
 
-## Runs tests. For local usage, run `make test CONFIG_TEST="-config=config-mattermod.test-local.json"`
+## Runs tests.
 test:
 	@echo Running Go tests
-	$(GO) test $(PACKAGES) $(CONFIG_TEST)
+	$(GO) test $(PACKAGES)
 	@echo test success
 
 

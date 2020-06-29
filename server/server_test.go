@@ -4,82 +4,43 @@
 package server
 
 import (
-	"flag"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/xeipuuv/gojsonschema"
 )
 
-var config *Config
-var err error
-var s *Server
-
-func TestMain(m *testing.M) {
-	var configFile string
-	flag.StringVar(&configFile, "config", "config-mattermod.default.json", "")
-	flag.Parse()
-	config, err = GetConfig(configFile)
-	if err != nil {
-		panic(err)
-	}
-	SetupLogging(config)
-	mlog.Info("Loaded config", mlog.String("filename", configFile))
-
-	s, err = New(config)
-	if err != nil {
-		panic(err)
-	}
-	s.Start()
-
-	exitVal := m.Run()
-
-	os.Exit(exitVal)
-}
-
 func TestPing(t *testing.T) {
-	defer s.Stop()
+	s := &Server{
+		StartTime: time.Now(),
+	}
 
-	split := strings.Split(config.ListenAddress, ":")
-	require.Len(t, split, 2)
+	ts := httptest.NewServer(http.HandlerFunc(s.ping))
+	defer ts.Close()
 
-	url := "http://localhost:" + split[1]
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	res, err := http.Get(ts.URL)
 	require.NoError(t, err)
-	w := httptest.NewRecorder()
-	s.ping(w, req)
-
-	body := w.Result().Body
-	defer body.Close()
-	bytes, err := ioutil.ReadAll(body)
+	bytes, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
 	bytesLoader := gojsonschema.NewBytesLoader(bytes)
 
 	dir, err := filepath.Abs(filepath.Dir(""))
-	if err != nil {
-		mlog.Error("unable to find project path")
-	}
-	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/schema/ping.schema.json")
+	assert.NoError(t, err)
 
+	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/schema/ping.schema.json")
 	result, err := gojsonschema.Validate(jsonLoader, bytesLoader)
-	if err != nil {
-		mlog.Err(err)
-	}
-	if result.Valid() {
-		mlog.Info("json is valid")
-	} else {
+	assert.NoError(t, err)
+	assert.True(t, result.Valid())
+	if !result.Valid() {
 		for _, err := range result.Errors() {
-			mlog.Error(err.Description())
+			t.Log(err.Description())
 		}
-		t.FailNow()
 	}
 }
