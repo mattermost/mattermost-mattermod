@@ -27,6 +27,8 @@ func TestPing(t *testing.T) {
 
 	res, err := http.Get(ts.URL)
 	require.NoError(t, err)
+	defer res.Body.Close()
+
 	bytes, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
 	bytesLoader := gojsonschema.NewBytesLoader(bytes)
