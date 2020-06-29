@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -43,20 +44,26 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		return
 	}
 
-	// List the files that was modified or added in the PullRequest
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return
-	}
+	blackList, ok := s.Config.FileBlacklist[pr.RepoName]
+	if ok {
+		// List the files that was modified or added in the PullRequest
+		var prFiles []*github.CommitFile
+		prFiles, _, err = s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		if err != nil {
+			mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+			return
+		}
 
-	for _, prFile := range prFiles {
-		for _, blackListPath := range s.Config.BlacklistPaths {
-			if prFile.GetFilename() == blackListPath {
-				mlog.Error("File is on the blacklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-				msg := fmt.Sprintf("The file `%s` is in the blacklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-				return
+		for _, blackListItem := range blackList {
+			for _, prFile := range prFiles {
+				if prFile.GetFilename() == blackListItem {
+					mlog.Error("File is on the blacklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
+					msg := fmt.Sprintf(
+						"The file `%s` is in the blacklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the PR is merged. Please be careful when reviewing it.\n /cc @mattermost/core-security @mattermost/core-build-engineers",
+						prFile.GetFilename())
+					s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+					return
+				}
 			}
 		}
 	}
