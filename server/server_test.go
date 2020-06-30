@@ -4,17 +4,13 @@
 package server
 
 import (
-	"io/ioutil"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/xeipuuv/gojsonschema"
 )
 
 func TestPing(t *testing.T) {
@@ -29,20 +25,9 @@ func TestPing(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	bytes, err := ioutil.ReadAll(res.Body)
+	var ping pingResponse
+
+	err = json.NewDecoder(res.Body).Decode(&ping)
 	require.NoError(t, err)
-	bytesLoader := gojsonschema.NewBytesLoader(bytes)
-
-	dir, err := filepath.Abs(filepath.Dir(""))
-	assert.NoError(t, err)
-
-	jsonLoader := gojsonschema.NewReferenceLoader("file://" + dir + "/schema/ping.schema.json")
-	result, err := gojsonschema.Validate(jsonLoader, bytesLoader)
-	assert.NoError(t, err)
-	assert.True(t, result.Valid())
-	if !result.Valid() {
-		for _, err := range result.Errors() {
-			t.Log(err.Description())
-		}
-	}
+	require.NotZero(t, ping.Uptime)
 }

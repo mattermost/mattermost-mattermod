@@ -6,8 +6,8 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -36,6 +36,10 @@ type Server struct {
 	commentLock          sync.Mutex
 	StartTime            time.Time
 	hasReportedRateLimit bool
+}
+
+type pingResponse struct {
+	Uptime time.Duration `json:"uptime"`
 }
 
 const (
@@ -179,12 +183,11 @@ func (s *Server) initializeRouter() {
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
-	w.Header().Set("Content-Type", "application/json")
-
-	_, err := w.Write([]byte(msg))
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: time.Since(s.StartTime)})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
