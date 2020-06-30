@@ -105,7 +105,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
-	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 
 	var setupScript string
 	if upgrade {
@@ -179,7 +179,7 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
@@ -204,7 +204,7 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 }
 
 func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
-	svc := ec2.New(s.AWSSession, s.GetAwsConfig())
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
@@ -220,7 +220,7 @@ func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP 
 }
 
 func (s *Server) updateRoute53Subdomain(name, target, action string) error {
-	svc := route53.New(s.AWSSession, s.GetAwsConfig())
+	svc := route53.New(s.awsSession, s.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target

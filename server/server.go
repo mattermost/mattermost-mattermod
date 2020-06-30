@@ -36,7 +36,7 @@ type Server struct {
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
-	AWSSession           *session.Session
+	awsSession           *session.Session
 	hasReportedRateLimit bool
 }
 
@@ -67,7 +67,7 @@ func New(config *Config) (server *Server, err error) {
 	if err != nil {
 		return nil, err
 	}
-	s.AWSSession = awsSession
+	s.awsSession = awsSession
 
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
