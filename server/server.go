@@ -6,6 +6,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/braintree/manners"
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
@@ -35,7 +37,12 @@ type Server struct {
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
+	awsSession           *session.Session
 	hasReportedRateLimit bool
+}
+
+type pingResponse struct {
+	Uptime string `json:"uptime"`
 }
 
 const (
@@ -61,6 +68,11 @@ func New(config *Config) (server *Server, err error) {
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	awsSession, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	s.awsSession = awsSession
 
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
@@ -180,12 +192,12 @@ func (s *Server) initializeRouter() {
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
-	w.Header().Set("Content-Type", "application/json")
-
-	_, err := w.Write([]byte(msg))
+	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
