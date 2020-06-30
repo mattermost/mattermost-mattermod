@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -19,7 +20,7 @@ func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
 }
 
 func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetEETaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultEETaskTimeout*time.Second)
 	defer cancel()
 
 	triggerInfo, err := s.getPRInfo(ctx, pr)

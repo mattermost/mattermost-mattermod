@@ -353,7 +353,7 @@ func (s *Server) removeOldComments(ctx context.Context, comments []*github.Issue
 
 func (s *Server) CheckPRActivity() {
 	mlog.Info("Checking if need to Stale a Pull request")
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
@@ -418,7 +418,7 @@ func (s *Server) CheckPRActivity() {
 func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
@@ -458,7 +458,7 @@ func (s *Server) CleanUpLabels(pr *model.PullRequest) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetRequestTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {

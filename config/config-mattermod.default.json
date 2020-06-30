@@ -110,12 +110,6 @@
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",
 
-    "RequestTimeoutInSeconds": 60,
-    "EETaskTimeoutInSeconds": 300,
-    "CronTaskTimeoutInSeconds": 300,
-    "BuildMobileTaskTimeoutInSeconds": 7200,
-    "BuildSpinmintTaskTimeoutInSeconds": 2700,
-
     "LogSettings": {
         "EnableConsole": true,
         "ConsoleLevel": "DEBUG",

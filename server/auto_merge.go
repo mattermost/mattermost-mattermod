@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -14,7 +15,7 @@ import (
 
 func (s *Server) AutoMergePR() {
 	mlog.Info("Starting the process to auto merge PRs")
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {

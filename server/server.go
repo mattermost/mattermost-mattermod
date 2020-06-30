@@ -113,7 +113,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) RefreshMembers() {
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
@@ -135,7 +135,7 @@ func (s *Server) RefreshMembers() {
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
 	mlog.Info("tick")
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetCronTaskTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	stopRequests, _ := s.shouldStopRequests(ctx)
 	if stopRequests {
@@ -202,7 +202,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetRequestTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
 	if stopRequests {

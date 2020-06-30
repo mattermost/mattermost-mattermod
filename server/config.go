@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -20,7 +19,7 @@ const (
 	defaultEETaskTimeout        = 300
 	defaultCronTaskTimeout      = 300
 	defaultBuildMobileTimeout   = 7200
-	defaultBuildSpinMintTimeout = 2700
+	defaultBuildSpinmintTimeout = 2700
 )
 
 type LabelResponse struct {
@@ -72,12 +71,6 @@ type Config struct {
 
 	TickRateMinutes        int
 	SpinmintExpirationHour int
-
-	requestTimeoutInSeconds           int
-	eeTaskTimeoutInSeconds            int
-	cronTaskTimeoutInSeconds          int
-	buildMobileTaskTimeoutInSeconds   int
-	buildSpinmintTaskTimeoutInSeconds int
 
 	DriverName string
 	DataSource string
@@ -200,47 +193,7 @@ func GetConfig(fileName string) (*Config, error) {
 		return config, errors.Wrap(err, "unable to decode config file")
 	}
 
-	config.setDefaults()
-
 	return config, nil
-}
-
-func (c *Config) setDefaults() {
-	if c.requestTimeoutInSeconds <= 0 {
-		c.requestTimeoutInSeconds = defaultRequestTimeout
-	}
-	if c.eeTaskTimeoutInSeconds <= 0 {
-		c.eeTaskTimeoutInSeconds = defaultEETaskTimeout
-	}
-	if c.cronTaskTimeoutInSeconds <= 0 {
-		c.cronTaskTimeoutInSeconds = defaultCronTaskTimeout
-	}
-	if c.buildMobileTaskTimeoutInSeconds <= 0 {
-		c.buildMobileTaskTimeoutInSeconds = defaultBuildMobileTimeout
-	}
-	if c.buildSpinmintTaskTimeoutInSeconds <= 0 {
-		c.buildSpinmintTaskTimeoutInSeconds = defaultBuildSpinMintTimeout
-	}
-}
-
-func (c *Config) GetRequestTimeout() time.Duration {
-	return time.Duration(c.requestTimeoutInSeconds) * time.Second
-}
-
-func (c *Config) GetEETaskTimeout() time.Duration {
-	return time.Duration(c.eeTaskTimeoutInSeconds) * time.Second
-}
-
-func (c *Config) GetCronTaskTimeout() time.Duration {
-	return time.Duration(c.cronTaskTimeoutInSeconds) * time.Second
-}
-
-func (c *Config) GetBuildMobileTimeout() time.Duration {
-	return time.Duration(c.buildMobileTaskTimeoutInSeconds) * time.Second
-}
-
-func (c *Config) GetBuildSpinmintTimeout() time.Duration {
-	return time.Duration(c.buildSpinmintTaskTimeoutInSeconds) * time.Second
 }
 
 func GetRepository(repositories []*Repository, owner, name string) (*Repository, bool) {

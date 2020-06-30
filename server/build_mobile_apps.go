@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -14,7 +15,7 @@ import (
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	// This needs its own context because is executing a heavy job
-	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetBuildMobileTimeout())
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBuildMobileTimeout*time.Second)
 	defer cancel()
 
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
