@@ -4,17 +4,14 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )
 
@@ -25,7 +22,7 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		mlog.Error("unable to load server config", mlog.Err(errors.Wrap(err, "unable to load server config")))
+		mlog.Error("unable to load server config", mlog.Err(err))
 		os.Exit(1)
 	}
 	server.SetupLogging(config)
@@ -34,7 +31,19 @@ func main() {
 	s := server.New(config)
 
 	mlog.Info("Starting Mattermod Server")
-	errs := s.Start()
+	go func() {
+		if err := s.Start(); err != nil {
+			mlog.Error("Server exited with error", mlog.Err(err))
+			os.Exit(1)
+		}
+	}()
+	defer func() {
+		mlog.Info("Stopping Mattermod Server")
+		if err := s.Stop(); err != nil {
+			mlog.Error("Error while shutting down server", mlog.Err(err))
+			os.Exit(1)
+		}
+	}()
 
 	c := cron.New()
 
@@ -72,17 +81,5 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	select {
-	case <-sig:
-		mlog.Info("Stopping Mattermod Server")
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := s.Stop(ctx); err != nil {
-			mlog.Error("Error while shutting down server", mlog.Err(err))
-			os.Exit(1)
-		}
-	case err := <-errs:
-		mlog.Error("Server exited with error", mlog.Err(err))
-		os.Exit(1)
-	}
+	<-sig
 }

@@ -89,20 +89,22 @@ func New(config *Config) *Server {
 }
 
 // Start starts a server
-func (s *Server) Start() <-chan error {
+func (s *Server) Start() error {
 	s.RefreshMembers()
 
-	errc := make(chan error)
-	go func() {
-		mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
-		errc <- s.server.ListenAndServe()
-	}()
+	mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
+	err := s.server.ListenAndServe()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
 
-	return errc
+	return nil
 }
 
 // Stop stops a server
-func (s *Server) Stop(ctx context.Context) error {
+func (s *Server) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	return s.server.Shutdown(ctx)
 }
 
