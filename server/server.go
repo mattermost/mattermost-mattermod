@@ -89,16 +89,16 @@ func New(config *Config) *Server {
 }
 
 // Start starts a server
-func (s *Server) Start() error {
+func (s *Server) Start() {
 	s.RefreshMembers()
-
 	mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
-	err := s.server.ListenAndServe()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-
-	return nil
+	go func() {
+		err := s.server.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			return
+		}
+		mlog.Error("Server exited with error", mlog.Err(err))
+	}()
 }
 
 // Stop stops a server
