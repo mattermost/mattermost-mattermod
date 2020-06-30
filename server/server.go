@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/store"
@@ -33,6 +34,7 @@ type Server struct {
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
+	awsSession           *session.Session
 	hasReportedRateLimit bool
 
 	server *http.Server
@@ -55,7 +57,7 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config) *Server {
+func New(config *Config) (*Server, error) {
 	s := &Server{
 		Config:               config,
 		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
@@ -64,6 +66,11 @@ func New(config *Config) *Server {
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	awsSession, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	s.awsSession = awsSession
 
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
@@ -85,7 +92,7 @@ func New(config *Config) *Server {
 		IdleTimeout:  30 * time.Second,
 	}
 
-	return s
+	return s, nil
 }
 
 // Start starts a server
@@ -98,6 +105,7 @@ func (s *Server) Start() {
 			return
 		}
 		mlog.Error("Server exited with error", mlog.Err(err))
+		os.Exit(1)
 	}()
 }
 

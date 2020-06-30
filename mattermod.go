@@ -28,7 +28,11 @@ func main() {
 	server.SetupLogging(config)
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
-	s := server.New(config)
+	s, err := server.New(config)
+	if err != nil {
+		mlog.Error("unable to start server", mlog.Err(err))
+		os.Exit(1)
+	}
 
 	mlog.Info("Starting Mattermod Server")
 	s.Start()
