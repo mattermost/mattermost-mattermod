@@ -30,4 +30,6 @@ func TestPing(t *testing.T) {
 	err = json.NewDecoder(res.Body).Decode(&ping)
 	require.NoError(t, err)
 	require.NotZero(t, ping.Uptime)
+	_, err = time.ParseDuration(ping.Uptime)
+	require.NoError(t, err)
 }
