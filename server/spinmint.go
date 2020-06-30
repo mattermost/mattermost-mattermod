@@ -50,7 +50,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	if spinmint == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
+		instance, errInstance = s.setupSpinmint(ctx, pr, repo, upgradeServer)
 		if errInstance != nil {
 			s.logToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
@@ -72,9 +72,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicDNS, internalIP := s.getIPsForInstance(*instance.InstanceId)
+	publicDNS, internalIP := s.getIPsForInstance(ctx, *instance.InstanceId)
 
-	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
+	if err := s.updateRoute53Subdomain(ctx, *instance.InstanceId, publicDNS, "CREATE"); err != nil {
 		s.logToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
@@ -102,7 +102,7 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 }
 
 // Returns instance ID of instance created
-func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
+func (s *Server) setupSpinmint(ctx context.Context, pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
 	svc := ec2.New(s.awsSession, s.GetAwsConfig())
@@ -141,14 +141,14 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 		SubnetId:         &s.Config.AWSSubNetID,
 	}
 
-	resp, err := svc.RunInstances(params)
+	resp, err := svc.RunInstancesWithContext(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add tags to the created instance
 	time.Sleep(time.Second * 10)
-	_, errtag := svc.CreateTags(&ec2.CreateTagsInput{
+	_, errtag := svc.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
 		Resources: []*string{resp.Instances[0].InstanceId},
 		Tags: []*ec2.Tag{
 			{
@@ -177,6 +177,8 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 }
 
 func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.Config.GetBuildSpinmintTimeout())
+	defer cancel()
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
 	svc := ec2.New(s.awsSession, s.GetAwsConfig())
@@ -187,14 +189,14 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 		},
 	}
 
-	_, err := svc.TerminateInstances(params)
+	_, err := svc.TerminateInstancesWithContext(ctx, params)
 	if err != nil {
 		mlog.Error("Error terminating instances", mlog.Err(err))
 		return
 	}
 
 	// Remove route53 entry
-	err = s.updateRoute53Subdomain(instanceID, "", "DELETE")
+	err = s.updateRoute53Subdomain(ctx, instanceID, "", "DELETE")
 	if err != nil {
 		mlog.Error("Error removing the Route53 entry", mlog.Err(err))
 		return
@@ -203,14 +205,14 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	s.removeTestServerFromDB(instanceID)
 }
 
-func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
+func (s *Server) getIPsForInstance(ctx context.Context, instance string) (publicIP string, privateIP string) {
 	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
 		},
 	}
-	resp, err := svc.DescribeInstances(params)
+	resp, err := svc.DescribeInstancesWithContext(ctx, params)
 	if err != nil {
 		mlog.Error("Problem getting instance ip", mlog.Err(err))
 		return "", ""
@@ -219,13 +221,13 @@ func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP 
 	return *resp.Reservations[0].Instances[0].PublicIpAddress, *resp.Reservations[0].Instances[0].PrivateIpAddress
 }
 
-func (s *Server) updateRoute53Subdomain(name, target, action string) error {
+func (s *Server) updateRoute53Subdomain(ctx context.Context, name, target, action string) error {
 	svc := route53.New(s.awsSession, s.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target
 	if target == "" && action == "DELETE" {
-		targetServer, _ = s.getIPsForInstance(name)
+		targetServer, _ = s.getIPsForInstance(ctx, name)
 	}
 
 	params := &route53.ChangeResourceRecordSetsInput{
@@ -249,7 +251,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 		HostedZoneId: &s.Config.AWSHostedZoneID,
 	}
 
-	if _, err := svc.ChangeResourceRecordSets(params); err != nil {
+	if _, err := svc.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
 		return err
 	}
 
