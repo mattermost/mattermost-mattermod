@@ -32,15 +32,15 @@ func main() {
 
 	mlog.Info("Starting Mattermod Server")
 	go func() {
-		if err := s.Start(); err != nil {
-			mlog.Error("Server exited with error", mlog.Err(err))
+		if err2 := s.Start(); err2 != nil {
+			mlog.Error("Server exited with error", mlog.Err(err2))
 			os.Exit(1)
 		}
 	}()
 	defer func() {
 		mlog.Info("Stopping Mattermod Server")
-		if err := s.Stop(); err != nil {
-			mlog.Error("Error while shutting down server", mlog.Err(err))
+		if err2 := s.Stop(); err2 != nil {
+			mlog.Error("Error while shutting down server", mlog.Err(err2))
 			os.Exit(1)
 		}
 	}()
