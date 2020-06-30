@@ -12,7 +12,6 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 )
 
@@ -23,21 +22,28 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		err = errors.Wrap(err, "unable to load server config")
 		mlog.Error("unable to load server config", mlog.Err(err))
-		panic(err)
+		os.Exit(1)
 	}
 	server.SetupLogging(config)
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
-
 	s, err := server.New(config)
 	if err != nil {
-		panic("failed creating server")
+		mlog.Error("unable to start server", mlog.Err(err))
+		os.Exit(1)
 	}
 
+	mlog.Info("Starting Mattermod Server")
 	s.Start()
-	defer s.Stop()
+
+	defer func() {
+		mlog.Info("Stopping Mattermod Server")
+		if err2 := s.Stop(); err2 != nil {
+			mlog.Error("Error while shutting down server", mlog.Err(err2))
+			os.Exit(1)
+		}
+	}()
 
 	c := cron.New()
 
@@ -74,5 +80,6 @@ func main() {
 	c.Start()
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
 	<-sig
 }
