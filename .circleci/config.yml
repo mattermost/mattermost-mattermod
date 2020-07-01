@@ -25,6 +25,16 @@ jobs:
       - checkout
       - run: make build
 
+  check-tidy:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          command: |
+            go mod tidy
+            if [[ -n $(git status --porcelain) ]]; then echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; exit 1; fi
+
   test:
     docker:
       - image: circleci/golang:1.14
@@ -56,6 +66,9 @@ workflows:
       - build:
           requires:
             - lint
+      - check-tidy:
+          requires:
+            - build
       - test:
           requires:
             - build
