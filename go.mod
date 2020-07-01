@@ -11,7 +11,7 @@ require (
 	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
-	github.com/mattermost/go-circleci v0.3.1-0.20200701145335-2009ded22518
+	github.com/mattermost/go-circleci v0.3.1-0.20200701162837-fbb5808dafdb
 	github.com/mattermost/mattermost-server/v5 v5.23.0
 	github.com/pkg/errors v0.9.1
 	github.com/poy/onpar v1.0.0 // indirect
