@@ -17,7 +17,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 
-	"github.com/metanerd/go-circleci"
+	"github.com/mattermost/go-circleci"
 )
 
 func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
