@@ -13,6 +13,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// In seconds
+	defaultRequestTimeout       = 60
+	defaultEETaskTimeout        = 300
+	defaultCronTaskTimeout      = 300
+	defaultBuildMobileTimeout   = 7200
+	defaultBuildSpinmintTimeout = 2700
+)
+
 type LabelResponse struct {
 	Label   string
 	Message string

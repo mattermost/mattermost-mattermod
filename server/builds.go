@@ -91,7 +91,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 
 			// Update the PR in case the build link has changed because of a new commit
 			var err error
-			pr, err = s.GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
+			pr, err = s.GetUpdateChecks(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 			if err != nil {
 				return pr, errors.Wrap(err, "unable to get updated PR from GitHub")
 			}
@@ -165,7 +165,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRequest) (string, error) {
 	repo, _ := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	for {
-		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}
@@ -178,7 +178,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		}
 
 		// for the repos using circleci we have the checks now
-		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}
@@ -190,7 +190,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 
 		select {
 		case <-ctx.Done():
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
 			return "", errors.New("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}

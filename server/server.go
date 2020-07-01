@@ -117,7 +117,7 @@ func (s *Server) Stop() error {
 }
 
 func (s *Server) RefreshMembers() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
@@ -139,14 +139,15 @@ func (s *Server) RefreshMembers() {
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
 	mlog.Info("tick")
-
-	stopRequests, _ := s.shouldStopRequests()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
+	stopRequests, _ := s.shouldStopRequests(ctx)
 	if stopRequests {
 		return
 	}
 
 	for _, repository := range s.Config.Repositories {
-		ghPullRequests, _, err := s.GithubClient.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
+		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -155,16 +156,16 @@ func (s *Server) Tick() {
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, errPR := s.GetPullRequestFromGithub(ghPullRequest)
+			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 				continue
 			}
 
-			s.checkPullRequestForChanges(pullRequest)
+			s.checkPullRequestForChanges(ctx, pullRequest)
 		}
 
-		issues, _, err := s.GithubClient.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
+		issues, _, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, &github.IssueListByRepoOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -178,13 +179,13 @@ func (s *Server) Tick() {
 				continue
 			}
 
-			issue, err := s.GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
+			issue, err := s.GetIssueFromGithub(ctx, repository.Owner, repository.Name, ghIssue)
 			if err != nil {
 				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 				continue
 			}
 
-			s.checkIssueForChanges(issue)
+			s.checkIssueForChanges(ctx, issue)
 		}
 	}
 }
@@ -200,7 +201,9 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	stopRequests, timeUntilReset := s.shouldStopRequests()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
 	if stopRequests {
 		if !s.hasReportedRateLimit && timeUntilReset != nil {
 			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
@@ -238,22 +241,22 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-		s.handlePullRequestEvent(event)
+		s.handlePullRequestEvent(ctx, event)
 		return
 	}
 
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			s.handleCheckCLA(*eventIssueComment)
+			s.handleCheckCLA(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			s.handleCherryPick(*eventIssueComment)
+			s.handleCherryPick(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			s.handleAutoassign(*eventIssueComment)
+			s.handleAutoassign(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			s.handleUpdateBranch(*eventIssueComment)
+			s.handleUpdateBranch(ctx, *eventIssueComment)
 		}
 		return
 	}
@@ -263,7 +266,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.handleIssueEvent(event)
+	s.handleIssueEvent(ctx, event)
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {

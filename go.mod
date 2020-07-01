@@ -18,6 +18,5 @@ require (
 	github.com/poy/onpar v1.0.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.5.1
-	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )
