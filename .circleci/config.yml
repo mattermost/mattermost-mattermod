@@ -25,12 +25,13 @@ jobs:
       - checkout
       - run: make build
 
-  check-tidy:
+  check-dependencies:
     executor:
       name: default
     steps:
       - checkout
       - run:
+          name: Check unused Go dependencies
           command: |
             go mod tidy
             if [[ -n $(git status --porcelain) ]]; then echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; exit 1; fi
@@ -63,12 +64,10 @@ workflows:
   untagged-build:
     jobs:
       - lint
+      - check-dependencies
       - build:
           requires:
             - lint
-      - check-tidy:
-          requires:
-            - build
       - test:
           requires:
             - build
