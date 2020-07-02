@@ -8,8 +8,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handleTranslationPr(pr *model.PullRequest) {
-	if pr.Username != s.Config.Username {
+func (s *Server) handleTranslationPR(pr *model.PullRequest) {
+	if pr.Username != s.Config.TranslationsBot {
 		return
 	}
 
@@ -23,5 +23,6 @@ func (s *Server) handleTranslationPr(pr *model.PullRequest) {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 		return
 	}
-	defer r.Body.Close()
+
+	closeBody(r)
 }

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -287,4 +288,11 @@ func SetupLogging(config *Config) {
 	logger := mlog.NewLogger(loggingConfig)
 	mlog.RedirectStdLog(logger)
 	mlog.InitGlobalLogger(logger)
+}
+
+func closeBody(r *http.Response) {
+	if r.Body != nil {
+		_, _ = io.Copy(ioutil.Discard, r.Body)
+		_ = r.Body.Close()
+	}
 }

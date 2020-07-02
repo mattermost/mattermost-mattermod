@@ -28,7 +28,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
 		s.addHacktoberfestLabel(pr)
-		s.handleTranslationPr(pr)
+		s.handleTranslationPR(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
@@ -44,7 +44,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(pr)
 		s.triggerCircleCiIfNeeded(pr)
-		s.handleTranslationPr(pr)
+		s.handleTranslationPR(pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)

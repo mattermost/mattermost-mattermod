@@ -6,11 +6,18 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
-
-	"github.com/pkg/errors"
 )
+
+type WebhookValidationError struct {
+	err string
+}
+
+func (e *WebhookValidationError) Error() string {
+	return fmt.Sprintf("%v", e.err)
+}
 
 type Payload struct {
 	Username string `json:"username"`
@@ -57,15 +64,15 @@ func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (*http.Respo
 
 func validateSendToWebhookRequest(webhookURL string, payload *Payload) error {
 	if webhookURL == "" {
-		return errors.New("no Mattermost webhook URL set: unable to send message")
+		return &WebhookValidationError{"webook url not set"}
 	}
 
 	if payload.Username == "" {
-		return errors.New("username not set in webhook payload")
+		return &WebhookValidationError{"username not set"}
 	}
 
 	if payload.Text == "" {
-		return errors.New("text not set in webhook payload")
+		return &WebhookValidationError{"text not set"}
 	}
 	return nil
 }
