@@ -3,7 +3,7 @@ package server
 import (
 	"testing"
 
-	"github.com/metanerd/go-circleci"
+	"github.com/mattermost/go-circleci"
 	"github.com/stretchr/testify/assert"
 )
 
