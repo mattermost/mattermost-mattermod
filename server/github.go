@@ -210,9 +210,9 @@ func (s *Server) IsOrgMember(user string) bool {
 	return false
 }
 
-func (s *Server) IsTrustedUser(user string) bool {
-	for _, knownUser := range s.Config.CLAExclusionsList {
-		if user == knownUser {
+func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
+	for _, claExcludedUser := range s.Config.CLAExclusionsList {
+		if user == claExcludedUser {
 			return true
 		}
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
-	if s.IsOrgMember(pr.Username) || s.IsTrustedUser(pr.Username) {
+	if s.IsOrgMember(pr.Username) || s.IsBotUserFromCLAExclusionsList(pr.Username) {
 		s.triggerEnterpriseTests(pr)
 	}
 }
