@@ -71,6 +71,7 @@
     "TranslationsMattermostWebhookURL": "",
     "TranslationsMattermostMessage": "",
     "TranslationsBot": "",
+    "Translations": [],
 
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",

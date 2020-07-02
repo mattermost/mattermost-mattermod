@@ -201,6 +201,27 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 	return members, nil
 }
 
+func (s *Server) getPRFiles(ctx context.Context, owner string, repoName string, prNumber int) ([]*github.CommitFile, error) {
+	opts := &github.ListOptions{}
+	var allPRFiles []*github.CommitFile
+	for {
+		prFiles, r, err := s.GithubClient.PullRequests.ListFiles(ctx, owner, repoName, prNumber, opts)
+		if err != nil {
+			return nil, err
+		}
+		allPRFiles = append(allPRFiles, prFiles...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			return nil, errors.Errorf("failed listing pr files: got http status %s", r.Status)
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
+	}
+
+	return allPRFiles, nil
+}
+
 func (s *Server) IsOrgMember(user string) bool {
 	for _, member := range s.OrgMembers {
 		if user == member {

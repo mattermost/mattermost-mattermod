@@ -29,6 +29,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
@@ -45,6 +46,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
@@ -122,6 +124,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
