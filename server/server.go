@@ -6,11 +6,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/braintree/manners"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-mattermod/store"
@@ -30,13 +30,19 @@ import (
 type Server struct {
 	Config               *Config
 	Store                store.Store
-	Router               *mux.Router
 	GithubClient         *GithubClient
 	OrgMembers           []string
 	Builds               buildsInterface
 	commentLock          sync.Mutex
 	StartTime            time.Time
+	awsSession           *session.Session
 	hasReportedRateLimit bool
+
+	server *http.Server
+}
+
+type pingResponse struct {
+	Uptime string `json:"uptime"`
 }
 
 const (
@@ -52,16 +58,20 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config) (server *Server, err error) {
+func New(config *Config) (*Server, error) {
 	s := &Server{
 		Config:               config,
 		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
-		Router:               mux.NewRouter(),
 		StartTime:            time.Now(),
 		hasReportedRateLimit: false,
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	awsSession, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	s.awsSession = awsSession
 
 	s.Builds = &Builds{}
 	if os.Getenv(buildOverride) != "" {
@@ -71,50 +81,56 @@ func New(config *Config) (server *Server, err error) {
 		}
 	}
 
+	r := mux.NewRouter()
+	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
+	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
+
+	s.server = &http.Server{
+		Addr:         s.Config.ListenAddress,
+		Handler:      r,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  30 * time.Second,
+	}
+
 	return s, nil
 }
 
 // Start starts a server
 func (s *Server) Start() {
-	mlog.Info("Starting Mattermod Server")
-
-	rand.Seed(time.Now().Unix())
-
-	s.initializeRouter()
 	s.RefreshMembers()
-
-	var handler http.Handler = s.Router
+	mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
 	go func() {
-		mlog.Info("Listening on", mlog.String("address", s.Config.ListenAddress))
-		err := manners.ListenAndServe(s.Config.ListenAddress, handler)
-		if err != nil {
-			s.logToMattermost(err.Error())
-			mlog.Critical("server_error", mlog.Err(err))
-			panic(err.Error())
+		err := s.server.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			return
 		}
+		mlog.Error("Server exited with error", mlog.Err(err))
+		os.Exit(1)
 	}()
 }
 
 // Stop stops a server
-func (s *Server) Stop() {
-	mlog.Info("Stopping Mattermod")
-	manners.Close()
+func (s *Server) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return s.server.Shutdown(ctx)
 }
 
 func (s *Server) RefreshMembers() {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
 	if members == nil {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
@@ -124,14 +140,15 @@ func (s *Server) RefreshMembers() {
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
 	mlog.Info("tick")
-
-	stopRequests, _ := s.shouldStopRequests()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
+	stopRequests, _ := s.shouldStopRequests(ctx)
 	if stopRequests {
 		return
 	}
 
 	for _, repository := range s.Config.Repositories {
-		ghPullRequests, _, err := s.GithubClient.PullRequests.List(context.Background(), repository.Owner, repository.Name, &github.PullRequestListOptions{
+		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -140,16 +157,16 @@ func (s *Server) Tick() {
 		}
 
 		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, errPR := s.GetPullRequestFromGithub(ghPullRequest)
+			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 				continue
 			}
 
-			s.checkPullRequestForChanges(pullRequest)
+			s.checkPullRequestForChanges(ctx, pullRequest)
 		}
 
-		issues, _, err := s.GithubClient.Issues.ListByRepo(context.Background(), repository.Owner, repository.Name, &github.IssueListByRepoOptions{
+		issues, _, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, &github.IssueListByRepoOptions{
 			State: "open",
 		})
 		if err != nil {
@@ -163,37 +180,34 @@ func (s *Server) Tick() {
 				continue
 			}
 
-			issue, err := s.GetIssueFromGithub(repository.Owner, repository.Name, ghIssue)
+			issue, err := s.GetIssueFromGithub(ctx, repository.Owner, repository.Name, ghIssue)
 			if err != nil {
 				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 				continue
 			}
 
-			s.checkIssueForChanges(issue)
+			s.checkIssueForChanges(ctx, issue)
 		}
 	}
 }
 
-func (s *Server) initializeRouter() {
-	s.Router.HandleFunc("/", s.ping).Methods(http.MethodGet)
-	s.Router.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
-}
-
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
-	msg := fmt.Sprintf("{\"uptime\": \"%v\"}", time.Since(s.StartTime))
-	w.Header().Set("Content-Type", "application/json")
-
-	_, err := w.Write([]byte(msg))
+	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	stopRequests, timeUntilReset := s.shouldStopRequests()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
 	if stopRequests {
 		if !s.hasReportedRateLimit && timeUntilReset != nil {
-			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
+			s.logToMattermost(ctx, ":warning: Hit rate limit. Time until reset: "+timeUntilReset.String())
 		}
 		return
 	}
@@ -228,22 +242,22 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-		s.handlePullRequestEvent(event)
+		s.handlePullRequestEvent(ctx, event)
 		return
 	}
 
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			s.handleCheckCLA(*eventIssueComment)
+			s.handleCheckCLA(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			s.handleCherryPick(*eventIssueComment)
+			s.handleCherryPick(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			s.handleAutoassign(*eventIssueComment)
+			s.handleAutoassign(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			s.handleUpdateBranch(*eventIssueComment)
+			s.handleUpdateBranch(ctx, *eventIssueComment)
 		}
 		return
 	}
@@ -253,7 +267,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.handleIssueEvent(event)
+	s.handleIssueEvent(ctx, event)
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {

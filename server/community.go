@@ -11,7 +11,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
+func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullRequest) {
 	if pr.State == model.StateClosed {
 		return
 	}
@@ -26,7 +26,7 @@ func (s *Server) addHacktoberfestLabel(pr *model.PullRequest) {
 		return
 	}
 
-	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
+	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
 	if err != nil {
 		mlog.Error("Error applying Hacktoberfest label", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return

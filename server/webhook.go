@@ -5,6 +5,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -24,7 +25,7 @@ type Payload struct {
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (*http.Response, error) {
+func (s *Server) sendToWebhook(ctx context.Context, webhookURL string, payload *Payload) (*http.Response, error) {
 	err := validateSendToWebhookRequest(webhookURL, payload)
 	if err != nil {
 		badRequestR := &http.Response{
@@ -44,7 +45,7 @@ func (s *Server) sendToWebhook(webhookURL string, payload *Payload) (*http.Respo
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest(http.MethodPost, webhookURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, body)
 	if err != nil {
 		internalServerErrorR := &http.Response{
 			StatusCode: http.StatusInternalServerError,

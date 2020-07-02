@@ -10,9 +10,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) shouldStopRequests() (shouldStop bool, timeUntilReset *time.Duration) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
-	defer cancel()
+func (s *Server) shouldStopRequests(ctx context.Context) (shouldStop bool, timeUntilReset *time.Duration) {
 	rate, _, err := s.GithubClient.RateLimits(ctx)
 	for err != nil {
 		mlog.Error("error getting rate limit")

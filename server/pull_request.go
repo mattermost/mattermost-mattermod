@@ -14,9 +14,9 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
+func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestEvent) {
 	mlog.Info("PR-Event", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-	pr, err := s.GetPullRequestFromGithub(event.PullRequest)
+	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest)
 	if err != nil {
 		mlog.Error("Unable to get PR from GitHub", mlog.Int("pr", event.PRNumber), mlog.Err(err))
 		return
@@ -25,36 +25,36 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
-		s.triggerCircleCiIfNeeded(pr)
-		s.addHacktoberfestLabel(pr)
-		s.handleTranslationPR(pr)
+		s.checkCLA(ctx, pr)
+		s.triggerCircleCiIfNeeded(ctx, pr)
+		s.addHacktoberfestLabel(ctx, pr)
+		s.handleTranslationPR(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
-		s.triggerCircleCiIfNeeded(pr)
-		s.handleTranslationPR(pr)
+		s.checkCLA(ctx, pr)
+		s.triggerCircleCiIfNeeded(ctx, pr)
+		s.handleTranslationPR(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "labeled":
 		if event.Label == nil {
@@ -66,7 +66,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
 			go s.buildMobileApp(pr)
 
-			s.removeLabel(mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
+			s.removeLabel(ctx, mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
@@ -74,21 +74,21 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
 			go s.triggerEnterpriseTests(pr)
 
-			s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
+			s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
 		// TODO: remove the old test server code
 		if event.Label.GetName() == s.Config.SetupSpinmintTag {
 			mlog.Info("Label to spin a old test server")
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		}
 		if s.isAutoMergeLabelInLabels(pr.Labels) {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
 	case "unlabeled":
 		if event.Label == nil {
@@ -97,7 +97,7 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 
 		// TODO: remove the old test server code
@@ -115,27 +115,27 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 
 			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 			mlog.Info("Will destroy the test server for a merged/closed PR.")
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(pr)
-		s.triggerCircleCiIfNeeded(pr)
+		s.checkCLA(ctx, pr)
+		s.triggerCircleCiIfNeeded(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(context.TODO(), pr)
+			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
 		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(pr)
+			s.blockPRMerge(ctx, pr)
 		} else {
-			s.unblockPRMerge(pr)
+			s.unblockPRMerge(ctx, pr)
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
-		go s.checkIfNeedCherryPick(pr)
+		go s.checkIfNeedCherryPick(ctx, pr)
 		go s.CleanUpLabels(pr)
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
@@ -152,16 +152,16 @@ func (s *Server) handlePullRequestEvent(event *PullRequestEvent) {
 		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceID))
 		mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 		if strings.Contains(spinmint.InstanceID, "i-") {
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	}
 
-	s.checkPullRequestForChanges(pr)
+	s.checkPullRequestForChanges(ctx, pr)
 }
 
-func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
+func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullRequest) {
 	oldPr, err := s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error(err.Error())
@@ -174,7 +174,7 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 		}
 
 		for _, label := range pr.Labels {
-			s.handlePRLabeled(pr, label)
+			s.handlePRLabeled(ctx, pr, label)
 		}
 
 		return
@@ -193,7 +193,7 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 		}
 
 		if !hadLabel {
-			s.handlePRLabeled(pr, label)
+			s.handlePRLabeled(ctx, pr, label)
 			prHasChanges = true
 		}
 	}
@@ -209,7 +209,7 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 		}
 
 		if !hasLabel {
-			s.handlePRUnlabeled(pr, oldLabel)
+			s.handlePRUnlabeled(ctx, pr, oldLabel)
 			prHasChanges = true
 		}
 	}
@@ -247,14 +247,14 @@ func (s *Server) checkPullRequestForChanges(pr *model.PullRequest) {
 	}
 }
 
-func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
+func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, addedLabel string) {
 	mlog.Info("New PR label detected", mlog.Int("pr", pr.Number), mlog.String("label", addedLabel))
 
 	// Must be sure the comment is created before we let another request test
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, _, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
@@ -265,7 +265,7 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 		if *comment.User.Login == s.Config.Username &&
 			strings.Contains(*comment.Body, s.Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, s.Config.DestroyedExpirationSpinmintMessage) {
 			mlog.Info("Removing old server deletion comment with ID", mlog.Int64("ID", *comment.ID))
-			_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
+			_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
 				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
 			}
@@ -274,12 +274,8 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 
 	if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
 		mlog.Info("Label to spin a test server for upgrade")
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
 		go s.waitForBuildAndSetupSpinmint(pr, true)
-		// } else if addedLabel == s.Config.StartLoadtestTag {
-		// 	mlog.Info("Label to spin a load test")
-		// 	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StartLoadtestMessage)
-		// 	go waitForBuildAndSetupLoadtest(pr)
 	} else {
 		mlog.Info("looking for other labels")
 
@@ -288,17 +284,17 @@ func (s *Server) handlePRLabeled(pr *model.PullRequest, addedLabel string) {
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
 			}
 		}
 	}
 }
 
-func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
+func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, removedLabel string) {
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(context.TODO(), pr)
+	comments, err := s.getComments(ctx, pr)
 	if err != nil {
 		mlog.Error("failed fetching comments", mlog.Err(err))
 		return
@@ -309,7 +305,7 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 			messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage)) &&
 		!messageByUserContains(comments, s.Config.Username, s.Config.DestroyedSpinmintMessage) {
 		// Old comments created by Mattermod user will be deleted here.
-		s.removeOldComments(comments, pr)
+		s.removeOldComments(ctx, comments, pr)
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
 		if err != nil {
@@ -325,12 +321,12 @@ func (s *Server) handlePRUnlabeled(pr *model.PullRequest, removedLabel string) {
 		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 		mlog.Info("Will destroy the test server for a merged/closed PR.")
 
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 		go s.destroySpinmint(pr, spinmint.InstanceID)
 	}
 }
 
-func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.PullRequest) {
+func (s *Server) removeOldComments(ctx context.Context, comments []*github.IssueComment, pr *model.PullRequest) {
 	serverMessages := []string{s.Config.SetupSpinmintMessage,
 		s.Config.SetupSpinmintUpgradeMessage,
 		s.Config.SetupSpinmintFailedMessage,
@@ -346,7 +342,7 @@ func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.Pu
 			for _, message := range serverMessages {
 				if strings.Contains(*comment.Body, message) {
 					mlog.Info("Removing old comment with ID", mlog.Int64("ID", *comment.ID))
-					_, err := s.GithubClient.Issues.DeleteComment(context.Background(), pr.RepoOwner, pr.RepoName, *comment.ID)
+					_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
 					if err != nil {
 						mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
 					}
@@ -359,6 +355,8 @@ func (s *Server) removeOldComments(comments []*github.IssueComment, pr *model.Pu
 
 func (s *Server) CheckPRActivity() {
 	mlog.Info("Checking if need to Stale a Pull request")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
@@ -366,7 +364,7 @@ func (s *Server) CheckPRActivity() {
 	}
 
 	for _, pr := range prs {
-		pull, _, errPull := s.GithubClient.PullRequests.Get(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number)
+		pull, _, errPull := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
 			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 			break
@@ -386,7 +384,7 @@ func (s *Server) CheckPRActivity() {
 		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
 			var prLabels []string
 			canStale := true
-			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 				continue
@@ -407,12 +405,12 @@ func (s *Server) CheckPRActivity() {
 
 			if canStale {
 				label := []string{s.Config.StaleLabel}
-				_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, label)
+				_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 					break
 				}
-				s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
 			}
 		}
 	}
@@ -422,6 +420,8 @@ func (s *Server) CheckPRActivity() {
 func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
@@ -430,8 +430,6 @@ func (s *Server) CleanOutdatedPRs() {
 
 	mlog.Info("Processing PRs", mlog.Int("PRs Count", len(prs)))
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeoutRequestGithub)
-	defer cancel()
 	for _, pr := range prs {
 		pull, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if _, ok := err.(*github.RateLimitError); ok {
@@ -462,7 +460,9 @@ func (s *Server) CleanUpLabels(pr *model.PullRequest) {
 		return
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		mlog.Error("Error listing the labels for closed PR", mlog.Err(err))
 		return
@@ -476,7 +476,7 @@ func (s *Server) CleanUpLabels(pr *model.PullRequest) {
 				wg.Add(1)
 				go func(label string) {
 					defer wg.Done()
-					s.removeLabel(pr.RepoOwner, pr.RepoName, pr.Number, label)
+					s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				}(labelToRemove)
 			}
 		}

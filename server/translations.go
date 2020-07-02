@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handleTranslationPR(pr *model.PullRequest) {
+func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest) {
 	if pr.Username != s.Config.TranslationsBot {
 		return
 	}
@@ -18,7 +19,7 @@ func (s *Server) handleTranslationPR(pr *model.PullRequest) {
 	mlog.Debug("Sending Mattermost message", mlog.String("message", msg))
 
 	webhookRequest := &Payload{Username: "Weblate", Text: msg}
-	r, err := s.sendToWebhook(s.Config.TranslationsMattermostWebhookURL, webhookRequest)
+	r, err := s.sendToWebhook(ctx, s.Config.TranslationsMattermostWebhookURL, webhookRequest)
 	if err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 		return
