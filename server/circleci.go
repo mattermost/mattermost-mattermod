@@ -31,7 +31,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	// Checking if the repo have circleci setup
-	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, "github", pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
+	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
 		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
@@ -65,7 +65,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = s.CircleCiClient.BuildByProjectWithContext(ctx, "github", pr.RepoOwner, pr.RepoName, opts)
+	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
