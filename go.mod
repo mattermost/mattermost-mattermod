@@ -8,7 +8,7 @@ require (
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/mock v1.4.3
-	github.com/google/go-github/v31 v31.0.0
+	github.com/google/go-github/v32 v32.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/go-circleci v0.4.0
