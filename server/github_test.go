@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
