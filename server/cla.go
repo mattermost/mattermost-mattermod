@@ -113,7 +113,7 @@ func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
 		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err
 	}
-	closeBody(r)
+	defer closeBody(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
