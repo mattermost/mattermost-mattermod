@@ -17,7 +17,7 @@ type WebhookValidationError struct {
 
 // Error implements the error interface.
 func (e *WebhookValidationError) Error() string {
-	return "invalid" + e.field
+	return "invalid " + e.field
 }
 
 func newWebhookValidationError(field string) *WebhookValidationError {
@@ -68,7 +68,7 @@ func validateSendToWebhookRequest(webhookURL string, payload *Payload) error {
 	}
 
 	if payload.Text == "" {
-		return &WebhookValidationError{"text"}
+		return newWebhookValidationError("text")
 	}
 	return nil
 }
