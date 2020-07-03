@@ -7,17 +7,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 )
 
+// WebhookValidationError contains an error in the webhook payload.
 type WebhookValidationError struct {
-	err string
+	field string
 }
 
+// Error implements the error interface.
 func (e *WebhookValidationError) Error() string {
-	return fmt.Sprintf("%v", e.err)
+	return "invalid" + e.field
+}
+
+func newWebhookValidationError(field string) *WebhookValidationError {
+	return &WebhookValidationError{
+		field: field,
+	}
 }
 
 type Payload struct {
@@ -25,55 +31,44 @@ type Payload struct {
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(ctx context.Context, webhookURL string, payload *Payload) (*http.Response, error) {
+func (s *Server) sendToWebhook(ctx context.Context, webhookURL string, payload *Payload) error {
 	err := validateSendToWebhookRequest(webhookURL, payload)
 	if err != nil {
-		badRequestR := &http.Response{
-			StatusCode: http.StatusBadRequest,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
-		}
-		return badRequestR, err
+		return err
 	}
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		internalServerErrorR := &http.Response{
-			StatusCode: http.StatusInternalServerError,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
-		}
-		return internalServerErrorR, err
+		return err
 	}
 	body := bytes.NewReader(payloadBytes)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, body)
 	if err != nil {
-		internalServerErrorR := &http.Response{
-			StatusCode: http.StatusInternalServerError,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(err.Error())),
-		}
-		return internalServerErrorR, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return r, err
+		return err
 	}
+	closeBody(r)
 
-	return r, nil
+	return nil
 }
 
 func validateSendToWebhookRequest(webhookURL string, payload *Payload) error {
 	if webhookURL == "" {
-		return &WebhookValidationError{"webook url not set"}
+		return newWebhookValidationError("webhook URL")
 	}
 
 	if payload.Username == "" {
-		return &WebhookValidationError{"username not set"}
+		return newWebhookValidationError("username")
 	}
 
 	if payload.Text == "" {
-		return &WebhookValidationError{"text not set"}
+		return &WebhookValidationError{"text"}
 	}
 	return nil
 }

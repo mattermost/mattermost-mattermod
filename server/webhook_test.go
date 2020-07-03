@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -18,20 +17,15 @@ func TestSendToWebhookIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	s := &Server{
-		StartTime: time.Now(),
-	}
+	s := &Server{}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer mattermost.Close()
 
-	r, err := s.sendToWebhook(context.Background(), mattermost.URL, validPayload)
+	err := s.sendToWebhook(context.Background(), mattermost.URL, validPayload)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, r.StatusCode)
-
-	closeBody(r)
 }
 
 func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
@@ -39,22 +33,17 @@ func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	s := &Server{
-		StartTime: time.Now(),
-	}
+	s := &Server{}
 
 	invalidPayload := &Payload{Text: "test"}
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer mattermost.Close()
 
-	r, err := s.sendToWebhook(context.Background(), mattermost.URL, invalidPayload)
-	var wErr *WebhookValidationError
-	assert.True(t, errors.As(err, &wErr))
-	assert.NotNil(t, r)
-	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
-
-	closeBody(r)
+	err := s.sendToWebhook(context.Background(), mattermost.URL, invalidPayload)
+	var whError *WebhookValidationError
+	require.True(t, errors.As(err, &whError))
+	assert.Equal(t, whError.field, "username")
 }
 
 func TestSendToWebhookWebhookURLNotSetIntegration(t *testing.T) {
@@ -62,20 +51,15 @@ func TestSendToWebhookWebhookURLNotSetIntegration(t *testing.T) {
 		t.Skip("skipping integration test")
 	}
 
-	s := &Server{
-		StartTime: time.Now(),
-	}
+	s := &Server{}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer mattermost.Close()
 
-	r, err := s.sendToWebhook(context.Background(), "", validPayload)
-	var wErr *WebhookValidationError
-	assert.True(t, errors.As(err, &wErr))
-	assert.NotNil(t, r)
-	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
-
-	closeBody(r)
+	err := s.sendToWebhook(context.Background(), "", validPayload)
+	var whError *WebhookValidationError
+	require.True(t, errors.As(err, &whError))
+	assert.Equal(t, whError.field, "webhook URL")
 }

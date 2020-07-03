@@ -110,18 +110,16 @@ func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
 	}
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
-		mlog.Error("Unable to get CLA list", mlog.Err(err))
 		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err
 	}
+	closeBody(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		mlog.Error("Unable to read response body", mlog.Err(err))
 		s.logToMattermost(ctx, "unable to read CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err
 	}
-	closeBody(r)
 	return body, nil
 }
 
