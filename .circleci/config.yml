@@ -33,7 +33,7 @@ jobs:
       - run:
           name: Check unused Go dependencies
           command: |
-            go mod tidy
+            go mod tidy -v
             if [[ -n $(git status --porcelain) ]]; then echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; exit 1; fi
 
   test:
