@@ -25,6 +25,17 @@ jobs:
       - checkout
       - run: make build
 
+  check-dependencies:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Check unused Go dependencies
+          command: |
+            go mod tidy -v
+            if [[ -n $(git --no-pager diff --exit-code go.mod go.sum) ]]; then echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; exit 1; fi
+
   test:
     docker:
       - image: circleci/golang:1.14
@@ -53,9 +64,11 @@ workflows:
   untagged-build:
     jobs:
       - lint
+      - check-dependencies
       - build:
           requires:
             - lint
+            - check-dependencies
       - test:
           requires:
             - build
