@@ -12,10 +12,6 @@ import (
 )
 
 func TestSendToWebhookIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	s := &Server{}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
@@ -28,10 +24,6 @@ func TestSendToWebhookIntegration(t *testing.T) {
 }
 
 func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	s := &Server{}
 
 	invalidPayload := &Payload{Text: "test"}
@@ -46,10 +38,6 @@ func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
 }
 
 func TestSendToWebhookWebhookURLNotSetIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	s := &Server{}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
