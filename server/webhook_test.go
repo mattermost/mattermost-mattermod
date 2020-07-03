@@ -2,8 +2,7 @@ package server
 
 import (
 	"context"
-	"io/ioutil"
-	"log"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,21 +23,13 @@ func TestSendToWebhookIntegration(t *testing.T) {
 	}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
-	expectedMattermostPayload := "ok"
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write([]byte(expectedMattermostPayload))
-		if err != nil {
-			log.Fatal(err)
-		}
 	}))
 	defer mattermost.Close()
 
 	r, err := s.sendToWebhook(context.Background(), mattermost.URL, validPayload)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, r.StatusCode)
-	data, err := ioutil.ReadAll(r.Body)
-	require.NoError(t, err)
-	assert.Equal(t, expectedMattermostPayload, string(data))
 
 	closeBody(r)
 }
@@ -58,7 +49,8 @@ func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
 	defer mattermost.Close()
 
 	r, err := s.sendToWebhook(context.Background(), mattermost.URL, invalidPayload)
-	require.Error(t, err.(*WebhookValidationError), err)
+	var wErr *WebhookValidationError
+	assert.True(t, errors.As(err, &wErr))
 	assert.NotNil(t, r)
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 
@@ -80,7 +72,8 @@ func TestSendToWebhookWebhookURLNotSetIntegration(t *testing.T) {
 	defer mattermost.Close()
 
 	r, err := s.sendToWebhook(context.Background(), "", validPayload)
-	require.Error(t, err.(*WebhookValidationError), err)
+	var wErr *WebhookValidationError
+	assert.True(t, errors.As(err, &wErr))
 	assert.NotNil(t, r)
 	assert.Equal(t, http.StatusBadRequest, r.StatusCode)
 
