@@ -17,11 +17,10 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 
-	"github.com/metanerd/go-circleci"
+	"github.com/mattermost/go-circleci"
 )
 
 func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
-	client := &circleci.Client{Token: s.Config.CircleCIToken}
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
@@ -32,7 +31,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	// Checking if the repo have circleci setup
-	builds, err := client.ListRecentBuildsForProject("github", pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
+	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
 		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
@@ -66,7 +65,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = client.BuildByProject("github", pr.RepoOwner, pr.RepoName, opts)
+	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
@@ -211,16 +210,15 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
-			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			var builds []*circleci.Build
 			var err error
-			builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
+			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
 			if err != nil {
 				return nil, err
 			}
 
 			if len(builds) == 0 {
-				builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
+				builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
 				if err != nil {
 					return nil, err
 				}
@@ -244,9 +242,8 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 		case <-ctx.Done():
 			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
-			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
-			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
+			artifacts, err := s.CircleCiClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
 			if err != nil {
 				return nil, err
 			}
