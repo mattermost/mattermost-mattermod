@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
