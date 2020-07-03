@@ -19,8 +19,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/gorilla/mux"
+	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
@@ -31,6 +32,7 @@ type Server struct {
 	Config               *Config
 	Store                store.Store
 	GithubClient         *GithubClient
+	CircleCiClient       *circleci.Client
 	OrgMembers           []string
 	Builds               buildsInterface
 	commentLock          sync.Mutex
@@ -67,6 +69,7 @@ func New(config *Config) (*Server, error) {
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {
 		return nil, err

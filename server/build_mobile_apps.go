@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/metanerd/go-circleci"
 )
 
 func (s *Server) buildMobileApp(pr *model.PullRequest) {
