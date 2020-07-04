@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
-	if s.IsOrgMember(pr.Username) {
+	if s.IsOrgMember(pr.Username) || s.IsBotUserFromCLAExclusionsList(pr.Username) {
 		s.triggerEnterpriseTests(pr)
 	}
 }
@@ -142,7 +142,7 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 	}
 	err := s.createRepoStatus(ctx, pr, enterpriseStatus)
 	if err != nil {
-		s.logToMattermost("failed to create status for PR: " + strconv.Itoa(pr.Number) + " Context: " + s.Config.EnterpriseGithubStatusContext + " Error: ```" + err.Error() + "```")
+		s.logToMattermost(ctx, "failed to create status for PR: "+strconv.Itoa(pr.Number)+" Context: "+s.Config.EnterpriseGithubStatusContext+" Error: ```"+err.Error()+"```")
 	}
 }
 

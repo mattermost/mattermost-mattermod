@@ -210,6 +210,15 @@ func (s *Server) IsOrgMember(user string) bool {
 	return false
 }
 
+func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
+	for _, claExcludedUser := range s.Config.CLAExclusionsList {
+		if user == claExcludedUser {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) checkIfRefExists(ctx context.Context, pr *model.PullRequest, org string, ref string) (bool, error) {
 	_, r, err := s.GithubClient.Git.GetRef(ctx, org, pr.RepoName, ref)
 	if err != nil {

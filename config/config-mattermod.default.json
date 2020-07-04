@@ -58,6 +58,7 @@
             "ExpectedArtifacts": 0
         }
     ],
+
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
     "EnterpriseWebappReponame": "",
@@ -66,6 +67,11 @@
     "EnterpriseGithubStatusEETests": "",
     "EnterpriseGithubStatusTETests": "",
     "EnterpriseWorkflowName": "",
+
+    "TranslationsMattermostWebhookURL": "",
+    "TranslationsMattermostMessage": "",
+    "TranslationsBot": "",
+
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "CLAExclusionsList": [],

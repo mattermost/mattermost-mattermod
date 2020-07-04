@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -125,14 +126,14 @@ func (s *Server) RefreshMembers() {
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
 	if members == nil {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
@@ -209,7 +210,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
 	if stopRequests {
 		if !s.hasReportedRateLimit && timeUntilReset != nil {
-			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
+			s.logToMattermost(ctx, ":warning: Hit rate limit. Time until reset: "+timeUntilReset.String())
 		}
 		return
 	}
@@ -304,4 +305,11 @@ func SetupLogging(config *Config) {
 	logger := mlog.NewLogger(loggingConfig)
 	mlog.RedirectStdLog(logger)
 	mlog.InitGlobalLogger(logger)
+}
+
+func closeBody(r *http.Response) {
+	if r.Body != nil {
+		_, _ = io.Copy(ioutil.Discard, r.Body)
+		_ = r.Body.Close()
+	}
 }

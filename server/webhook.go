@@ -5,27 +5,45 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"io"
-	"io/ioutil"
 	"net/http"
-
-	"github.com/pkg/errors"
 )
+
+// WebhookValidationError contains an error in the webhook payload.
+type WebhookValidationError struct {
+	field string
+}
+
+// Error implements the error interface.
+func (e *WebhookValidationError) Error() string {
+	return "invalid " + e.field
+}
+
+func newWebhookValidationError(field string) *WebhookValidationError {
+	return &WebhookValidationError{
+		field: field,
+	}
+}
 
 type Payload struct {
 	Username string `json:"username"`
 	Text     string `json:"text"`
 }
 
-func (s *Server) sendToWebhook(payload *Payload) error {
+func (s *Server) sendToWebhook(ctx context.Context, webhookURL string, payload *Payload) error {
+	err := validateSendToWebhookRequest(webhookURL, payload)
+	if err != nil {
+		return err
+	}
+
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 	body := bytes.NewReader(payloadBytes)
 
-	req, err := http.NewRequest(http.MethodPost, s.Config.MattermostWebhookURL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, body)
 	if err != nil {
 		return err
 	}
@@ -35,14 +53,22 @@ func (s *Server) sendToWebhook(payload *Payload) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_, _ = io.Copy(ioutil.Discard, r.Body)
-		r.Body.Close()
-	}()
+	closeBody(r)
 
-	if r.StatusCode != http.StatusOK {
-		return errors.Errorf("received non-200 status code posting to mattermost: %v, %v", r.StatusCode, r.Body)
+	return nil
+}
+
+func validateSendToWebhookRequest(webhookURL string, payload *Payload) error {
+	if webhookURL == "" {
+		return newWebhookValidationError("webhook URL")
 	}
 
+	if payload.Username == "" {
+		return newWebhookValidationError("username")
+	}
+
+	if payload.Text == "" {
+		return newWebhookValidationError("text")
+	}
 	return nil
 }
