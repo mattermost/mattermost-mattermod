@@ -5,12 +5,9 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"io"
-	"io/ioutil"
 	"net/http"
-
-	"github.com/pkg/errors"
 )
 
 // WebhookValidationError contains an error in the webhook payload.
