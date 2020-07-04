@@ -29,7 +29,7 @@ build:
 
 	rm -rf dist/
 	mkdir -p dist/mattermod
-	$(GO) build
+	$(GO) build ./cmd/mattermost-mattermod
 	mv mattermost-mattermod dist/mattermod/
 	cp config/config-mattermod.default.json dist/mattermod/config-mattermod.json
 

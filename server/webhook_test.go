@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,14 +13,15 @@ import (
 )
 
 func TestSendToWebhookIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
 	s := &Server{}
 
 	validPayload := &Payload{Username: "mattermod", Text: "test"}
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var p Payload
+		err := json.NewDecoder(r.Body).Decode(&p)
+		require.NoError(t, err)
+		assert.Equal(t, validPayload.Username, p.Username)
+		assert.Equal(t, validPayload.Text, p.Text)
 	}))
 	defer mattermost.Close()
 
@@ -27,38 +29,34 @@ func TestSendToWebhookIntegration(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSendToWebhookUsernameNotSetIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
-
+func TestSendToWebhookIntegrationInvalid(t *testing.T) {
 	s := &Server{}
 
-	invalidPayload := &Payload{Text: "test"}
 	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
 	defer mattermost.Close()
 
-	err := s.sendToWebhook(context.Background(), mattermost.URL, invalidPayload)
-	var whError *WebhookValidationError
-	require.True(t, errors.As(err, &whError))
-	assert.Equal(t, whError.field, "username")
-}
+	t.Run("UsernameNotSet", func(t *testing.T) {
+		invalid := &Payload{Text: "test"}
+		err := s.sendToWebhook(context.Background(), mattermost.URL, invalid)
+		var whError *WebhookValidationError
+		require.True(t, errors.As(err, &whError))
+		assert.Equal(t, whError.field, "username")
+	})
 
-func TestSendToWebhookWebhookURLNotSetIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	t.Run("TextNotSet", func(t *testing.T) {
+		invalid := &Payload{Username: "mattermod"}
+		err := s.sendToWebhook(context.Background(), mattermost.URL, invalid)
+		var whError *WebhookValidationError
+		require.True(t, errors.As(err, &whError))
+		assert.Equal(t, whError.field, "text")
+	})
 
-	s := &Server{}
-
-	validPayload := &Payload{Username: "mattermod", Text: "test"}
-	mattermost := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	}))
-	defer mattermost.Close()
-
-	err := s.sendToWebhook(context.Background(), "", validPayload)
-	var whError *WebhookValidationError
-	require.True(t, errors.As(err, &whError))
-	assert.Equal(t, whError.field, "webhook URL")
+	t.Run("URLNotSet", func(t *testing.T) {
+		valid := &Payload{Username: "mattermod", Text: "test"}
+		err := s.sendToWebhook(context.Background(), "", valid)
+		var whError *WebhookValidationError
+		require.True(t, errors.As(err, &whError))
+		assert.Equal(t, whError.field, "webhook URL")
+	})
 }

@@ -108,12 +108,12 @@ func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	r, err := http.DefaultClient.Do(req)
+	r, err := http.DefaultClient.Do(req) //nolint
 	if err != nil {
 		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err
 	}
-	closeBody(r)
+	defer closeBody(r)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
