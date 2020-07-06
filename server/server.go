@@ -260,7 +260,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 			s.handleAutoassign(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			s.handleUpdateBranch(ctx, *eventIssueComment)
+			err := s.handleUpdateBranch(ctx, *eventIssueComment)
+			mlog.Error("Error updating branch", mlog.Err(err))
 		}
 		return
 	}
