@@ -5,9 +5,18 @@ package server
 
 import (
 	"context"
+	"time"
 
+	"github.com/die-net/lrucache"
 	"github.com/google/go-github/v32/github"
+	"github.com/gregjones/httpcache"
 	"golang.org/x/oauth2"
+	"golang.org/x/time/rate"
+)
+
+const (
+	lruCacheMaxSizeInBytes  = 1000000000 // 1Gb
+	lruCacheMaxAgeInSeconds = 2629800    // 1 month
 )
 
 type ChecksService interface {
@@ -71,10 +80,15 @@ type GithubClient struct {
 	Repositories  RepositoriesService
 }
 
-func NewGithubClient(accessToken string) *GithubClient {
+func NewGithubClient(accessToken string, limitTokens int) *GithubClient {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
-	client := github.NewClient(tc)
+	limit := rate.Every(time.Second / time.Duration(limitTokens))
+	limiterTransport := NewGithubRateLimitTransport(limit, limitTokens, tc.Transport)
+	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
+	httpCacheTransport := httpcache.NewTransport(httpCache)
+	httpCacheTransport.Transport = limiterTransport
+	client := github.NewClient(httpCacheTransport.Client())
 
 	return &GithubClient{
 		client:        client,

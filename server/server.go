@@ -67,7 +67,7 @@ func New(config *Config) (*Server, error) {
 		hasReportedRateLimit: false,
 	}
 
-	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
 	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {
@@ -144,10 +144,6 @@ func (s *Server) Tick() {
 	mlog.Info("tick")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
-	stopRequests, _ := s.shouldStopRequests(ctx)
-	if stopRequests {
-		return
-	}
 
 	for _, repository := range s.Config.Repositories {
 		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
@@ -206,13 +202,6 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
-	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
-	if stopRequests {
-		if !s.hasReportedRateLimit && timeUntilReset != nil {
-			s.logToMattermost(":warning: Hit rate limit. Time until reset: " + timeUntilReset.String())
-		}
-		return
-	}
 
 	s.hasReportedRateLimit = false
 
