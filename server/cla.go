@@ -55,7 +55,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		mlog.Int("pr n", pr.Number),
 	)
 
-	if contains(s.Config.CLAExclusionsList, username) {
+	if s.IsBotUserFromCLAExclusionsList(username) {
 		status := &github.RepoStatus{
 			State:       github.String(stateSuccess),
 			Description: github.String(fmt.Sprintf("%s excluded", username)),
@@ -67,7 +67,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 		return
 	}
 
-	body, errCSV := s.getCSV()
+	body, errCSV := s.getCSV(ctx)
 	if errCSV != nil {
 		return
 	}
@@ -103,19 +103,21 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 	_ = s.createRepoStatus(ctx, pr, status)
 }
 
-func (s *Server) getCSV() ([]byte, error) {
-	resp, err := http.Get(s.Config.SignedCLAURL)
+func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.Config.SignedCLAURL, http.NoBody)
 	if err != nil {
-		mlog.Error("Unable to get CLA list", mlog.Err(err))
-		s.logToMattermost("unable to get CLA google csv file Error: ```" + err.Error() + "```")
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
+	r, err := http.DefaultClient.Do(req) //nolint
 	if err != nil {
-		mlog.Error("Unable to read response body", mlog.Err(err))
-		s.logToMattermost("unable to read CLA google csv file Error: ```" + err.Error() + "```")
+		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```"+err.Error()+"```")
+		return nil, err
+	}
+	defer closeBody(r)
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.logToMattermost(ctx, "unable to read CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err
 	}
 	return body, nil
@@ -150,6 +152,6 @@ func (s *Server) createCLAPendingStatus(ctx context.Context, pr *model.PullReque
 	}
 	err := s.createRepoStatus(ctx, pr, status)
 	if err != nil {
-		s.logToMattermost("failed to create status for PR: " + strconv.Itoa(pr.Number) + " Context: " + s.Config.CLAGithubStatusContext + " Error: ```" + err.Error() + "```")
+		s.logToMattermost(ctx, "failed to create status for PR: "+strconv.Itoa(pr.Number)+" Context: "+s.Config.CLAGithubStatusContext+" Error: ```"+err.Error()+"```")
 	}
 }

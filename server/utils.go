@@ -1,17 +1,13 @@
 package server
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) logToMattermost(msg string, args ...interface{}) {
-	if s.Config.MattermostWebhookURL == "" {
-		mlog.Warn("No Mattermost webhook URL set: unable to send message")
-		return
-	}
-
+func (s *Server) logToMattermost(ctx context.Context, msg string, args ...interface{}) {
 	webhookMessage := fmt.Sprintf(msg, args...)
 	mlog.Debug("Sending Mattermost message", mlog.String("message", webhookMessage))
 
@@ -21,8 +17,10 @@ func (s *Server) logToMattermost(msg string, args ...interface{}) {
 
 	webhookRequest := &Payload{Username: "Mattermod", Text: webhookMessage}
 
-	if err := s.sendToWebhook(webhookRequest); err != nil {
+	err := s.sendToWebhook(ctx, s.Config.MattermostWebhookURL, webhookRequest)
+	if err != nil {
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
+		return
 	}
 }
 

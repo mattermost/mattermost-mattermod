@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -28,16 +29,15 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config               *Config
-	Store                store.Store
-	GithubClient         *GithubClient
-	CircleCiClient       *circleci.Client
-	OrgMembers           []string
-	Builds               buildsInterface
-	commentLock          sync.Mutex
-	StartTime            time.Time
-	awsSession           *session.Session
-	hasReportedRateLimit bool
+	Config         *Config
+	Store          store.Store
+	GithubClient   *GithubClient
+	CircleCiClient *circleci.Client
+	OrgMembers     []string
+	Builds         buildsInterface
+	commentLock    sync.Mutex
+	StartTime      time.Time
+	awsSession     *session.Session
 
 	server *http.Server
 }
@@ -61,10 +61,9 @@ const (
 
 func New(config *Config) (*Server, error) {
 	s := &Server{
-		Config:               config,
-		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime:            time.Now(),
-		hasReportedRateLimit: false,
+		Config:    config,
+		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime: time.Now(),
 	}
 
 	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
@@ -125,14 +124,14 @@ func (s *Server) RefreshMembers() {
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
 	if members == nil {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost("refresh failed, using org members of previous day\n" + err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
 		return
 	}
 
@@ -202,9 +201,6 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
-
-	s.hasReportedRateLimit = false
-
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
@@ -293,4 +289,11 @@ func SetupLogging(config *Config) {
 	logger := mlog.NewLogger(loggingConfig)
 	mlog.RedirectStdLog(logger)
 	mlog.InitGlobalLogger(logger)
+}
+
+func closeBody(r *http.Response) {
+	if r.Body != nil {
+		_, _ = io.Copy(ioutil.Discard, r.Body)
+		_ = r.Body.Close()
+	}
 }
