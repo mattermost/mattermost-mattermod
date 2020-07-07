@@ -31,8 +31,7 @@ func NewTestingTarget(filter logr.Filter, tb testing.TB, maxQueue int) (*Testing
 	return tt, nil
 }
 
-// Write converts the log record to bytes, via the Formatter, and outputs to the socket.
-// Called by dedicated target goroutine and will block until success or shutdown.
+// Write proxies a log record via the testing APIs.
 func (tt *TestingTarget) Write(rec *logr.LogRec) error {
 	recFlds := rec.Fields()
 	args := make([]interface{}, len(recFlds)+2)
