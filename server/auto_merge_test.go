@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAutoMergePR(t *testing.T) {
@@ -129,7 +130,8 @@ func TestAutoMergePR(t *testing.T) {
 			Config:       cfg,
 		}
 
-		s.AutoMergePR()
+		err := s.AutoMergePR()
+		require.NoError(t, err)
 	})
 
 	t.Run("Closed", func(t *testing.T) {
@@ -162,7 +164,8 @@ func TestAutoMergePR(t *testing.T) {
 			Config:       cfg,
 		}
 
-		s.AutoMergePR()
+		err := s.AutoMergePR()
+		require.NoError(t, err)
 	})
 
 	// TODO: verify the log line once MM-26709 is done.
@@ -187,16 +190,6 @@ func TestAutoMergePR(t *testing.T) {
 			PullRequests: prMock,
 		}
 
-		prStoreMock := stmock.NewMockPullRequestStore(ctrl)
-		prStoreMock.EXPECT().
-			ListOpen().
-			Return(prs, nil)
-
-		ss := stmock.NewMockStore(ctrl)
-		ss.EXPECT().
-			PullRequest().
-			Return(prStoreMock)
-
 		cfg := &Config{
 			AutoPRMergeLabel: "auto-merge",
 		}
@@ -206,7 +199,8 @@ func TestAutoMergePR(t *testing.T) {
 			Config:       cfg,
 		}
 
-		s.AutoMergePR()
+		err := s.AutoMergePR()
+		require.NoError(t, err)
 	})
 
 	// TODO: verify the log line once MM-26709 is done.
@@ -258,16 +252,6 @@ func TestAutoMergePR(t *testing.T) {
 			Repositories: repoMock,
 		}
 
-		prStoreMock := stmock.NewMockPullRequestStore(ctrl)
-		prStoreMock.EXPECT().
-			ListOpen().
-			Return(prs, nil)
-
-		ss := stmock.NewMockStore(ctrl)
-		ss.EXPECT().
-			PullRequest().
-			Return(prStoreMock)
-
 		cfg := &Config{
 			AutoPRMergeLabel: "auto-merge",
 		}
@@ -277,7 +261,8 @@ func TestAutoMergePR(t *testing.T) {
 			Config:       cfg,
 		}
 
-		s.AutoMergePR()
+		err := s.AutoMergePR()
+		require.NoError(t, err)
 	})
 
 	prs[0].Labels = []string{}
@@ -291,9 +276,9 @@ func TestAutoMergePR(t *testing.T) {
 			Config: cfg,
 		}
 
-		s.AutoMergePR()
+		err := s.AutoMergePR()
+		require.NoError(t, err)
 	})
-
 }
 
 func TestHasAutoMerge(t *testing.T) {
