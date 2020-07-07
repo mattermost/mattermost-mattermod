@@ -83,7 +83,7 @@ type GithubClient struct {
 
 func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
 	if limitTokens <= 0 {
-		return nil, errors.New("Limit tokens must be greater than 0")
+		return nil, errors.New("rate limit tokens for github client must be greater than 0")
 	}
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
