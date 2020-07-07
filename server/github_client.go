@@ -81,14 +81,10 @@ type GithubClient struct {
 	Repositories  RepositoriesService
 }
 
-func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
-	if limitTokens <= 0 {
-		return nil, errors.New("rate limit tokens for github client must be greater than 0")
-	}
+func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int) *GithubClient {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
-	limit := rate.Every(time.Second / time.Duration(limitTokens))
-	limiterTransport := NewGithubRateLimitTransport(limit, limitTokens, tc.Transport)
+	limiterTransport := NewGithubRateLimitTransport(limit, burstTokens, tc.Transport)
 	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport
@@ -102,7 +98,15 @@ func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error)
 		Organizations: client.Organizations,
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
-	}, nil
+	}
+}
+
+func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
+	if limitTokens <= 0 {
+		return nil, errors.New("rate limit tokens for github client must be greater than 0")
+	}
+	limit := rate.Every(time.Second / time.Duration(limitTokens))
+	return NewGithubClientWithLimiter(accessToken, limit, limitTokens), nil
 }
 
 func (c *GithubClient) RateLimits(ctx context.Context) (*github.RateLimits, *github.Response, error) {
