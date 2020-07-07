@@ -86,7 +86,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.blockPRMerge(ctx, pr)
 		}
-		if s.isAutoMergeLabelInLabels(pr.Labels) {
+		if s.hasAutoMerge(pr.Labels) {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}

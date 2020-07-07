@@ -41,9 +41,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	}
 
 	var instance *ec2.Instance
-	spinmint, appErr := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-	if appErr != nil {
-		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", appErr.Error()))
+	spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if err != nil {
+		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", err.Error()))
 		return
 	}
 
