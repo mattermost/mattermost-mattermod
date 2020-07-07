@@ -52,17 +52,17 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for image to publish")
 		case <-time.After(10 * time.Second):
-			var appErr *model.AppError
-			pr, appErr = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-			if appErr != nil {
-				return nil, errors.Wrap(appErr, "unable to get updated PR from Mattermod database")
+			var err error
+			pr, err = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
 			desiredTag := b.getInstallationVersion(pr)
 			image := "mattermost/mattermost-enterprise-edition"
 
-			_, err := reg.ManifestDigest(image, desiredTag)
+			_, err = reg.ManifestDigest(image, desiredTag)
 			if err != nil && !strings.Contains(err.Error(), "status=404") {
 				return pr, errors.Wrap(err, "unable to fetch tag from docker registry")
 			}
@@ -83,14 +83,13 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for build to finish")
 		case <-time.After(30 * time.Second):
-			var appErr *model.AppError
-			pr, appErr = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-			if appErr != nil {
-				return nil, errors.Wrap(appErr, "unable to get updated PR from Mattermod database")
+			var err error
+			pr, err = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
-			var err error
 			pr, err = s.GetUpdateChecks(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 			if err != nil {
 				return pr, errors.Wrap(err, "unable to get updated PR from GitHub")

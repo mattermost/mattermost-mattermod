@@ -4,8 +4,6 @@
 package model
 
 import (
-	"encoding/json"
-	"io"
 	"time"
 )
 
@@ -30,23 +28,4 @@ type PullRequest struct {
 	URL                 string
 	CreatedAt           time.Time
 	MaintainerCanModify bool
-}
-
-func (o *PullRequest) ToJSON() (string, error) {
-	b, err := json.Marshal(o)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
-}
-
-func PullRequestFromJSON(data io.Reader) (*PullRequest, error) {
-	var pr PullRequest
-	err := json.NewDecoder(data).Decode(&pr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pr, nil
 }
