@@ -11,8 +11,9 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/google/go-github/v32 v32.0.0
 	github.com/gorilla/mux v1.7.4
-	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
+	github.com/jarcoal/httpmock v1.0.5
+	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
 	github.com/mattermost/go-circleci v0.4.0
 	github.com/mattermost/mattermost-server/v5 v5.23.0
 	github.com/pkg/errors v0.9.1

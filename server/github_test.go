@@ -1,17 +1,33 @@
 package server_test
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
+	"github.com/jarcoal/httpmock"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+var testGetRefReturn = `{
+  "ref": "refs/heads/featureA",
+  "node_id": "MDM6UmVmcmVmcy9oZWFkcy9mZWF0dXJlQQ==",
+  "url": "https://api.github.com/repos/octocat/Hello-World/git/refs/heads/featureA",
+  "object": {
+    "type": "commit",
+    "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+    "url": "https://api.github.com/repos/octocat/Hello-World/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+  }
+}`
 
 func TestIsOrgMember(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -97,4 +113,35 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 	s.RefreshMembers()
 
 	assert.Equal(t, originalUserSize, len(s.OrgMembers))
+}
+
+func TestCacheTransport(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+		func(req *http.Request) (*http.Response, error) {
+			body := &github.Reference{Object: &github.GitObject{}}
+			err := json.Unmarshal([]byte(testGetRefReturn), &body)
+			require.NoError(t, err)
+			resp, err := httpmock.NewJsonResponse(200, body)
+			// Needed by httpcache cache the response
+			resp.Header.Set("Date", time.Now().Format(time.RFC1123))
+			resp.Header.Set("Cache-Control", "only-if-cached,max-age=3600")
+			return resp, err
+		},
+	)
+
+	ghClient := server.NewGithubClient("testtoken", 10)
+	_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+	require.NoError(t, err)
+	require.Equal(t, "", resp.Header.Get("X-From-Cache"))
+	require.Equal(t, 200, resp.StatusCode)
+
+	_, resp, err = ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+	require.NoError(t, err)
+	require.Equal(t, "1", resp.Header.Get("X-From-Cache"))
+	require.Equal(t, 200, resp.StatusCode)
 }

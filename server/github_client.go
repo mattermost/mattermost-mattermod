@@ -9,7 +9,7 @@ import (
 
 	"github.com/die-net/lrucache"
 	"github.com/google/go-github/v32/github"
-	"github.com/gregjones/httpcache"
+	"github.com/m4ns0ur/httpcache"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
 )
