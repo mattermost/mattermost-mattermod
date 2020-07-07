@@ -48,20 +48,16 @@ func (s SQLPullRequestStore) CreateIndexesIfNotExists() {
 	s.CreateColumnIfNotExists("PullRequests", "CreatedAt", "timestamp", "timestamp", "")
 }
 
-func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, *model.AppError) {
+func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, error) {
 	if err := s.GetMaster().Insert(pr); err != nil {
 		if _, err := s.GetMaster().Update(pr); err != nil {
-			return nil, model.NewLocAppError("SQLPullRequestStore.Save",
-				"Could not insert or update PR",
-				nil,
-				fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", pr.RepoOwner, pr.RepoName, pr.Number, err.Error()),
-			)
+			return nil, fmt.Errorf("could not insert or update PR: owner=%v, name=%v, number=%v, err=%w", pr.RepoOwner, pr.RepoName, pr.Number, err)
 		}
 	}
 	return pr, nil
 }
 
-func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) (*model.PullRequest, *model.AppError) {
+func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) (*model.PullRequest, error) {
 	var pr model.PullRequest
 	if err := s.GetReplica().SelectOne(&pr,
 		`SELECT
@@ -73,18 +69,14 @@ func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) (*model
 				AND RepoName = :RepoName
 				AND Number = :Number`, map[string]interface{}{"Number": number, "RepoOwner": repoOwner, "RepoName": repoName}); err != nil {
 		if err != sql.ErrNoRows {
-			return nil, model.NewLocAppError("SQLPullRequestStore.Get",
-				"Could not get PR",
-				nil,
-				fmt.Sprintf("owner=%v, name=%v, number=%v, err=%v", pr.RepoOwner, pr.RepoName, pr.Number, err.Error()),
-			)
+			return nil, fmt.Errorf("could not get PR: owner=%v, name=%v, number=%v, err=%w", pr.RepoOwner, pr.RepoName, pr.Number, err)
 		}
 		return nil, nil // row not found.
 	}
 	return &pr, nil
 }
 
-func (s SQLPullRequestStore) ListOpen() ([]*model.PullRequest, *model.AppError) {
+func (s SQLPullRequestStore) ListOpen() ([]*model.PullRequest, error) {
 	var prs []*model.PullRequest
 	if _, err := s.GetReplica().Select(&prs,
 		`SELECT
@@ -93,7 +85,7 @@ func (s SQLPullRequestStore) ListOpen() ([]*model.PullRequest, *model.AppError) 
 				PullRequests
 			WHERE
 				State = 'open'`); err != nil {
-		return nil, model.NewLocAppError("SQLPullRequestStore.ListOpen", "Could not list openPRs", nil, err.Error())
+		return nil, fmt.Errorf("could not list open PRs: %w", err)
 	}
 	return prs, nil
 }
