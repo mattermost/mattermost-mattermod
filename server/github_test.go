@@ -129,19 +129,29 @@ func TestCacheTransport(t *testing.T) {
 			resp, err := httpmock.NewJsonResponse(200, body)
 			// Needed by httpcache cache the response
 			resp.Header.Set("Date", time.Now().Format(time.RFC1123))
-			resp.Header.Set("Cache-Control", "only-if-cached,max-age=3600")
+			resp.Header.Set("Cache-Control", "only-if-cached,max-age=1")
 			return resp, err
 		},
 	)
 
+	// First request should return a non-cached request
 	ghClient := server.NewGithubClient("testtoken", 10)
 	_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 	require.NoError(t, err)
 	require.Equal(t, "", resp.Header.Get("X-From-Cache"))
 	require.Equal(t, 200, resp.StatusCode)
 
+	// This part should answer the cached response because max-age hasn't expired
 	_, resp, err = ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 	require.NoError(t, err)
 	require.Equal(t, "1", resp.Header.Get("X-From-Cache"))
+	require.Equal(t, 200, resp.StatusCode)
+
+	time.Sleep(1 * time.Second)
+
+	// Here we should return a non-cached request because the max-age value has expired
+	_, resp, err = ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+	require.NoError(t, err)
+	require.Equal(t, "", resp.Header.Get("X-From-Cache"))
 	require.Equal(t, 200, resp.StatusCode)
 }
