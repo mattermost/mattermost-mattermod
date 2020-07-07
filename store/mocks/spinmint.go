@@ -34,10 +34,10 @@ func (m *MockSpinmintStore) EXPECT() *MockSpinmintStoreMockRecorder {
 }
 
 // Delete mocks base method
-func (m *MockSpinmintStore) Delete(arg0 string) *model.AppError {
+func (m *MockSpinmintStore) Delete(arg0 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0)
-	ret0, _ := ret[0].(*model.AppError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -48,11 +48,11 @@ func (mr *MockSpinmintStoreMockRecorder) Delete(arg0 interface{}) *gomock.Call {
 }
 
 // Get mocks base method
-func (m *MockSpinmintStore) Get(arg0 int, arg1 string) (*model.Spinmint, *model.AppError) {
+func (m *MockSpinmintStore) Get(arg0 int, arg1 string) (*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
 	ret0, _ := ret[0].(*model.Spinmint)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -63,11 +63,11 @@ func (mr *MockSpinmintStoreMockRecorder) Get(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // List mocks base method
-func (m *MockSpinmintStore) List() ([]*model.Spinmint, *model.AppError) {
+func (m *MockSpinmintStore) List() ([]*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List")
 	ret0, _ := ret[0].([]*model.Spinmint)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -78,11 +78,11 @@ func (mr *MockSpinmintStoreMockRecorder) List() *gomock.Call {
 }
 
 // Save mocks base method
-func (m *MockSpinmintStore) Save(arg0 *model.Spinmint) (*model.Spinmint, *model.AppError) {
+func (m *MockSpinmintStore) Save(arg0 *model.Spinmint) (*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
 	ret0, _ := ret[0].(*model.Spinmint)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 

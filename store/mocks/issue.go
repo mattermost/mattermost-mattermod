@@ -34,11 +34,11 @@ func (m *MockIssueStore) EXPECT() *MockIssueStoreMockRecorder {
 }
 
 // Get mocks base method
-func (m *MockIssueStore) Get(arg0, arg1 string, arg2 int) (*model.Issue, *model.AppError) {
+func (m *MockIssueStore) Get(arg0, arg1 string, arg2 int) (*model.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*model.Issue)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -49,11 +49,11 @@ func (mr *MockIssueStoreMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.
 }
 
 // Save mocks base method
-func (m *MockIssueStore) Save(arg0 *model.Issue) (*model.Issue, *model.AppError) {
+func (m *MockIssueStore) Save(arg0 *model.Issue) (*model.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
 	ret0, _ := ret[0].(*model.Issue)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 

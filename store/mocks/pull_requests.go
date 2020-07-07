@@ -34,11 +34,11 @@ func (m *MockPullRequestStore) EXPECT() *MockPullRequestStoreMockRecorder {
 }
 
 // Get mocks base method
-func (m *MockPullRequestStore) Get(arg0, arg1 string, arg2 int) (*model.PullRequest, *model.AppError) {
+func (m *MockPullRequestStore) Get(arg0, arg1 string, arg2 int) (*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*model.PullRequest)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -49,11 +49,11 @@ func (mr *MockPullRequestStoreMockRecorder) Get(arg0, arg1, arg2 interface{}) *g
 }
 
 // ListOpen mocks base method
-func (m *MockPullRequestStore) ListOpen() ([]*model.PullRequest, *model.AppError) {
+func (m *MockPullRequestStore) ListOpen() ([]*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListOpen")
 	ret0, _ := ret[0].([]*model.PullRequest)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -64,11 +64,11 @@ func (mr *MockPullRequestStoreMockRecorder) ListOpen() *gomock.Call {
 }
 
 // Save mocks base method
-func (m *MockPullRequestStore) Save(arg0 *model.PullRequest) (*model.PullRequest, *model.AppError) {
+func (m *MockPullRequestStore) Save(arg0 *model.PullRequest) (*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
 	ret0, _ := ret[0].(*model.PullRequest)
-	ret1, _ := ret[1].(*model.AppError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
