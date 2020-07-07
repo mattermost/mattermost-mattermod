@@ -78,7 +78,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	pr.Labels = labelsToStringArray(labels)
 
 	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		mlog.Error(err.Error())
+		return nil, err
 	}
 
 	return pr, nil
