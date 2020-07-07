@@ -134,7 +134,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -165,7 +165,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -196,7 +196,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -227,7 +227,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))

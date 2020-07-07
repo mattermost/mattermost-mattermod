@@ -66,7 +66,11 @@ func New(config *Config) (*Server, error) {
 		StartTime: time.Now(),
 	}
 
-	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	if err != nil {
+		return nil, err
+	}
+	s.GithubClient = ghClient
 	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {

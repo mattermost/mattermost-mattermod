@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/die-net/lrucache"
@@ -80,7 +81,10 @@ type GithubClient struct {
 	Repositories  RepositoriesService
 }
 
-func NewGithubClient(accessToken string, limitTokens int) *GithubClient {
+func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
+	if limitTokens <= 0 {
+		return nil, errors.New("Limit tokens must be greater than 0")
+	}
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
 	limit := rate.Every(time.Second / time.Duration(limitTokens))
@@ -98,7 +102,7 @@ func NewGithubClient(accessToken string, limitTokens int) *GithubClient {
 		Organizations: client.Organizations,
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
-	}
+	}, nil
 }
 
 func (c *GithubClient) RateLimits(ctx context.Context) (*github.RateLimits, *github.Response, error) {
