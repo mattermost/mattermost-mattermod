@@ -25,9 +25,6 @@ func (s *Server) AutoMergePR() error {
 
 	for _, pr := range prs {
 		if !s.hasAutoMerge(pr.Labels) {
-			mlog.Debug("No auto merge label for this PR; skipping",
-				mlog.Int("pr", pr.Number),
-				mlog.String("repo", pr.RepoName))
 			continue
 		}
 
@@ -72,10 +69,6 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		if prStatus.GetState() != stateSuccess {
-			mlog.Debug("PR is not ready to merge; not in success state",
-				mlog.Int("pr", pr.Number),
-				mlog.String("repo", pr.RepoName),
-				mlog.String("state", prStatus.GetState()))
 			continue
 		}
 
