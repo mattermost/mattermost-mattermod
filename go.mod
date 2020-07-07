@@ -2,6 +2,8 @@ module github.com/mattermost/mattermost-mattermod
 
 go 1.14
 
+replace github.com/mattermost/mattermost-server/v5 v5.23.0 => /home/dlauder/Development/mattermost_2/mattermost-server
+
 require (
 	github.com/aws/aws-sdk-go v1.31.5
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
@@ -14,8 +16,9 @@ require (
 	github.com/mattermost/go-circleci v0.4.0
 	github.com/mattermost/mattermost-server/v5 v5.23.0
 	github.com/pkg/errors v0.9.1
-	github.com/poy/onpar v1.0.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
+	github.com/wiggin77/logr v1.0.4
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )

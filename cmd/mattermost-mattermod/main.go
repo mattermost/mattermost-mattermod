@@ -9,10 +9,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/robfig/cron/v3"
+	"golang.org/x/net/context"
 )
 
 func main() {
@@ -25,7 +27,10 @@ func main() {
 		mlog.Error("unable to load server config", mlog.Err(err))
 		os.Exit(1)
 	}
-	server.SetupLogging(config)
+	if err = server.SetupLogging(config); err != nil {
+		mlog.Error("unable to configure logging", mlog.Err(err))
+		os.Exit(1)
+	}
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
 	s, err := server.New(config)
@@ -39,9 +44,19 @@ func main() {
 
 	defer func() {
 		mlog.Info("Stopping Mattermod Server")
+		code := 0
 		if err2 := s.Stop(); err2 != nil {
-			mlog.Error("Error while shutting down server", mlog.Err(err2))
-			os.Exit(1)
+			mlog.Error("error while shutting down server", mlog.Err(err2))
+			code = 1
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		if err3 := mlog.ShutdownAdvancedLogging(ctx); err != nil {
+			mlog.Error("error while shutting logging", mlog.Err(err3))
+			code = 1
+		}
+		if code != 0 {
+			os.Exit(code)
 		}
 	}()
 
