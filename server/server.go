@@ -249,6 +249,16 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pr, err := s.getPRFromComment(ctx, *eventIssueComment)
+	if err != nil {
+		mlog.Error(err.Error())
+		return
+	}
+	var commenter string
+	if eventIssueComment.Comment != nil {
+		commenter = eventIssueComment.Comment.User.GetLogin()
+	}
+
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
 			s.handleCheckCLA(ctx, *eventIssueComment)
@@ -260,8 +270,9 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 			s.handleAutoassign(ctx, *eventIssueComment)
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			err := s.handleUpdateBranch(ctx, *eventIssueComment)
-			mlog.Error("Error updating branch", mlog.Err(err))
+			if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
+				mlog.Error("Error updating branch", mlog.Err(err))
+			}
 		}
 		return
 	}

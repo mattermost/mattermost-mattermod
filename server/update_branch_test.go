@@ -6,37 +6,63 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
-	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
+
+	"github.com/golang/mock/gomock"
+	"github.com/google/go-github/v32/github"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckUpdatePullRequestPermissions(t *testing.T) {
+func TestHandeUpdateBranch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	const userHandle = "user"
 	const organization = "some-organization"
+
 	s := Server{
 		Config: &Config{
 			Org: organization,
 		},
+		GithubClient: &GithubClient{},
 	}
 
+	ctx := context.Background()
+
+	pr := &model.PullRequest{
+		RepoOwner: userHandle,
+		RepoName:  "repo-name",
+		Number:    123,
+		Sha:       "some-sha",
+	}
+
+	opt := &github.PullRequestBranchUpdateOptions{
+		ExpectedHeadSHA: github.String(pr.Sha),
+	}
+
+	msg := new(string)
+	comment := &github.IssueComment{Body: msg}
+	is := mocks.NewMockIssuesService(ctrl)
+	is.EXPECT().CreateComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(5).Return(nil, nil, nil)
+	s.GithubClient.Issues = is
+
 	t.Run("random user", func(t *testing.T) {
-		err := s.checkUpdatePullRequestPermissions("someone", &model.PullRequest{
-			RepoOwner: userHandle,
-		})
+		*msg = MsgCommenterPermission
+
+		err := s.handleUpdateBranch(ctx, "someone", pr)
 		require.Error(t, err)
 		require.EqualError(t, ErrCommenterPermission, err.Error())
 	})
 
 	t.Run("not org. member", func(t *testing.T) {
-		err := s.checkUpdatePullRequestPermissions(userHandle, &model.PullRequest{
-			RepoOwner: userHandle,
-		})
+		*msg = MsgCommenterPermission
+
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
 		require.EqualError(t, ErrCommenterPermission, err.Error())
 	})
@@ -45,65 +71,27 @@ func TestCheckUpdatePullRequestPermissions(t *testing.T) {
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
 
-		err := s.checkUpdatePullRequestPermissions(userHandle, &model.PullRequest{
-			RepoOwner: userHandle,
-		})
+		*msg = MsgOrganizationPermission
+
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
 		require.EqualError(t, ErrOrganizationPermission, err.Error())
 	})
 
-	t.Run("organization member", func(t *testing.T) {
-		s.OrgMembers = make([]string, 1)
-		s.OrgMembers[0] = organization + "/" + userHandle
-
-		err := s.checkUpdatePullRequestPermissions(organization+"/"+userHandle, &model.PullRequest{
-			RepoOwner: organization + "/" + userHandle,
-			Username:  organization + "/" + userHandle,
-		})
-		require.NoError(t, err)
-	})
-
-	t.Run("non-organization member, maintainer can modify", func(t *testing.T) {
+	t.Run("err from github api", func(t *testing.T) {
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
+		pr.FullName = organization + "/" + userHandle
 
-		err := s.checkUpdatePullRequestPermissions(userHandle, &model.PullRequest{
-			RepoOwner:           userHandle,
-			MaintainerCanModify: true,
-		})
-		require.NoError(t, err)
-	})
-}
+		*msg = MsgUpdatePullRequest
 
-func TestUpdatePullRequest(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	userHandle := "user"
-	repoName := "repo-name"
-	prNumber := 123
-
-	opt := &github.PullRequestBranchUpdateOptions{
-		ExpectedHeadSHA: github.String("123abc345efg"),
-	}
-	s := Server{
-		GithubClient: &GithubClient{},
-	}
-
-	ctx := context.Background()
-
-	t.Run("err from github api", func(t *testing.T) {
 		prs := mocks.NewMockPullRequestsService(ctrl)
-		prs.EXPECT().UpdateBranch(ctx, userHandle, repoName, prNumber, gomock.AssignableToTypeOf(opt)).Return(nil, nil, errors.New("some-error"))
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, errors.New("some-error"))
 		s.GithubClient.PullRequests = prs
 
-		err := s.updatePullRequest(context.Background(), &model.PullRequest{
-			RepoOwner: userHandle,
-			RepoName:  repoName,
-			Number:    prNumber,
-		})
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, ErrUpdatePullRequest, err.Error())
+		require.EqualError(t, err, fmt.Sprintf("%s: %s", ErrUpdatePullRequest, "some-error"))
 	})
 
 	t.Run("non-OK status code from github", func(t *testing.T) {
@@ -113,35 +101,34 @@ func TestUpdatePullRequest(t *testing.T) {
 			},
 		}
 
+		s.OrgMembers = make([]string, 1)
+		s.OrgMembers[0] = userHandle
+		pr.FullName = organization + "/" + userHandle
+
+		*msg = MsgUpdatePullRequest
+
 		prs := mocks.NewMockPullRequestsService(ctrl)
-		prs.EXPECT().UpdateBranch(ctx, userHandle, repoName, prNumber, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
 		s.GithubClient.PullRequests = prs
 
-		err := s.updatePullRequest(context.Background(), &model.PullRequest{
-			RepoOwner: userHandle,
-			RepoName:  repoName,
-			Number:    prNumber,
-		})
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
 		require.EqualError(t, ErrUpdatePullRequest, err.Error())
 	})
 
-	t.Run("accepted by github", func(t *testing.T) {
+	t.Run("maintainer can modify and accepted by github", func(t *testing.T) {
 		resp := &github.Response{
 			Response: &http.Response{
 				StatusCode: http.StatusAccepted,
 			},
 		}
+		pr.MaintainerCanModify = true
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
-		prs.EXPECT().UpdateBranch(ctx, userHandle, repoName, prNumber, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
 		s.GithubClient.PullRequests = prs
 
-		err := s.updatePullRequest(context.Background(), &model.PullRequest{
-			RepoOwner: userHandle,
-			RepoName:  repoName,
-			Number:    prNumber,
-		})
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.NoError(t, err)
 	})
 }
