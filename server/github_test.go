@@ -11,6 +11,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
 	"github.com/jarcoal/httpmock"
+	"golang.org/x/time/rate"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
@@ -238,5 +239,99 @@ func TestCacheTransport(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
 		require.Equal(t, 200, resp.StatusCode)
+	})
+}
+
+func TestRateLimitTransport(t *testing.T) {
+	t.Run("Should be able to perform a request without being hit by rate limiter", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+			func(req *http.Request) (*http.Response, error) {
+				body := &github.Reference{Object: &github.GitObject{}}
+				err := json.Unmarshal([]byte(testGetRefReturn), &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(200, body)
+			},
+		)
+
+		ghClient, _ := server.NewGithubClient("testtoken", 1)
+		_, resp, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		require.NoError(t, err)
+		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
+		require.Equal(t, 200, resp.StatusCode)
+	})
+
+	t.Run("Should return error when the rate limit is exceeded", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+			func(req *http.Request) (*http.Response, error) {
+				body := &github.Reference{Object: &github.GitObject{}}
+				err := json.Unmarshal([]byte(testGetRefReturn), &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(200, body)
+			},
+		)
+
+		ghClient := server.NewGithubClientWithLimiter("testtoken", 0, 0)
+		_, _, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "exceeds limiter's burst 0")
+	})
+
+	t.Run("Should return context error when the rate limit wait is larger than the context timeout", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+			func(req *http.Request) (*http.Response, error) {
+				body := &github.Reference{Object: &github.GitObject{}}
+				err := json.Unmarshal([]byte(testGetRefReturn), &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(200, body)
+			},
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Microsecond)
+		defer cancel()
+		limit := rate.Every(time.Minute * 1)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 10)
+		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "would exceed context deadline")
+	})
+
+	t.Run("Should delay the request execution until the rate limiter have room", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+			func(req *http.Request) (*http.Response, error) {
+				body := &github.Reference{Object: &github.GitObject{}}
+				err := json.Unmarshal([]byte(testGetRefReturn), &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(200, body)
+			},
+		)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		limit := rate.Every(time.Millisecond * 100)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1)
+		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		require.NoError(t, err)
+		start := time.Now()
+		_, _, err = ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		ellapsed := time.Since(start)
+		require.NoError(t, err)
+		// With a rate limiting of 10 requests per second, or 1 per 100ms)
+		// rate limit is going to make the second request wait because is
+		// too fast
+		require.True(t, ellapsed*time.Millisecond > 90*time.Millisecond)
 	})
 }
