@@ -3,7 +3,6 @@ module github.com/mattermost/mattermost-mattermod
 go 1.14
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/aws/aws-sdk-go v1.31.5
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/go-gorp/gorp v2.2.0+incompatible
