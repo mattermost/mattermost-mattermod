@@ -80,7 +80,7 @@ type GithubClient struct {
 // that will be used by the rate limit transport.
 func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int) *GithubClient {
 	const (
-		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1Gib
+		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1GB
 		lruCacheMaxAgeInSeconds = 2629800            // 1 month
 	)
 
