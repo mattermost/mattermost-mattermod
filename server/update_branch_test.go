@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -20,7 +19,6 @@ import (
 
 func TestHandeUpdateBranch(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
 
 	const userHandle = "user"
 	const organization = "some-organization"
@@ -91,7 +89,7 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, fmt.Sprintf("%s: %s", ErrUpdatePullRequest, "some-error"))
+		require.EqualError(t, err, "some-error")
 	})
 
 	t.Run("non-OK status code from github", func(t *testing.T) {

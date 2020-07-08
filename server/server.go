@@ -255,7 +255,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var commenter string
-	if eventIssueComment.Comment != nil {
+	if eventIssueComment.Comment != nil && eventIssueComment.Comment.User != nil {
 		commenter = eventIssueComment.Comment.User.GetLogin()
 	}
 
