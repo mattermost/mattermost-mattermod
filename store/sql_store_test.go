@@ -59,13 +59,14 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 }
 
 func createTempDB(t *testing.T, dbName, dbUser string) {
+	rootUser := getEnv("MYSQL_ROOT_USER", defaultMysqlRootPWD)
 	rootPwd := getEnv("MYSQL_ROOT_PASSWORD", defaultMysqlRootPWD)
 	cfg, err := mysql.ParseDSN(defaultMysqlDSN)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cfg.User = "root"
+	cfg.User = rootUser
 	cfg.Passwd = rootPwd
 	cfg.DBName = "mysql"
 
