@@ -15,11 +15,6 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const (
-	lruCacheMaxSizeInBytes  = 1000000000 // 1Gb
-	lruCacheMaxAgeInSeconds = 2629800    // 1 month
-)
-
 type ChecksService interface {
 	ListCheckRunsForRef(ctx context.Context, owner, repo, ref string, opts *github.ListCheckRunsOptions) (*github.ListCheckRunsResults, *github.Response, error)
 }
@@ -81,10 +76,17 @@ type GithubClient struct {
 	Repositories  RepositoriesService
 }
 
+// NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
+// that will be used by the rate limit transport.
 func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int) *GithubClient {
+	const (
+		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1Gib
+		lruCacheMaxAgeInSeconds = 2629800            // 1 month
+	)
+
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
-	limiterTransport := NewGithubRateLimitTransport(limit, burstTokens, tc.Transport)
+	limiterTransport := NewRateLimitTransport(limit, burstTokens, tc.Transport)
 	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport
@@ -101,6 +103,8 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 	}
 }
 
+// NewGithubClient returns a new Github client that will use a fixed 10 req/sec / 10 burst
+// tokens rate limiter configuration
 func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
 	if limitTokens <= 0 {
 		return nil, errors.New("rate limit tokens for github client must be greater than 0")
