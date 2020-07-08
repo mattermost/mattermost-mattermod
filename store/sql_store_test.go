@@ -84,8 +84,8 @@ func createTempDB(dbName, dbUser string) (teardownFunc, error) {
 	}
 
 	teardown := func() {
-		if _, err := db.Exec(fmt.Sprintf("DROP DATABASE %s", dbName)); err != nil {
-			panic(fmt.Sprintf("failed to drop temporary database: %s", err))
+		if _, err2 := db.Exec(fmt.Sprintf("DROP DATABASE %s", dbName)); err2 != nil {
+			panic(fmt.Sprintf("failed to drop temporary database: %s", err2))
 		}
 		db.Close()
 	}
@@ -105,7 +105,6 @@ func createTempDB(dbName, dbUser string) (teardownFunc, error) {
 func getEnv(name, defaultValue string) string {
 	if value := os.Getenv(name); value != "" {
 		return value
-	} else {
-		return defaultValue
 	}
+	return defaultValue
 }
