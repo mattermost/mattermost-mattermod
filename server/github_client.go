@@ -5,9 +5,14 @@ package server
 
 import (
 	"context"
+	"errors"
+	"time"
 
+	"github.com/die-net/lrucache"
 	"github.com/google/go-github/v32/github"
+	"github.com/m4ns0ur/httpcache"
 	"golang.org/x/oauth2"
+	"golang.org/x/time/rate"
 )
 
 type ChecksService interface {
@@ -71,10 +76,21 @@ type GithubClient struct {
 	Repositories  RepositoriesService
 }
 
-func NewGithubClient(accessToken string) *GithubClient {
+// NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
+// that will be used by the rate limit transport.
+func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int) *GithubClient {
+	const (
+		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1GB
+		lruCacheMaxAgeInSeconds = 2629800            // 1 month
+	)
+
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
-	client := github.NewClient(tc)
+	limiterTransport := NewRateLimitTransport(limit, burstTokens, tc.Transport)
+	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
+	httpCacheTransport := httpcache.NewTransport(httpCache)
+	httpCacheTransport.Transport = limiterTransport
+	client := github.NewClient(httpCacheTransport.Client())
 
 	return &GithubClient{
 		client:        client,
@@ -85,6 +101,16 @@ func NewGithubClient(accessToken string) *GithubClient {
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
 	}
+}
+
+// NewGithubClient returns a new Github client that will use a fixed 10 req/sec / 10 burst
+// tokens rate limiter configuration
+func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
+	if limitTokens <= 0 {
+		return nil, errors.New("rate limit tokens for github client must be greater than 0")
+	}
+	limit := rate.Every(time.Second / time.Duration(limitTokens))
+	return NewGithubClientWithLimiter(accessToken, limit, limitTokens), nil
 }
 
 func (c *GithubClient) RateLimits(ctx context.Context) (*github.RateLimits, *github.Response, error) {
