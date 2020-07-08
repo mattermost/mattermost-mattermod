@@ -41,7 +41,7 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] != s.Config.Org {
-		if !pr.MaintainerCanModify {
+		if pr.MaintainerCanModify.Valid && !pr.MaintainerCanModify.Bool {
 			msg = MsgOrganizationPermission
 			err = ErrOrganizationPermission
 			return err
