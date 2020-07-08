@@ -19,13 +19,10 @@ const (
 	defaultMysqlDB      = "mattermod_test"
 )
 
-type teardownFunc func()
+func getTestSQLStore(t *testing.T) *SQLStore {
+	t.Helper()
 
-func getTestSQLStore(t *testing.T) (*SQLStore, teardownFunc) {
-	teardownSuite, err := createTempDB(defaultMysqlDB, getEnv("MYSQL_USER", defaultMysqlUser))
-	if err != nil {
-		t.Fatal(err)
-	}
+	createTempDB(t, defaultMysqlDB, getEnv("MYSQL_USER", defaultMysqlUser))
 	t.Log("created temporary database")
 
 	cfg, err := mysql.ParseDSN(defaultMysqlDSN)
@@ -52,26 +49,24 @@ func getTestSQLStore(t *testing.T) (*SQLStore, teardownFunc) {
 			},
 		},
 	}
-	teardown := func() {
+	t.Cleanup(func() {
 		db.Close()
-		teardownSuite()
 		t.Log("destroyed temporary database")
-	}
+	})
 
 	store.master.AddTableWithName(model.PullRequest{}, "PullRequests")
 	if err := store.master.CreateTablesIfNotExists(); err != nil {
-		teardown()
 		t.Fatal(err)
 	}
 
-	return store, teardown
+	return store
 }
 
-func createTempDB(dbName, dbUser string) (teardownFunc, error) {
+func createTempDB(t *testing.T, dbName, dbUser string) {
 	rootPwd := getEnv("MYSQL_ROOT_PASSWORD", defaultMysqlRootPWD)
 	cfg, err := mysql.ParseDSN(defaultMysqlDSN)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
 
 	cfg.User = "root"
@@ -80,26 +75,23 @@ func createTempDB(dbName, dbUser string) (teardownFunc, error) {
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
 
-	teardown := func() {
+	t.Cleanup(func() {
 		if _, err2 := db.Exec(fmt.Sprintf("DROP DATABASE %s", dbName)); err2 != nil {
 			panic(fmt.Sprintf("failed to drop temporary database: %s", err2))
 		}
 		db.Close()
-	}
+	})
 
 	if _, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName)); err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
 
 	if _, err = db.Exec(fmt.Sprintf("GRANT ALL PRIVILEGES ON %s.* TO '%s'", dbName, dbUser)); err != nil {
-		teardown()
-		return nil, err
+		t.Fatal(err)
 	}
-
-	return teardown, nil
 }
 
 func getEnv(name, defaultValue string) string {

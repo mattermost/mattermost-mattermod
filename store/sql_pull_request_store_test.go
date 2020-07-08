@@ -11,8 +11,7 @@ import (
 )
 
 func TestPullRequestStore(t *testing.T) {
-	ss, teardown := getTestSQLStore(t)
-	defer teardown()
+	ss := getTestSQLStore(t)
 
 	prs := NewSQLPullRequestStore(ss)
 	prs.(*SQLPullRequestStore).CreateIndexesIfNotExists()
