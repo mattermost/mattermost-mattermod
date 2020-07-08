@@ -29,16 +29,15 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config               *Config
-	Store                store.Store
-	GithubClient         *GithubClient
-	CircleCiClient       *circleci.Client
-	OrgMembers           []string
-	Builds               buildsInterface
-	commentLock          sync.Mutex
-	StartTime            time.Time
-	awsSession           *session.Session
-	hasReportedRateLimit bool
+	Config         *Config
+	Store          store.Store
+	GithubClient   *GithubClient
+	CircleCiClient *circleci.Client
+	OrgMembers     []string
+	Builds         buildsInterface
+	commentLock    sync.Mutex
+	StartTime      time.Time
+	awsSession     *session.Session
 
 	server *http.Server
 }
@@ -62,13 +61,16 @@ const (
 
 func New(config *Config) (*Server, error) {
 	s := &Server{
-		Config:               config,
-		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime:            time.Now(),
-		hasReportedRateLimit: false,
+		Config:    config,
+		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime: time.Now(),
 	}
 
-	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	if err != nil {
+		return nil, err
+	}
+	s.GithubClient = ghClient
 	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {
@@ -145,10 +147,6 @@ func (s *Server) Tick() {
 	mlog.Info("tick")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
-	stopRequests, _ := s.shouldStopRequests(ctx)
-	if stopRequests {
-		return
-	}
 
 	for _, repository := range s.Config.Repositories {
 		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
@@ -207,16 +205,6 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
-	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
-	if stopRequests {
-		if !s.hasReportedRateLimit && timeUntilReset != nil {
-			s.logToMattermost(ctx, ":warning: Hit rate limit. Time until reset: "+timeUntilReset.String())
-		}
-		return
-	}
-
-	s.hasReportedRateLimit = false
-
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
