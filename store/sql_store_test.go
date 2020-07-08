@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-gorp/gorp"
 	"github.com/go-sql-driver/mysql"
-	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 const (
@@ -50,14 +49,11 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 		},
 	}
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
 		t.Log("destroyed temporary database")
 	})
-
-	store.master.AddTableWithName(model.PullRequest{}, "PullRequests")
-	if err := store.master.CreateTablesIfNotExists(); err != nil {
-		t.Fatal(err)
-	}
 
 	return store
 }
