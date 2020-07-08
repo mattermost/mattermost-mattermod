@@ -14,7 +14,8 @@ func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest)
 		return
 	}
 
-	dataMsg := fmt.Sprintf("####[%v translations PR %v](%v)\n", pr.RepoName, time.Now().UTC().Format(time.RFC3339), pr.URL)
+	prURL := fmt.Sprintf("https://github.com/%v/%v/pull/%v", s.Config.Org, pr.RepoName, pr.Number)
+	dataMsg := fmt.Sprintf("#### [%v translations PR %v](%v)\n", pr.RepoName, time.Now().UTC().Format(time.RFC3339), prURL)
 	msg := dataMsg + s.Config.TranslationsMattermostMessage
 	mlog.Debug("Sending Mattermost message", mlog.String("message", msg))
 
