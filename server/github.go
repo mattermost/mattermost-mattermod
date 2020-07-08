@@ -33,6 +33,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		URL:                 *pullRequest.URL,
 		CreatedAt:           pullRequest.GetCreatedAt(),
 		MaintainerCanModify: pullRequest.GetMaintainerCanModify(),
+		Merged:              *pullRequest.Merged,
 	}
 
 	if pullRequest.Head.Repo != nil {

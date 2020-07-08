@@ -2,48 +2,54 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-mattermod/model"
 
 	"github.com/google/go-github/v32/github"
 )
 
-func (s *Server) handleAutoassign(ctx context.Context, eventIssueComment IssueComment) {
-	teams, _, err := s.GithubClient.Repositories.ListTeams(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, nil)
+func (s *Server) handleAutoassign(ctx context.Context, url string, pr *model.PullRequest) error {
+	var err error
+	defer func() {
+		if err != nil {
+			s.autoAssignerPostError(ctx, pr.RepoOwner, pr.RepoName, pr.Number, url)
+		}
+	}()
+
+	var teams []*github.Team
+	teams, _, err = s.GithubClient.Repositories.ListTeams(ctx, pr.RepoOwner, pr.RepoName, nil)
 	if err != nil {
-		mlog.Error("Error listing the teams to check", mlog.Err(err), mlog.String("RepoOwner", *eventIssueComment.Repository.Owner.Login), mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
-		s.autoAssignerPostError(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, eventIssueComment.Comment.GetHTMLURL())
-		return
+		return err
 	}
 
 	repoConfigured := false
 	for _, team := range teams {
 		if team.GetID() == s.Config.AutoAssignerTeamID {
-			mlog.Info("Team configured for this repo", mlog.String("RepoName", *eventIssueComment.Repository.Name))
 			repoConfigured = true
 			break
 		}
 	}
 
-	if repoConfigured {
-		reviewReq := github.ReviewersRequest{
-			TeamReviewers: []string{s.Config.AutoAssignerTeam},
-		}
-
-		_, _, err = s.GithubClient.PullRequests.RequestReviewers(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, reviewReq)
-		if err != nil {
-			mlog.Error("Error setting the reviewers for pull panda", mlog.Err(err), mlog.Int("PR", *eventIssueComment.Issue.Number), mlog.String("Repo", *eventIssueComment.Repository.Name))
-			s.autoAssignerPostError(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, eventIssueComment.Comment.GetHTMLURL())
-			return
-		}
-
-		msg := fmt.Sprintf("In response to [this](%s)\n\n I'm requesting the Pull Panda autoassigner to add reviewers to this PR.", eventIssueComment.Comment.GetHTMLURL())
-		s.sendGitHubComment(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, msg)
-	} else {
-		msg := fmt.Sprintf("In response to [this](%s)\n\n The auto assigner is not configured for this repository. Please talk with a Mattermost Github admin. thanks!", eventIssueComment.Comment.GetHTMLURL())
-		s.sendGitHubComment(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number, msg)
+	if !repoConfigured {
+		msg := fmt.Sprintf("In response to [this](%s)\n\n The auto assigner is not configured for this repository. Please talk with a Mattermost Github admin. thanks!", url)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		return errors.New("auto assigner is not configured")
 	}
+
+	reviewReq := github.ReviewersRequest{
+		TeamReviewers: []string{s.Config.AutoAssignerTeam},
+	}
+	_, _, err = s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, reviewReq)
+	if err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf("In response to [this](%s)\n\n I'm requesting the Pull Panda autoassigner to add reviewers to this PR.", url)
+	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+
+	return nil
 }
 
 func (s *Server) autoAssignerPostError(ctx context.Context, repoOwner, repoName string, number int, requestCommentURL string) {

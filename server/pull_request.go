@@ -26,7 +26,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		_ = s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
@@ -43,7 +43,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		_ = s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
@@ -121,7 +121,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		_ = s.checkCLA(ctx, pr)
 		s.triggerCircleCiIfNeeded(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -504,7 +504,7 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
+func (s *Server) GetPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
 		*comment.Repository.Owner.Login,
 		*comment.Repository.Name,

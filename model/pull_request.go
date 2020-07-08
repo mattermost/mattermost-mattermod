@@ -28,4 +28,5 @@ type PullRequest struct {
 	URL                 string
 	CreatedAt           time.Time
 	MaintainerCanModify bool
+	Merged              bool
 }
