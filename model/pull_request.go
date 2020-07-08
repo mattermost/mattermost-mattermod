@@ -4,6 +4,7 @@
 package model
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -27,5 +28,5 @@ type PullRequest struct {
 	BuildLink           string
 	URL                 string
 	CreatedAt           time.Time
-	MaintainerCanModify bool
+	MaintainerCanModify sql.NullBool
 }
