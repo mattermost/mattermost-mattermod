@@ -504,7 +504,7 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) GetPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
+func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
 		*comment.Repository.Owner.Login,
 		*comment.Repository.Name,

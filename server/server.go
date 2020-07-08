@@ -237,7 +237,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pr, err := s.GetPRFromComment(ctx, *eventIssueComment)
+	pr, err := s.getPRFromComment(ctx, *eventIssueComment)
 	if err != nil {
 		mlog.Error(err.Error())
 		return
