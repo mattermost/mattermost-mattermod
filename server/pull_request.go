@@ -142,7 +142,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
-		go s.checkIfNeedCherryPick(ctx, pr)
+		go s.checkIfNeedCherryPick(pr)
 		go s.CleanUpLabels(pr)
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -22,7 +23,7 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 		return errors.New("pull request is closed")
 	}
 
-	go s.createCLAPendingStatus(ctx, pr)
+	s.createCLAPendingStatus(ctx, pr)
 
 	username := pr.Username
 	mlog.Info(
@@ -56,7 +57,11 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 		}
 		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
 		if !found {
-			go s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+			go func() {
+				ctx2, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+				defer cancel()
+				s.sendGitHubComment(ctx2, pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+			}()
 		}
 		status := &github.RepoStatus{
 			State:       github.String(stateError),

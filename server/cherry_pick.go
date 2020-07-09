@@ -48,7 +48,13 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	return nil
 }
 
-func (s *Server) checkIfNeedCherryPick(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
+	// We create a new context here instead of using the parent one because this is being called from a goroutine.
+	// Ideally, the entire request needs to be handled asynchronously.
+	// See: https://github.com/mattermost/mattermost-mattermod/pull/166.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+
 	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error getting the PR info", mlog.Err(err))
