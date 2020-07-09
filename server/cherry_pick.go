@@ -55,7 +55,10 @@ func (s *Server) handleCherryPick(ctx context.Context, eventIssueComment IssueCo
 	}
 }
 
-func (s *Server) checkIfNeedCherryPick(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+
 	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error getting the PR info", mlog.Err(err))
