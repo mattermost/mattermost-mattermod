@@ -31,7 +31,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 
 	if !s.IsOrgMember(commenter) {
 		msg = MsgCommenterPermission
-		return ErrCommenterPermission
+		return nil
 	}
 
 	args := strings.Split(body, " ")
