@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	defaultMysqlDSN     = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
-	defaultMysqlUser    = "mattermod"
-	defaultMysqlRootPWD = "mattermod"
-	defaultMysqlUserPWD = "mattermod"
-	defaultMysqlDB      = "mattermod_test"
+	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
+	defaultMysqlRootUser    = "root"
+	defaultMysqlRootUserPWD = "mattermod"
+	defaultMysqlUser        = "mattermod"
+	defaultMysqlUserPWD     = "mattermod"
+	defaultMysqlDB          = "mattermod_test"
 )
 
 func getTestSQLStore(t *testing.T) *SQLStore {
@@ -59,13 +60,14 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 }
 
 func createTempDB(t *testing.T, dbName, dbUser string) {
-	rootPwd := getEnv("MYSQL_ROOT_PASSWORD", defaultMysqlRootPWD)
+	rootUser := getEnv("MYSQL_ROOT_USER", defaultMysqlRootUser)
+	rootPwd := getEnv("MYSQL_ROOT_PASSWORD", defaultMysqlRootUserPWD)
 	cfg, err := mysql.ParseDSN(defaultMysqlDSN)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cfg.User = "root"
+	cfg.User = rootUser
 	cfg.Passwd = rootPwd
 	cfg.DBName = "mysql"
 
