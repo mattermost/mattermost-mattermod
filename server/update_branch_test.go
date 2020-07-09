@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"testing"
@@ -120,7 +121,7 @@ func TestHandeUpdateBranch(t *testing.T) {
 				StatusCode: http.StatusAccepted,
 			},
 		}
-		pr.MaintainerCanModify = true
+		pr.MaintainerCanModify = sql.NullBool{Bool: true, Valid: true}
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
 		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
