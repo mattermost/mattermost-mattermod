@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -32,8 +33,8 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		State:               *pullRequest.State,
 		URL:                 *pullRequest.URL,
 		CreatedAt:           pullRequest.GetCreatedAt(),
-		MaintainerCanModify: pullRequest.GetMaintainerCanModify(),
-		Merged:              *pullRequest.Merged,
+		Merged:              sql.NullBool{Bool: *pullRequest.Merged, Valid: true},
+		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 
 	if pullRequest.Head.Repo != nil {

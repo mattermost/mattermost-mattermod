@@ -36,7 +36,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 
 	args := strings.Split(body, " ")
 	mlog.Info("Args", mlog.String("Args", body))
-	if !pr.Merged {
+	if !pr.Merged.Valid || !pr.Merged.Bool {
 		return nil
 	}
 	cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(args[1]), nil, pr)

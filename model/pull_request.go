@@ -4,6 +4,7 @@
 package model
 
 import (
+	"database/sql"
 	"time"
 )
 
@@ -27,6 +28,6 @@ type PullRequest struct {
 	BuildLink           string
 	URL                 string
 	CreatedAt           time.Time
-	MaintainerCanModify bool
-	Merged              bool
+	Merged              sql.NullBool
+	MaintainerCanModify sql.NullBool
 }

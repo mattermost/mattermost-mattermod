@@ -259,7 +259,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			if err := s.handleAutoassign(ctx, eventIssueComment.Comment.GetHTMLURL(), pr); err != nil {
+			if err := s.handleAutoAssign(ctx, eventIssueComment.Comment.GetHTMLURL(), pr); err != nil {
 				mlog.Error("Error auto assigning", mlog.Err(err))
 			}
 		}
