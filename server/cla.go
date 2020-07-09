@@ -22,10 +22,6 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 		return errors.New("pull request is closed")
 	}
 
-	return s.checkCLA(ctx, pr)
-}
-
-func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) error {
 	go s.createCLAPendingStatus(ctx, pr)
 
 	username := pr.Username
@@ -45,8 +41,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) error {
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will succeed CLA status for excluded user", mlog.String("user", username))
-		_ = s.createRepoStatus(ctx, pr, status)
-		return nil
+		return s.createRepoStatus(ctx, pr, status)
 	}
 
 	body, err := s.getCSV(ctx)
@@ -70,8 +65,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) error {
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
-		_ = s.createRepoStatus(ctx, pr, status)
-		return nil
+		return s.createRepoStatus(ctx, pr, status)
 	}
 
 	status := &github.RepoStatus{
@@ -81,8 +75,7 @@ func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) error {
 		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
-	_ = s.createRepoStatus(ctx, pr, status)
-	return nil
+	return s.createRepoStatus(ctx, pr, status)
 }
 
 func (s *Server) getCSV(ctx context.Context) ([]byte, error) {

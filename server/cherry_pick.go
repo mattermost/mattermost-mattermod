@@ -22,10 +22,9 @@ import (
 )
 
 func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
-	var err error
 	var msg string
 	defer func() {
-		if err != nil {
+		if msg != "" {
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
 	}()
@@ -38,10 +37,9 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	args := strings.Split(body, " ")
 	mlog.Info("Args", mlog.String("Args", body))
 	if !pr.Merged {
-		return fmt.Errorf("pr-%s-%d not merged, not cherry picking", pr.RepoName, pr.Number)
+		return nil
 	}
-	var cmdOut string
-	cmdOut, err = s.doCherryPick(ctx, strings.TrimSpace(args[1]), nil, pr)
+	cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(args[1]), nil, pr)
 	if err != nil {
 		msg = fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
 		return err

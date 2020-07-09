@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -10,7 +9,7 @@ import (
 	"github.com/google/go-github/v32/github"
 )
 
-func (s *Server) handleAutoassign(ctx context.Context, url string, pr *model.PullRequest) error {
+func (s *Server) handleAutoAssign(ctx context.Context, url string, pr *model.PullRequest) error {
 	var err error
 	defer func() {
 		if err != nil {
@@ -35,7 +34,7 @@ func (s *Server) handleAutoassign(ctx context.Context, url string, pr *model.Pul
 	if !repoConfigured {
 		msg := fmt.Sprintf("In response to [this](%s)\n\n The auto assigner is not configured for this repository. Please talk with a Mattermost Github admin. thanks!", url)
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-		return errors.New("auto assigner is not configured")
+		return nil
 	}
 
 	reviewReq := github.ReviewersRequest{
