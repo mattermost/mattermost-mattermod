@@ -27,6 +27,11 @@ func TestSQLSpinmintStore(t *testing.T) {
 	})
 
 	t.Run("happy path on Save", func(t *testing.T) {
+		_, err := sms.Save(sm)
+		require.NoError(t, err)
+	})
+
+	t.Run("should be able to upsert and modify", func(t *testing.T) {
 		sm.RepoOwner = "someone"
 		_, err := sms.Save(sm)
 		require.NoError(t, err)
@@ -34,7 +39,7 @@ func TestSQLSpinmintStore(t *testing.T) {
 		nsm, err := sms.Get(sm.Number, sm.RepoName)
 		require.NoError(t, err)
 		require.NotNil(t, nsm)
-		assert.Equal(t, "someone", nsm.RepoOwner)
+		assert.Equal(t, sm, nsm)
 	})
 
 	t.Run("happy path Get", func(t *testing.T) {
