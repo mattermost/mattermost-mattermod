@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -519,11 +520,15 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
+func (s *Server) getPRFromEvent(ctx context.Context, event EventData) (*model.PullRequest, error) {
+	if event.Issue == nil || event.Repository == nil {
+		return nil, errors.New("invalid event")
+	}
+
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
-		*comment.Repository.Owner.Login,
-		*comment.Repository.Name,
-		*comment.Issue.Number,
+		*event.Repository.Owner.Login,
+		*event.Repository.Name,
+		*event.Issue.Number,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not get the latest PR information from github: %w", err)
