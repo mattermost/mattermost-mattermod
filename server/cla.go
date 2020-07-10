@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,7 +19,7 @@ import (
 
 func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) error {
 	if pr.State == model.StateClosed {
-		return errors.New("pull request is closed")
+		return nil
 	}
 
 	s.createCLAPendingStatus(ctx, pr)
