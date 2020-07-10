@@ -249,13 +249,19 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			s.handleCheckCLA(ctx, *eventIssueComment)
+			if err := s.handleCheckCLA(ctx, pr); err != nil {
+				mlog.Error("Error checking CLA", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			s.handleCherryPick(ctx, *eventIssueComment)
+			if err := s.handleCherryPick(ctx, commenter, *eventIssueComment.Comment.Body, pr); err != nil {
+				mlog.Error("Error cherry picking", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			s.handleAutoassign(ctx, *eventIssueComment)
+			if err := s.handleAutoAssign(ctx, eventIssueComment.Comment.GetHTMLURL(), pr); err != nil {
+				mlog.Error("Error auto assigning", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
 			if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
