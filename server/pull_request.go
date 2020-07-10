@@ -26,7 +26,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
@@ -43,7 +45,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
@@ -121,7 +125,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -240,6 +246,10 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 	}
 
 	if !oldPr.MaintainerCanModify.Valid || (oldPr.MaintainerCanModify.Bool != pr.MaintainerCanModify.Bool) {
+		prHasChanges = true
+	}
+
+	if !oldPr.Merged.Valid || (oldPr.Merged.Bool != pr.Merged.Bool) {
 		prHasChanges = true
 	}
 
