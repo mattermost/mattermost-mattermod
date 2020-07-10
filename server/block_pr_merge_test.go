@@ -76,7 +76,6 @@ func TestBlockPRMerge(t *testing.T) {
 		err := s.blockPRMerge(context.TODO(), pr)
 		require.Error(t, err)
 	})
-
 }
 
 func TestUnblockPRMerge(t *testing.T) {
@@ -137,7 +136,6 @@ func TestUnblockPRMerge(t *testing.T) {
 		err := s.unblockPRMerge(context.TODO(), pr)
 		require.Error(t, err)
 	})
-
 }
 
 func createExamplePR(state string, labels []string) *model.PullRequest {
