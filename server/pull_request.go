@@ -38,11 +38,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
@@ -56,11 +52,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
@@ -89,7 +81,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.blockPRMerge(ctx, pr)
+			if err := s.unblockPRMerge(ctx, pr); err != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+			}
 		}
 		if s.hasAutoMerge(pr.Labels) {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
@@ -102,7 +96,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.unblockPRMerge(ctx, pr)
+			if err := s.unblockPRMerge(ctx, pr); err != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+			}
 		}
 
 		// TODO: remove the old test server code
@@ -135,11 +131,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		go s.checkIfNeedCherryPick(pr)
@@ -534,4 +526,16 @@ func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*m
 		return nil, fmt.Errorf("error updating the PR in the DB: %w", err)
 	}
 	return pr, nil
+}
+
+func (s *Server) setBlockStatusForPR(ctx context.Context, pr *model.PullRequest) {
+	var err error
+	if s.isBlockPRMergeInLabels(pr.Labels) {
+		err = s.blockPRMerge(ctx, pr)
+	} else {
+		err = s.unblockPRMerge(ctx, pr)
+	}
+	if err != nil {
+		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+	}
 }
