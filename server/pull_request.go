@@ -493,6 +493,7 @@ func (s *Server) CleanUpLabels(pr *model.PullRequest) {
 					defer wg.Done()
 					s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				}(labelToRemove)
+				continue
 			}
 		}
 	}
