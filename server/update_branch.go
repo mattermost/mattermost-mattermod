@@ -2,44 +2,49 @@ package server
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-mattermod/model"
 
 	"github.com/google/go-github/v32/github"
 )
 
-func (s *Server) handleUpdateBranch(ctx context.Context, eventIssueComment IssueComment) {
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
-		*eventIssueComment.Repository.Owner.Login,
-		*eventIssueComment.Repository.Name,
-		*eventIssueComment.Issue.Number,
-	)
-	if err != nil {
-		mlog.Error("Error getting the latest PR information from github", mlog.Err(err))
-		return
-	}
-	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
-	if err != nil {
-		mlog.Error("Error Updating the PR in the DB", mlog.Err(err))
-		return
-	}
+var (
+	ErrCommenterPermission    = errors.New("commenter does not have permissions")
+	ErrOrganizationPermission = errors.New("we don't have permissions")
+	ErrUpdatePullRequest      = errors.New("could not update pull request")
+)
 
-	commenter := eventIssueComment.Comment.User.GetLogin()
+const (
+	MsgCommenterPermission    = "Looks like you don't have permissions to trigger this command.\n Only available for the PR submitter and org members"
+	MsgOrganizationPermission = "We don't have permissions to update this PR, please contact the submitter to apply the update."
+	MsgUpdatePullRequest      = "Error trying to update the PR.\nPlease do it manually."
+)
+
+func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *model.PullRequest) error {
+	var err error
+	var msg string
+	defer func() {
+		if err != nil {
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		}
+	}()
+
 	// If the commenter is not the PR submitter, check if the PR submitter is an org member
 	if commenter != pr.Username && !s.IsOrgMember(commenter) {
-		mlog.Debug("not org member", mlog.String("user", commenter))
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for the PR submitter and org members")
-		return
+		msg = MsgCommenterPermission
+		err = ErrCommenterPermission
+		return err
 	}
 
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] != s.Config.Org {
-		if !prGitHub.GetMaintainerCanModify() {
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "We don't have permissions to update this PR, please contact the submitter to apply the update.")
-			return
+		if !pr.MaintainerCanModify.Valid || !pr.MaintainerCanModify.Bool {
+			msg = MsgOrganizationPermission
+			err = ErrOrganizationPermission
+			return err
 		}
 	}
 
@@ -49,13 +54,14 @@ func (s *Server) handleUpdateBranch(ctx context.Context, eventIssueComment Issue
 
 	_, resp, err := s.GithubClient.PullRequests.UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opt)
 	if resp != nil && resp.StatusCode != http.StatusAccepted {
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Error trying to update the PR.\nPlease do it manually.")
-		return
+		msg = MsgUpdatePullRequest
+		err = ErrUpdatePullRequest
+		return err
 	}
-	if err != nil {
-		if !strings.Contains("job scheduled on GitHub side; try again later", err.Error()) {
-			msg := fmt.Sprintf("Error trying to update the PR.\nPlease do it manually.\nError: %s", err.Error())
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-		}
+	if err != nil && !strings.Contains("job scheduled on GitHub side; try again later", err.Error()) {
+		msg = MsgUpdatePullRequest
+		return err
 	}
+
+	return nil
 }

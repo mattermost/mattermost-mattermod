@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"time"
 
@@ -22,16 +23,18 @@ const (
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
-		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
-		RepoName:  *pullRequest.Base.Repo.Name,
-		Number:    *pullRequest.Number,
-		Username:  *pullRequest.User.Login,
-		FullName:  "",
-		Ref:       *pullRequest.Head.Ref,
-		Sha:       *pullRequest.Head.SHA,
-		State:     *pullRequest.State,
-		URL:       *pullRequest.URL,
-		CreatedAt: pullRequest.GetCreatedAt(),
+		RepoOwner:           *pullRequest.Base.Repo.Owner.Login,
+		RepoName:            *pullRequest.Base.Repo.Name,
+		Number:              *pullRequest.Number,
+		Username:            *pullRequest.User.Login,
+		FullName:            "",
+		Ref:                 *pullRequest.Head.Ref,
+		Sha:                 *pullRequest.Head.SHA,
+		State:               *pullRequest.State,
+		URL:                 *pullRequest.URL,
+		CreatedAt:           pullRequest.GetCreatedAt(),
+		Merged:              sql.NullBool{Bool: *pullRequest.Merged, Valid: true},
+		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 
 	if pullRequest.Head.Repo != nil {
@@ -77,7 +80,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	pr.Labels = labelsToStringArray(labels)
 
 	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		mlog.Error(err.Error())
+		return nil, err
 	}
 
 	return pr, nil
