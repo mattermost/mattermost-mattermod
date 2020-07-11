@@ -28,6 +28,5 @@ type PullRequest struct {
 	BuildLink           string
 	URL                 string
 	CreatedAt           time.Time
-	Merged              sql.NullBool
 	MaintainerCanModify sql.NullBool
 }

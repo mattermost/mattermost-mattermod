@@ -33,7 +33,6 @@ func NewSQLPullRequestStore(sqlStore *SQLStore) PullRequestStore {
 		table.ColMap("URL").SetMaxSize(2083)
 		table.ColMap("CreatedAt").SetMaxSize(128)
 		table.ColMap("MaintainerCanModify")
-		table.ColMap("Merged")
 	}
 
 	return s

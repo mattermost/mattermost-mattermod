@@ -17,12 +17,35 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) error {
-	if pr.State == model.StateClosed {
-		return nil
+func (s *Server) handleCheckCLA(ctx context.Context, eventIssueComment IssueComment) {
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
+		*eventIssueComment.Repository.Owner.Login,
+		*eventIssueComment.Repository.Name,
+		*eventIssueComment.Issue.Number,
+	)
+	if err != nil {
+		mlog.Error("Failed to get PR for CLA", mlog.Err(err))
+		return
 	}
 
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
+	if err != nil {
+		mlog.Error("pr_error", mlog.Err(err))
+		return
+	}
+
+	if *prGitHub.State == model.StateClosed {
+		return
+	}
+
+	s.checkCLA(ctx, pr)
+}
+
+func (s *Server) checkCLA(ctx context.Context, pr *model.PullRequest) {
 	s.createCLAPendingStatus(ctx, pr)
+	if pr.State == model.StateClosed {
+		return
+	}
 
 	username := pr.Username
 	mlog.Info(
@@ -41,18 +64,20 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will succeed CLA status for excluded user", mlog.String("user", username))
-		return s.createRepoStatus(ctx, pr, status)
+		_ = s.createRepoStatus(ctx, pr, status)
+		return
 	}
 
-	body, err := s.getCSV(ctx)
-	if err != nil {
-		return err
+	body, errCSV := s.getCSV(ctx)
+	if errCSV != nil {
+		return
 	}
 
 	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
 		comments, err := s.getComments(ctx, pr)
 		if err != nil {
-			return fmt.Errorf("failed fetching comments: %w", err)
+			mlog.Error("failed fetching comments", mlog.Err(err))
+			return
 		}
 		_, found := findNeedsToSignCLAComment(comments, s.Config.Username)
 		if !found {
@@ -69,7 +94,8 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 			Context:     github.String(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
-		return s.createRepoStatus(ctx, pr, status)
+		_ = s.createRepoStatus(ctx, pr, status)
+		return
 	}
 
 	status := &github.RepoStatus{
@@ -79,7 +105,7 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 		Context:     github.String(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
-	return s.createRepoStatus(ctx, pr, status)
+	_ = s.createRepoStatus(ctx, pr, status)
 }
 
 func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
