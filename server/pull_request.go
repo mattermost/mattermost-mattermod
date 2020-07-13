@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -25,7 +26,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
@@ -42,7 +45,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
@@ -86,7 +91,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if s.isBlockPRMerge(*event.Label.Name) {
 			s.blockPRMerge(ctx, pr)
 		}
-		if s.isAutoMergeLabelInLabels(pr.Labels) {
+		if s.hasAutoMerge(pr.Labels) {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
@@ -120,7 +125,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		s.checkCLA(ctx, pr)
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Unable to check CLA", mlog.Err(err))
+		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -135,7 +142,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
-		go s.checkIfNeedCherryPick(ctx, pr)
+		go s.checkIfNeedCherryPick(pr)
 		go s.CleanUpLabels(pr)
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
@@ -235,6 +242,14 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 	}
 
 	if oldPr.BuildLink != pr.BuildLink {
+		prHasChanges = true
+	}
+
+	if !oldPr.MaintainerCanModify.Valid || (oldPr.MaintainerCanModify.Bool != pr.MaintainerCanModify.Bool) {
+		prHasChanges = true
+	}
+
+	if !oldPr.Merged.Valid || (oldPr.Merged.Bool != pr.Merged.Bool) {
 		prHasChanges = true
 	}
 
@@ -478,6 +493,7 @@ func (s *Server) CleanUpLabels(pr *model.PullRequest) {
 					defer wg.Done()
 					s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				}(labelToRemove)
+				continue
 			}
 		}
 	}
@@ -501,4 +517,21 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
+		*comment.Repository.Owner.Login,
+		*comment.Repository.Name,
+		*comment.Issue.Number,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not get the latest PR information from github: %w", err)
+	}
+
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
+	if err != nil {
+		return nil, fmt.Errorf("error updating the PR in the DB: %w", err)
+	}
+	return pr, nil
 }

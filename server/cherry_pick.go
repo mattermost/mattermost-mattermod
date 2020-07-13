@@ -21,41 +21,40 @@ import (
 	"github.com/google/go-github/v32/github"
 )
 
-func (s *Server) handleCherryPick(ctx context.Context, eventIssueComment IssueComment) {
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx, *eventIssueComment.Repository.Owner.Login, *eventIssueComment.Repository.Name, *eventIssueComment.Issue.Number)
-	if err != nil {
-		mlog.Error("Failed to get cherry pick PR", mlog.Err(err))
-		return
+func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
+	var msg string
+	defer func() {
+		if msg != "" {
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		}
+	}()
+
+	if !s.IsOrgMember(commenter) {
+		msg = MsgCommenterPermission
+		return nil
 	}
 
-	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
-	if err != nil {
-		mlog.Error("pr_error", mlog.Err(err))
-		return
-	}
-
-	if !s.IsOrgMember(eventIssueComment.Comment.User.GetLogin()) {
-		mlog.Debug("not org member", mlog.String("user", eventIssueComment.Comment.User.GetLogin()))
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Looks like you don't have permissions to trigger this command.\n Only available for Org members")
-		return
-	}
-
-	args := strings.Split(*eventIssueComment.Comment.Body, " ")
-	mlog.Info("Args", mlog.String("Args", *eventIssueComment.Comment.Body))
-	if !prGitHub.GetMerged() {
-		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prGitHub.GetNumber()), mlog.String("Repo", pr.RepoName))
-		return
+	args := strings.Split(body, " ")
+	mlog.Info("Args", mlog.String("Args", body))
+	if !pr.Merged.Valid || !pr.Merged.Bool {
+		return nil
 	}
 	cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(args[1]), nil, pr)
 	if err != nil {
-		mlog.Error("Error doing the cherry pick", mlog.Err(err))
-		errMsg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
-		return
+		msg = fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
+		return err
 	}
+
+	return nil
 }
 
-func (s *Server) checkIfNeedCherryPick(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
+	// We create a new context here instead of using the parent one because this is being called from a goroutine.
+	// Ideally, the entire request needs to be handled asynchronously.
+	// See: https://github.com/mattermost/mattermost-mattermod/pull/166.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+
 	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error getting the PR info", mlog.Err(err))

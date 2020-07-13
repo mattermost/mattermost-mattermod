@@ -81,7 +81,12 @@ func main() {
 	if err != nil {
 		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
 	}
-	_, err = c.AddFunc("@every 30m", s.AutoMergePR)
+	_, err = c.AddFunc("@every 30m", func() {
+		err2 := s.AutoMergePR()
+		if err2 != nil {
+			mlog.Error("Error from AutoMergePR", mlog.Err(err2))
+		}
+	})
 	if err != nil {
 		mlog.Error("failed adding AutoMergePR cron", mlog.Err(err))
 	}

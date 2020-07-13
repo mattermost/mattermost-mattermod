@@ -29,16 +29,15 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config               *Config
-	Store                store.Store
-	GithubClient         *GithubClient
-	CircleCiClient       *circleci.Client
-	OrgMembers           []string
-	Builds               buildsInterface
-	commentLock          sync.Mutex
-	StartTime            time.Time
-	awsSession           *session.Session
-	hasReportedRateLimit bool
+	Config         *Config
+	Store          store.Store
+	GithubClient   *GithubClient
+	CircleCiClient *circleci.Client
+	OrgMembers     []string
+	Builds         buildsInterface
+	commentLock    sync.Mutex
+	StartTime      time.Time
+	awsSession     *session.Session
 
 	server *http.Server
 }
@@ -62,13 +61,16 @@ const (
 
 func New(config *Config) (*Server, error) {
 	s := &Server{
-		Config:               config,
-		Store:                store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime:            time.Now(),
-		hasReportedRateLimit: false,
+		Config:    config,
+		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime: time.Now(),
 	}
 
-	s.GithubClient = NewGithubClient(s.Config.GithubAccessToken)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	if err != nil {
+		return nil, err
+	}
+	s.GithubClient = ghClient
 	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {
@@ -145,10 +147,6 @@ func (s *Server) Tick() {
 	mlog.Info("tick")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
-	stopRequests, _ := s.shouldStopRequests(ctx)
-	if stopRequests {
-		return
-	}
 
 	for _, repository := range s.Config.Repositories {
 		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
@@ -207,16 +205,6 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
-	stopRequests, timeUntilReset := s.shouldStopRequests(ctx)
-	if stopRequests {
-		if !s.hasReportedRateLimit && timeUntilReset != nil {
-			s.logToMattermost(ctx, ":warning: Hit rate limit. Time until reset: "+timeUntilReset.String())
-		}
-		return
-	}
-
-	s.hasReportedRateLimit = false
-
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
@@ -249,18 +237,36 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pr, err := s.getPRFromComment(ctx, *eventIssueComment)
+	if err != nil {
+		mlog.Error(err.Error())
+		return
+	}
+	var commenter string
+	if eventIssueComment.Comment != nil && eventIssueComment.Comment.User != nil {
+		commenter = eventIssueComment.Comment.User.GetLogin()
+	}
+
 	if eventIssueComment != nil && eventIssueComment.Action == "created" {
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			s.handleCheckCLA(ctx, *eventIssueComment)
+			if err := s.handleCheckCLA(ctx, pr); err != nil {
+				mlog.Error("Error checking CLA", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			s.handleCherryPick(ctx, *eventIssueComment)
+			if err := s.handleCherryPick(ctx, commenter, *eventIssueComment.Comment.Body, pr); err != nil {
+				mlog.Error("Error cherry picking", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			s.handleAutoassign(ctx, *eventIssueComment)
+			if err := s.handleAutoAssign(ctx, eventIssueComment.Comment.GetHTMLURL(), pr); err != nil {
+				mlog.Error("Error auto assigning", mlog.Err(err))
+			}
 		}
 		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			s.handleUpdateBranch(ctx, *eventIssueComment)
+			if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
+				mlog.Error("Error updating branch", mlog.Err(err))
+			}
 		}
 		return
 	}
