@@ -29,5 +29,6 @@ type PullRequest struct {
 	URL                 string
 	CreatedAt           time.Time
 	Merged              sql.NullBool
+	MergeCommitSHA      string
 	MaintainerCanModify sql.NullBool
 }

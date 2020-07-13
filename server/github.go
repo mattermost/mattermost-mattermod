@@ -34,6 +34,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		URL:                 *pullRequest.URL,
 		CreatedAt:           pullRequest.GetCreatedAt(),
 		Merged:              sql.NullBool{Bool: *pullRequest.Merged, Valid: true},
+		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
 		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 

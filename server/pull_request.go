@@ -253,6 +253,10 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
+	if oldPr.MergeCommitSHA != pr.MergeCommitSHA {
+		prHasChanges = true
+	}
+
 	if prHasChanges {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
 		if _, err := s.Store.PullRequest().Save(pr); err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 
 	"github.com/google/go-github/v32/github"
+	"github.com/pkg/errors"
 )
 
 func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
@@ -102,9 +103,12 @@ func getMilestone(title string) string {
 }
 
 func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumber *int, pr *model.PullRequest) (cmdOutput string, err error) {
+	if pr.MergeCommitSHA == "" {
+		errors.Errorf("can't get PR merge commit SHA for PR: %d", pr.Number)
+	}
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
 	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
-	cmd := exec.Command("/home/ubuntu/git/devops/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number))
+	cmd := exec.Command("/home/ubuntu/git/devops/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),

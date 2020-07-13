@@ -50,12 +50,11 @@ if ! which hub > /dev/null; then
 fi
 
 if [[ "$#" -lt 2 ]]; then
-  echo "${0} <remote branch> <pr-number>...: cherry pick one or more <pr> onto <remote branch> and leave instructions for proposing pull request"
+  echo "${0} <remote branch> <pr-number> <commit-sha>: cherry pick a <commit> from <pr> onto <remote branch> and leave instructions for proposing pull request"
   echo
-  echo "  Checks out <remote branch> and handles the cherry-pick of <pr> (possibly multiple) for you."
+  echo "  Checks out <remote branch> and handles the cherry-pick of <commits> for you."
   echo "  Examples:"
-  echo "    $0 upstream/release-3.14 12345        # Cherry-picks PR 12345 onto upstream/release-3.14 and proposes that as a PR."
-  echo "    $0 upstream/release-3.14 12345 56789  # Cherry-picks PR 12345, then 56789 and proposes the combination as a single PR."
+  echo "    $0 upstream/release-3.14 12345 df243fd # Cherry-picks commit sha df243fd onto upstream/release-3.14 and proposes that as a PR with a commit message referring to PR 12345"
   echo
   echo "  Set the DRY_RUN environment var to skip git push and creating PR."
   echo "  This is useful for creating patches to a release branch without making a PR."
@@ -71,20 +70,15 @@ if git_status=$(git status --porcelain --untracked=no 2>/dev/null) && [[ -n "${g
   exit 1
 fi
 
-if [[ -e "${REBASEMAGIC}" ]]; then
-  echo "!!! 'git rebase' or 'git am' in progress. Clean up and try again."
+while unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; do
+  echo
+  echo "!!! 'git cherry-pick' or other operation in progress. Clean up and try again."
   exit 1
-fi
+done
 
 declare -r BRANCH="$1"
-shift 1
-declare -r PULLS=( "$@" )
-
-function join { local IFS="$1"; shift; echo "$*"; }
-PULLDASH=$(join - "${PULLS[@]/#/#}") # Generates something like "#12345-#56789"
-declare -r PULLDASH
-PULLSUBJ=$(join " " "${PULLS[@]/#/#}") # Generates something like "#12345 #56789"
-declare -r PULLSUBJ
+declare -r PULL="$2"
+declare -r COMMITSHA="$3"
 
 echo "+++ Updating remotes..."
 git remote update "${UPSTREAM_REMOTE}" "${FORK_REMOTE}"
@@ -95,7 +89,7 @@ if ! git log -n1 --format=%H "${BRANCH}" >/dev/null 2>&1; then
   exit 1
 fi
 
-NEWBRANCHREQ="automated-cherry-pick-of-${PULLDASH}" # "Required" portion for tools.
+NEWBRANCHREQ="automated-cherry-pick-of-#${PULL}" # "Required" portion for tools.
 declare -r NEWBRANCHREQ
 NEWBRANCH="$(echo "${NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
@@ -105,12 +99,12 @@ echo "+++ Creating local branch ${NEWBRANCHUNIQ}"
 
 cleanbranch=""
 prtext=""
-gitamcleanup=false
-function return_to_kansas {
-  if [[ "${gitamcleanup}" == "true" ]]; then
+gitcleanup=false
+function do_cleanup {
+  if [[ "${gitcleanup}" == "true" ]]; then
     echo
-    echo "+++ Aborting in-progress git am."
-    git am --abort >/dev/null 2>&1 || true
+    echo "+++ Aborting in-progress git cherry-pick."
+    git cherry-pick --abort >/dev/null 2>&1 || true
   fi
 
   # return to the starting branch and delete the PR text file
@@ -126,9 +120,8 @@ function return_to_kansas {
     fi
   fi
 }
-trap return_to_kansas EXIT
+trap do_cleanup EXIT
 
-SUBJECTS=()
 function make-a-pr() {
   local rel
   rel="$(basename "${BRANCH}")"
@@ -139,15 +132,11 @@ function make-a-pr() {
   # https://github.com/github/hub/issues/976 Otherwise stdin is stolen
   # when we shove the heredoc at hub directly, tickling the ioctl
   # crash.
-  prtext="$(mktemp -t prtext.XXXX)" # cleaned in return_to_kansas
-  local numandtitle
-  numandtitle=$(printf '%s\n' "${SUBJECTS[@]}")
+  prtext="$(mktemp -t prtext.XXXX)" # cleaned in do_cleanup
   cat >"${prtext}" <<EOF
-Automated cherry pick of ${PULLSUBJ}
+Automated cherry pick of #${PULL}
 
-Cherry pick of ${PULLSUBJ} on ${rel}.
-
-- ${numandtitle}
+Cherry pick of #${PULL} on ${rel}.
 
 /cc  @${ORIGINAL_AUTHOR}
 EOF
@@ -158,42 +147,24 @@ hub pull-request -F "${prtext}" -h "${GITHUB_USER}:${NEWBRANCH}" -b "${MAIN_REPO
 git checkout -b "${NEWBRANCHUNIQ}" "${BRANCH}"
 cleanbranch="${NEWBRANCHUNIQ}"
 
-gitamcleanup=true
-for pull in "${PULLS[@]}"; do
-  echo "+++ Downloading patch to /tmp/${pull}.patch (in case you need to do this again)"
+gitcleanup=true
+echo
+echo "+++ About to attempt cherry pick of PR #${PULL} with merge commit ${COMMITSHA}."
+echo
+git cherry-pick -x "${COMMITSHA}" || {
+  while unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; do
+    echo
+    echo "+++ Conflicts detected:"
+    echo
+    (git status --porcelain | grep ^U) || echo "!!! None. Did you git cherry-pick --continue or git --cherry-pick --abort?"
+    echo "Aborting." >&2
+    exit 1
+  done
 
-  curl -o "/tmp/${pull}.patch" -sSL "https://github.com/${MAIN_REPO_ORG}/${MAIN_REPO_NAME}/pull/${pull}.patch"
-  echo
-  echo "+++ About to attempt cherry pick of PR. To reattempt:"
-  echo "  $ git am -3 /tmp/${pull}.patch"
-  echo
-  git am -3 "/tmp/${pull}.patch" || {
-    conflicts=false
-    while unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] \
-      || [[ -e "${REBASEMAGIC}" ]]; do
-      conflicts=true # <-- We should have detected conflicts once
-      echo
-      echo "+++ Conflicts detected:"
-      echo
-      (git status --porcelain | grep ^U) || echo "!!! None. Did you git am --continue?"
-      echo "Aborting." >&2
-      exit 1
-    done
-
-    if [[ "${conflicts}" != "true" ]]; then
-      echo "!!! git am failed, likely because of an in-progress 'git am' or 'git rebase'"
-      exit 1
-    fi
-  }
-
-  # set the subject
-  subject=$(grep -m 1 "^Subject" "/tmp/${pull}.patch" | sed -e 's/Subject: \[PATCH//g' | sed 's/.*] //')
-  SUBJECTS+=("#${pull}: ${subject}")
-
-  # remove the patch file from /tmp
-  rm -f "/tmp/${pull}.patch"
-done
-gitamcleanup=false
+  echo "!!! git cherry-pick failed"
+  exit 1
+}
+gitcleanup=false
 
 if [[ -n "${DRY_RUN}" ]]; then
   echo "!!! Skipping git push and PR creation because you set DRY_RUN."
@@ -233,4 +204,3 @@ echo
 
 git push "${FORK_REMOTE}" -f "${NEWBRANCHUNIQ}:${NEWBRANCH}"
 make-a-pr
-
