@@ -14,11 +14,11 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/mattermost/go-circleci v0.4.0
+	github.com/mattermost/logr v1.0.5
 	github.com/mattermost/mattermost-server/v5 v5.23.0
 	github.com/pkg/errors v0.9.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.6.1
-	github.com/wiggin77/logr v1.0.4
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )

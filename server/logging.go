@@ -6,7 +6,7 @@ package server
 import (
 	"testing"
 
-	"github.com/wiggin77/logr"
+	"github.com/mattermost/logr"
 )
 
 type field struct {
