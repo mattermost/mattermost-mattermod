@@ -32,14 +32,6 @@ func TestIssueStore(t *testing.T) {
 		require.Equal(t, issue, savedIssue)
 	})
 
-	t.Run("Should fail with error on save if something went wrong", func(t *testing.T) {
-		defer cleanIssuesTable(store)
-		wrongIssue := *issue
-		wrongIssue.State = "badstatelargerthanexpected"
-		_, err := issueStore.Save(&wrongIssue)
-		require.Error(t, err)
-	})
-
 	t.Run("Should get the requested issue", func(t *testing.T) {
 		defer cleanIssuesTable(store)
 		_, err := issueStore.Save(issue)
