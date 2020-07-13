@@ -104,7 +104,7 @@ func getMilestone(title string) string {
 
 func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumber *int, pr *model.PullRequest) (cmdOutput string, err error) {
 	if pr.MergeCommitSHA == "" {
-		errors.Errorf("can't get PR merge commit SHA for PR: %d", pr.Number)
+		return "", errors.Errorf("can't get PR merge commit SHA for PR: %d", pr.Number)
 	}
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
 	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
