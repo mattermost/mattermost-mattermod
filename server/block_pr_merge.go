@@ -25,8 +25,8 @@ func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) error 
 	}
 
 	mlog.Info("will block PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
-	return errStatus
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	return err
 }
 
 func (s *Server) getBlockLabelFromPR(prLabels []string) string {
@@ -53,6 +53,6 @@ func (s *Server) unblockPRMerge(ctx context.Context, pr *model.PullRequest) erro
 	}
 
 	mlog.Info("will unblock PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
-	return errStatus
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	return err
 }
