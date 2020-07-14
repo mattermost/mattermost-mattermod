@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultMysqlDSN         = "mattermod:mattermod@tcp(192.168.254.3:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
+	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
 	defaultMysqlRootUser    = "root"
 	defaultMysqlRootUserPWD = "mattermod"
 	defaultMysqlUser        = "mattermod"

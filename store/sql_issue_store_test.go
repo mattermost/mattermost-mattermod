@@ -40,11 +40,12 @@ func TestIssueStore(t *testing.T) {
 		savedIssue.State = "test"
 		_, err = issueStore.Save(savedIssue)
 		require.NoError(t, err)
-		updatedIssue, err := issueStore.Get(
+		updatedIssue, err2 := issueStore.Get(
 			savedIssue.RepoOwner,
 			savedIssue.RepoName,
 			savedIssue.Number,
 		)
+		require.NoError(t, err2)
 		require.Equal(t, savedIssue, updatedIssue)
 	})
 
