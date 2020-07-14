@@ -4,12 +4,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/robfig/cron/v3"
@@ -83,6 +86,21 @@ func main() {
 	}
 
 	c.Start()
+
+	// Metrics system
+	prometheusService := metrics.NewPrometheusProvider()
+	handlers := []*metrics.Handler{
+		{Path: "/metrics", Description: "Prometheus Metrics", Handler: prometheusService.Handler()},
+	}
+	metricsServer := metrics.NewMetricsServer("8067", handlers, true)
+	metricsServer.StartServer()
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		metricsServer.StopServer(ctx)
+	}()
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
