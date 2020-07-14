@@ -25,11 +25,27 @@ func TestIssueStore(t *testing.T) {
 		Labels:    []string{"test-label"},
 	}
 
-	t.Run("Should save the issue", func(t *testing.T) {
+	t.Run("Should save a new issue", func(t *testing.T) {
 		defer cleanIssuesTable(store)
 		savedIssue, err := issueStore.Save(issue)
 		require.NoError(t, err)
 		require.Equal(t, issue, savedIssue)
+	})
+
+	t.Run("Should update an existing issue", func(t *testing.T) {
+		defer cleanIssuesTable(store)
+		savedIssue, err := issueStore.Save(issue)
+		require.NoError(t, err)
+		require.Equal(t, issue, savedIssue)
+		savedIssue.State = "test"
+		_, err = issueStore.Save(savedIssue)
+		require.NoError(t, err)
+		updatedIssue, err := issueStore.Get(
+			savedIssue.RepoOwner,
+			savedIssue.RepoName,
+			savedIssue.Number,
+		)
+		require.Equal(t, savedIssue, updatedIssue)
 	})
 
 	t.Run("Should get the requested issue", func(t *testing.T) {
@@ -42,6 +58,13 @@ func TestIssueStore(t *testing.T) {
 	})
 
 	t.Run("Should return empty if can't find rows with Get", func(t *testing.T) {
+		defer cleanIssuesTable(store)
+		retrievedIssue, err := issueStore.Get(issue.RepoOwner, issue.RepoName, issue.Number)
+		require.NoError(t, err)
+		require.Nil(t, retrievedIssue)
+	})
+
+	t.Run("Should update and return the value correctly", func(t *testing.T) {
 		defer cleanIssuesTable(store)
 		retrievedIssue, err := issueStore.Get(issue.RepoOwner, issue.RepoName, issue.Number)
 		require.NoError(t, err)
