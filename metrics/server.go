@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
+
 package metrics
 
 import (
@@ -14,7 +17,7 @@ import (
 
 type Server struct {
 	port     string
-	handlers []*Handler
+	handlers []Handler
 
 	server *http.Server
 }
@@ -25,7 +28,8 @@ type Handler struct {
 	Handler     http.Handler
 }
 
-func NewMetricsServer(port string, handlers []*Handler, pprof bool) *Server {
+func NewMetricsServer(port string, handler Handler, pprof bool) *Server {
+	handlers := []Handler{handler}
 	if pprof {
 		handlers = append(handlers, pprofHandlers()...)
 	}
@@ -63,7 +67,9 @@ func (m *Server) StartServer() {
 }
 
 // StopServer ...
-func (m *Server) StopServer(ctx context.Context) {
+func (m *Server) StopServer() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	if err := m.server.Shutdown(ctx); err != nil {
 		mlog.Error("Error shutting down the metrics and profiling server", mlog.Err(err))
 	}
@@ -90,8 +96,8 @@ func (m *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func pprofHandlers() []*Handler {
-	return []*Handler{
+func pprofHandlers() []Handler {
+	return []Handler{
 		{Path: "/debug/pprof/", Description: "Profiling Root", Handler: http.HandlerFunc(pprof.Index)},
 		{Path: "/debug/pprof/cmdline", Description: "Profiling Command Line", Handler: http.HandlerFunc(pprof.Cmdline)},
 		{Path: "/debug/pprof/symbol", Description: "Profiling Symbols", Handler: http.HandlerFunc(pprof.Symbol)},

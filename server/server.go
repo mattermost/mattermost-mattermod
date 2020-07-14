@@ -22,6 +22,7 @@ import (
 	"github.com/google/go-github/v32/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
+	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
@@ -38,6 +39,7 @@ type Server struct {
 	commentLock    sync.Mutex
 	StartTime      time.Time
 	awsSession     *session.Session
+	metrics        metrics.Provider
 
 	server *http.Server
 }
@@ -59,14 +61,15 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config) (*Server, error) {
+func New(config *Config, metrics metrics.Provider) (*Server, error) {
 	s := &Server{
 		Config:    config,
 		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
 		StartTime: time.Now(),
+		metrics:   metrics,
 	}
 
-	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +242,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	pr, err := s.getPRFromComment(ctx, *eventIssueComment)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("Error getting PR from Comment", mlog.Err(err))
 		return
 	}
 	var commenter string

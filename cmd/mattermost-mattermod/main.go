@@ -4,13 +4,11 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
@@ -30,8 +28,14 @@ func main() {
 	}
 	server.SetupLogging(config)
 
+	// Metrics system
+	metricsProvider := metrics.NewPrometheusProvider()
+	metricsServer := metrics.NewMetricsServer("8067", metricsProvider.Handler(), true)
+	metricsServer.StartServer()
+	defer metricsServer.StopServer()
+
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
-	s, err := server.New(config)
+	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
 		os.Exit(1)
@@ -86,20 +90,6 @@ func main() {
 	}
 
 	c.Start()
-
-	// Metrics system
-	prometheusService := metrics.NewPrometheusProvider()
-	handlers := []*metrics.Handler{
-		{Path: "/metrics", Description: "Prometheus Metrics", Handler: prometheusService.Handler()},
-	}
-	metricsServer := metrics.NewMetricsServer("8067", handlers, true)
-	metricsServer.StartServer()
-
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		metricsServer.StopServer(ctx)
-	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
