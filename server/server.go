@@ -253,25 +253,25 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		commenter = eventData.Comment.User.GetLogin()
 	}
 
-	if eventData.CheckCLA() {
+	if eventData.HasCheckCLA() {
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Error checking CLA", mlog.Err(err))
 		}
 	}
 
-	if eventData.CherryPick() {
+	if eventData.HasCherryPick() {
 		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
 			mlog.Error("Error cherry picking", mlog.Err(err))
 		}
 	}
 
-	if eventData.AutoAssign() {
+	if eventData.HasAutoAssign() {
 		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
 			mlog.Error("Error auto assigning", mlog.Err(err))
 		}
 	}
 
-	if eventData.UpdateBranch() {
+	if eventData.HasUpdateBranch() {
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
 			mlog.Error("Error updating branch", mlog.Err(err))
 		}

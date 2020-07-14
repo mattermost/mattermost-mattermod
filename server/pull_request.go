@@ -522,7 +522,7 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 
 func (s *Server) getPRFromEvent(ctx context.Context, event EventData) (*model.PullRequest, error) {
 	if event.Issue == nil || event.Repository == nil {
-		return nil, errors.New("invalid event")
+		return nil, errors.New("either issue and repository field is missing to from the event data")
 	}
 
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,

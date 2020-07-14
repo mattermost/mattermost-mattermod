@@ -28,32 +28,32 @@ type EventData struct {
 	Repository *github.Repository         `json:"repository"`
 }
 
-// CheckCLA is true if body contains "/check-cla"
-func (d *EventData) CheckCLA() bool {
+// HasCheckCLA is true if body contains "/check-cla"
+func (d *EventData) HasCheckCLA() bool {
 	if d.Comment == nil || d.Comment.Body == nil {
 		return false
 	}
 	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/check-cla")
 }
 
-// CherryPick is true if body contains "/cherry-pick"
-func (d *EventData) CherryPick() bool {
+// HasCherryPick is true if body contains "/cherry-pick"
+func (d *EventData) HasCherryPick() bool {
 	if d.Comment == nil || d.Comment.Body == nil {
 		return false
 	}
 	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/cherry-pick")
 }
 
-// AutoAssign is true if body contains "/autoassign"
-func (d *EventData) AutoAssign() bool {
+// HasAutoAssign is true if body contains "/autoassign"
+func (d *EventData) HasAutoAssign() bool {
 	if d.Comment == nil || d.Comment.Body == nil {
 		return false
 	}
 	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/autoassign")
 }
 
-// UpdateBranch is true if body contains "/update-branch"
-func (d *EventData) UpdateBranch() bool {
+// HasUpdateBranch is true if body contains "/update-branch"
+func (d *EventData) HasUpdateBranch() bool {
 	if d.Comment == nil || d.Comment.Body == nil {
 		return false
 	}
