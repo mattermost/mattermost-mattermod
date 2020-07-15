@@ -20,10 +20,10 @@ const (
 )
 
 type Provider interface {
-	ObserveHTTPRequestDuration(handler, method, statusCode string, elapsed float64)
+	ObserveHTTPRequestDuration(method, handler, statusCode string, elapsed float64)
 	IncreaseWebhookRequest(name string)
 
-	ObserveGithubRequestDuration(handler, method, statusCode string, elapsed float64)
+	ObserveGithubRequestDuration(method, handler, statusCode string, elapsed float64)
 	IncreaseGithubCacheHits(method, handler string)
 	IncreaseGithubCacheMisses(method, handler string)
 

@@ -28,7 +28,7 @@ type Handler struct {
 	Handler     http.Handler
 }
 
-func NewMetricsServer(port string, handler Handler, pprof bool) *Server {
+func NewServer(port string, handler Handler, pprof bool) *Server {
 	handlers := []Handler{handler}
 	if pprof {
 		handlers = append(handlers, pprofHandlers()...)
@@ -37,7 +37,7 @@ func NewMetricsServer(port string, handler Handler, pprof bool) *Server {
 }
 
 // StartServer ...
-func (m *Server) StartServer() {
+func (m *Server) Start() {
 	const (
 		defaultHTTPServerReadTimeoutSeconds  = 30
 		defaultHTTPServerWriteTimeoutSeconds = 30
@@ -67,7 +67,7 @@ func (m *Server) StartServer() {
 }
 
 // StopServer ...
-func (m *Server) StopServer() {
+func (m *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := m.server.Shutdown(ctx); err != nil {

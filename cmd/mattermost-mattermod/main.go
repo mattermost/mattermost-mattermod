@@ -30,9 +30,9 @@ func main() {
 
 	// Metrics system
 	metricsProvider := metrics.NewPrometheusProvider()
-	metricsServer := metrics.NewMetricsServer("8067", metricsProvider.Handler(), true)
-	metricsServer.StartServer()
-	defer metricsServer.StopServer()
+	metricsServer := metrics.NewServer("8067", metricsProvider.Handler(), true)
+	metricsServer.Start()
+	defer metricsServer.Stop()
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
 	s, err := server.New(config, metricsProvider)
