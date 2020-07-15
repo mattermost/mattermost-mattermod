@@ -19,6 +19,10 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	start := time.Now()
 	resp, err = t.Base.RoundTrip(req)
 	elapsed := float64(time.Since(start)) / float64(time.Second)
+	// rate limit error
+	if resp == nil && err != nil {
+		return resp, err
+	}
 	statusCode := strconv.Itoa(resp.StatusCode)
 	t.metrics.ObserveGithubRequestDuration(req.Method, req.URL.Path, statusCode, elapsed)
 

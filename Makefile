@@ -58,6 +58,7 @@ mocks:
 	mockgen -package mocks -destination store/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/store PullRequestStore
 	mockgen -package mocks -destination store/mocks/issue.go github.com/mattermost/mattermost-mattermod/store IssueStore
 	mockgen -package mocks -destination store/mocks/spinmint.go github.com/mattermost/mattermost-mattermod/store SpinmintStore
+	mockgen -package mocks -destination metrics/mocks/provider.go github.com/mattermost/mattermost-mattermod/metrics Provider
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:

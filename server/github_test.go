@@ -13,6 +13,7 @@ import (
 	"github.com/jarcoal/httpmock"
 	"golang.org/x/time/rate"
 
+	metricsmocks "github.com/mattermost/mattermost-mattermod/metrics/mocks"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/assert"
@@ -117,6 +118,11 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 }
 
 func TestCacheTransport(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricsMock := metricsmocks.NewMockProvider(ctrl)
+
 	t.Run("Should return cached response", func(t *testing.T) {
 		httpmock.Activate()
 		defer httpmock.DeactivateAndReset()
@@ -134,8 +140,12 @@ func TestCacheTransport(t *testing.T) {
 			},
 		)
 
+		metricsMock.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMock.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMock.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
+
 		// First request should return a non-cached request
-		ghClient, _ := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -166,7 +176,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient, _ := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -197,7 +207,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient, _ := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -228,7 +238,7 @@ func TestCacheTransport(t *testing.T) {
 		)
 
 		// First request should return a non-cached request
-		ghClient, _ := server.NewGithubClient("testtoken", 10)
+		ghClient, _ := server.NewGithubClient("testtoken", 10, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -243,6 +253,11 @@ func TestCacheTransport(t *testing.T) {
 }
 
 func TestRateLimitTransport(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	metricsMock := metricsmocks.NewMockProvider(ctrl)
+
 	t.Run("Should be able to perform a request without being hit by rate limiter", func(t *testing.T) {
 		httpmock.Activate()
 		defer httpmock.DeactivateAndReset()
@@ -258,7 +273,11 @@ func TestRateLimitTransport(t *testing.T) {
 			},
 		)
 
-		ghClient, _ := server.NewGithubClient("testtoken", 1)
+		metricsMock.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMock.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMock.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
+
+		ghClient, _ := server.NewGithubClient("testtoken", 1, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		require.Equal(t, "", resp.Header.Get("X-From-Cache"))
@@ -278,7 +297,7 @@ func TestRateLimitTransport(t *testing.T) {
 			},
 		)
 
-		ghClient := server.NewGithubClientWithLimiter("testtoken", 0, 0)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", 0, 0, metricsMock)
 		_, _, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "exceeds limiter's burst 0")
@@ -300,7 +319,7 @@ func TestRateLimitTransport(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Microsecond)
 		defer cancel()
 		limit := rate.Every(time.Minute * 1)
-		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 10)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 10, metricsMock)
 		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "would exceed context deadline")
@@ -322,7 +341,7 @@ func TestRateLimitTransport(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		limit := rate.Every(time.Millisecond * 100)
-		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
 		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		start := time.Now()
