@@ -12,9 +12,9 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) error {
 	if pr.State == model.StateClosed {
-		return
+		return nil
 	}
 
 	mergeStatus := &github.RepoStatus{
@@ -25,11 +25,8 @@ func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) {
 	}
 
 	mlog.Info("will block PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
-	if errStatus != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
-		return
-	}
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	return err
 }
 
 func (s *Server) getBlockLabelFromPR(prLabels []string) string {
@@ -43,9 +40,9 @@ func (s *Server) getBlockLabelFromPR(prLabels []string) string {
 	return ""
 }
 
-func (s *Server) unblockPRMerge(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) unblockPRMerge(ctx context.Context, pr *model.PullRequest) error {
 	if pr.State == model.StateClosed {
-		return
+		return nil
 	}
 
 	mergeStatus := &github.RepoStatus{
@@ -56,9 +53,6 @@ func (s *Server) unblockPRMerge(ctx context.Context, pr *model.PullRequest) {
 	}
 
 	mlog.Info("will unblock PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
-	_, _, errStatus := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
-	if errStatus != nil {
-		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(errStatus))
-		return
-	}
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, mergeStatus)
+	return err
 }
