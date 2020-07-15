@@ -21,6 +21,9 @@
 # checks them out to a branch named:
 #  automated-cherry-pick-of-<pr>-<target branch>-<timestamp>
 
+# Modified by Mattermost to do a real cherry-pick instead of applying patches
+# via git am
+
 set -o errexit
 set -o nounset
 set -o pipefail
