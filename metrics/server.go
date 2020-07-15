@@ -93,7 +93,6 @@ func (m *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if _, err := w.Write([]byte(html)); err != nil {
 		mlog.Error("Error rendering metrics page", mlog.Err(err))
 	}
-
 }
 
 func pprofHandlers() []Handler {
