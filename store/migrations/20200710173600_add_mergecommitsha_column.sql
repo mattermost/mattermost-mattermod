@@ -1,1 +1,0 @@
-ALTER TABLE PullRequests ADD COLUMN MergeCommitSHA VARCHAR(48);
