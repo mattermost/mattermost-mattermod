@@ -145,7 +145,7 @@ func (p *PrometheusProvider) ObserveGithubRequestDuration(handler, method, statu
 }
 
 func (p *PrometheusProvider) IncreaseWebhookRequest(name string) {
-	p.cronTasksErrors.WithLabelValues(name).Add(1)
+	p.webhookEvents.WithLabelValues(name).Add(1)
 }
 
 func (p *PrometheusProvider) ObserveCronTaskDuration(name string, elapsed float64) {
