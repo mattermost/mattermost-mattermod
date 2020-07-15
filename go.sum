@@ -331,7 +331,7 @@ github.com/iris-contrib/schema v0.0.1/go.mod h1:urYA3uvUNG1TIIjOSCzHr9/LmbQo8LrO
 github.com/jamiealquiza/envy v1.1.0/go.mod h1:MP36BriGCLwEHhi1OU8E9569JNZrjWfCvzG7RsPnHus=
 github.com/jarcoal/httpmock v1.0.5 h1:cHtVEcTxRSX4J0je7mWPfc9BpDpqzXSJ5HbymZmyHck=
 github.com/jarcoal/httpmock v1.0.5/go.mod h1:ATjnClrvW/3tijVmpL/va5Z3aAyGvqU3gCT8nX0Txik=
-github.com/jaytaylor/html2text v0.0.0-20190408195923-01ec452cbe43/go.mod h1:CVKlgaMiht+LXvHG173ujK6JUhZXKb2u/BQtjPDIvyk=
+github.com/jaytaylor/html2text v0.0.0-20200412013138-3577fbdbcff7/go.mod h1:CVKlgaMiht+LXvHG173ujK6JUhZXKb2u/BQtjPDIvyk=
 github.com/jellevandenhooff/dkim v0.0.0-20150330215556-f50fe3d243e1/go.mod h1:E0B/fFc00Y+Rasa88328GlI/XbtyysCtTHZS8h7IrBU=
 github.com/jhump/protoreflect v1.6.0/go.mod h1:eaTn3RZAmMBcV0fifFvlm6VHNz3wSkYyXYWUh7ymB74=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5imkbgOkpRUYLnmbU7UEFbjtDA2hxJ1ichM=
@@ -407,6 +407,8 @@ github.com/mattermost/gosaml2 v0.3.2/go.mod h1:Z429EIOiEi9kbq6yHoApfzlcXpa6dzRDc
 github.com/mattermost/ldap v0.0.0-20191128190019-9f62ba4b8d4d/go.mod h1:HLbgMEI5K131jpxGazJ97AxfPDt31osq36YS1oxFQPQ=
 github.com/mattermost/logr v1.0.5 h1:TST38xROPguNh8o90BfDHpp1bz6HfTdFYX5Btw/oLwM=
 github.com/mattermost/logr v1.0.5/go.mod h1:YzldchiJXgF789YNDFGXVoCHTQOTrCKwWft9Fwev1iI=
+github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7 h1:9n8JTr2cSyhr2PIbUetodrPjCiovxQzmh+hx/rlXAMY=
+github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7/go.mod h1:TVLwNQLSPNIkFOLoGHCGjZbSc2JEQf5PHUbQvneUSGM=
 github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0/go.mod h1:nV5bfVpT//+B1RPD2JvRnxbkLmJEYXmRaaVl15fsXjs=
 github.com/mattermost/viper v1.0.4/go.mod h1:uc5hKG9lv4/KRwPOt2c1omOyirS/UnuA2TytiZQSFHM=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
@@ -674,8 +676,6 @@ github.com/vmihailenco/msgpack/v5 v5.0.0-beta.1/go.mod h1:xlngVLeyQ/Qi05oQxhQ+oT
 github.com/vmihailenco/tagparser v0.1.1/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/wiggin77/cfg v1.0.2 h1:NBUX+iJRr+RTncTqTNvajHwzduqbhCQjEqxLHr6Fk7A=
 github.com/wiggin77/cfg v1.0.2/go.mod h1:b3gotba2e5bXTqTW48DwIFoLc+4lWKP7WPi/CdvZ4aE=
-github.com/wiggin77/logr v1.0.4 h1:g8YO5AU9hhKvLQnXceP8/y3JJtw3wPKL4kTzMTUdN5k=
-github.com/wiggin77/logr v1.0.4/go.mod h1:h98FF6GPfThhDrHCg063hZA1sIyOEzQ/P85wgqI0IqE=
 github.com/wiggin77/merror v1.0.2 h1:V0nH9eFp64ASyaXC+pB5WpvBoCg7NUwvaCSKdzlcHqw=
 github.com/wiggin77/merror v1.0.2/go.mod h1:uQTcIU0Z6jRK4OwqganPYerzQxSFJ4GSHM3aurxxQpg=
 github.com/wiggin77/srslog v1.0.1 h1:gA2XjSMy3DrRdX9UqLuDtuVAAshb8bE1NhX1YK0Qe+8=
