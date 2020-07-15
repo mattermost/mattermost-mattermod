@@ -4,7 +4,6 @@
 package store
 
 import (
-	"os"
 	"testing"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -26,14 +25,14 @@ func TestIssueStore(t *testing.T) {
 	}
 
 	t.Run("Should save a new issue", func(t *testing.T) {
-		defer cleanIssuesTable(store)
+		defer cleanIssuesTable(t, store)
 		savedIssue, err := issueStore.Save(issue)
 		require.NoError(t, err)
 		require.Equal(t, issue, savedIssue)
 	})
 
 	t.Run("Should update an existing issue", func(t *testing.T) {
-		defer cleanIssuesTable(store)
+		defer cleanIssuesTable(t, store)
 		savedIssue, err := issueStore.Save(issue)
 		require.NoError(t, err)
 		require.Equal(t, issue, savedIssue)
@@ -50,7 +49,7 @@ func TestIssueStore(t *testing.T) {
 	})
 
 	t.Run("Should get the requested issue", func(t *testing.T) {
-		defer cleanIssuesTable(store)
+		defer cleanIssuesTable(t, store)
 		_, err := issueStore.Save(issue)
 		require.NoError(t, err)
 		retrievedIssue, err := issueStore.Get(issue.RepoOwner, issue.RepoName, issue.Number)
@@ -59,22 +58,22 @@ func TestIssueStore(t *testing.T) {
 	})
 
 	t.Run("Should return empty if can't find rows with Get", func(t *testing.T) {
-		defer cleanIssuesTable(store)
+		defer cleanIssuesTable(t, store)
 		retrievedIssue, err := issueStore.Get(issue.RepoOwner, issue.RepoName, issue.Number)
 		require.NoError(t, err)
 		require.Nil(t, retrievedIssue)
 	})
 
 	t.Run("Should update and return the value correctly", func(t *testing.T) {
-		defer cleanIssuesTable(store)
+		defer cleanIssuesTable(t, store)
 		retrievedIssue, err := issueStore.Get(issue.RepoOwner, issue.RepoName, issue.Number)
 		require.NoError(t, err)
 		require.Nil(t, retrievedIssue)
 	})
 }
 
-func cleanIssuesTable(store *SQLStore) {
+func cleanIssuesTable(t *testing.T, store *SQLStore) {
 	if _, err := store.master.Exec("TRUNCATE TABLE Issues;"); err != nil {
-		os.Exit(1)
+		require.Fail(t, "Issue table cleaning failed", err.Error())
 	}
 }
