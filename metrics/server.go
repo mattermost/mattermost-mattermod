@@ -22,12 +22,20 @@ type Server struct {
 	server *http.Server
 }
 
+// Handler is the representation of an HTTP handler that would be
+// used by the metrics server to expose the metrics
 type Handler struct {
 	Path        string
 	Description string
 	Handler     http.Handler
 }
 
+// NewServer creates a new metrics server.
+// It receives a handler to expose the metrics from a provider. Right
+// now we're just exposing one handler but in the future it'd support
+// a slice of handlers
+// Also, you can activate/deactivate pprof profiles as well setting
+// the pprof argument to true
 func NewServer(port string, handler Handler, pprof bool) *Server {
 	handlers := []Handler{handler}
 	if pprof {
@@ -36,7 +44,7 @@ func NewServer(port string, handler Handler, pprof bool) *Server {
 	return &Server{port: port, handlers: handlers}
 }
 
-// StartServer ...
+// Start starts the metrics server in the provider port
 func (m *Server) Start() {
 	const (
 		defaultHTTPServerReadTimeoutSeconds  = 30
@@ -66,7 +74,7 @@ func (m *Server) Start() {
 	}()
 }
 
-// StopServer ...
+// Stop gracefully stops the server
 func (m *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

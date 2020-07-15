@@ -6,11 +6,16 @@ import (
 	"time"
 )
 
+// Transport is an HTTP transport that would check
+// the requests and increase some metrics, cache
+// errors, etc based on the requests and responses
 type Transport struct {
 	Base    http.RoundTripper
 	metrics Provider
 }
 
+// NewTransport returns a transport using a provided http.RoundTripper as
+// the base and a metrics provider
 func NewTransport(base http.RoundTripper, metrics Provider) *Transport {
 	return &Transport{base, metrics}
 }
@@ -35,6 +40,8 @@ func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error
 	return resp, err
 }
 
+// Client returns a new http.Client using Transport
+// as the default transport
 func (t *Transport) Client() *http.Client {
 	return &http.Client{Transport: t}
 }
