@@ -225,60 +225,59 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pingEvent *github.PingEvent
 	if r.Header.Get("X-GitHub-Event") == "ping" {
-		pingEvent = PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+		if pingEvent := PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf))); pingEvent != nil {
+			mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+			return
+		}
 	}
 
 	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	eventIssueComment := IssueCommentFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-
 	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return
 	}
 
-	pr, err := s.getPRFromComment(ctx, *eventIssueComment)
+	eventData := EventDataFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	if eventData == nil || eventData.Action != "created" {
+		s.handleIssueEvent(ctx, event)
+		return
+	}
+
+	pr, err := s.getPRFromEvent(ctx, *eventData)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
 		return
 	}
 	var commenter string
-	if eventIssueComment.Comment != nil && eventIssueComment.Comment.User != nil {
-		commenter = eventIssueComment.Comment.User.GetLogin()
+	if eventData.Comment != nil && eventData.Comment.User != nil {
+		commenter = eventData.Comment.User.GetLogin()
 	}
 
-	if eventIssueComment != nil && eventIssueComment.Action == "created" {
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/check-cla") {
-			if err := s.handleCheckCLA(ctx, pr); err != nil {
-				mlog.Error("Error checking CLA", mlog.Err(err))
-			}
+	if eventData.HasCheckCLA() {
+		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			mlog.Error("Error checking CLA", mlog.Err(err))
 		}
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/cherry-pick") {
-			if err := s.handleCherryPick(ctx, commenter, *eventIssueComment.Comment.Body, pr); err != nil {
-				mlog.Error("Error cherry picking", mlog.Err(err))
-			}
-		}
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/autoassign") {
-			if err := s.handleAutoAssign(ctx, eventIssueComment.Comment.GetHTMLURL(), pr); err != nil {
-				mlog.Error("Error auto assigning", mlog.Err(err))
-			}
-		}
-		if strings.Contains(strings.TrimSpace(*eventIssueComment.Comment.Body), "/update-branch") {
-			if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
-				mlog.Error("Error updating branch", mlog.Err(err))
-			}
-		}
-		return
 	}
 
-	if pingEvent != nil {
-		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
-		return
+	if eventData.HasCherryPick() {
+		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
+			mlog.Error("Error cherry picking", mlog.Err(err))
+		}
 	}
 
-	s.handleIssueEvent(ctx, event)
+	if eventData.HasAutoAssign() {
+		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
+			mlog.Error("Error auto assigning", mlog.Err(err))
+		}
+	}
+
+	if eventData.HasUpdateBranch() {
+		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
+			mlog.Error("Error updating branch", mlog.Err(err))
+		}
+	}
 }
 
 func messageByUserContains(comments []*github.IssueComment, username string, text string) bool {
