@@ -22,7 +22,7 @@ const (
 // Provider is the interface that exposes the communication with the metrics system
 // this interface should be implemented by the different providers we want to include
 type Provider interface {
-	// ObserverHTTPRequestDuration stores the elapsed time for an HTTP request
+	// ObserverHTTPRequestDuration stores the round-trip time for an HTTP request
 	ObserveHTTPRequestDuration(method, handler, statusCode string, elapsed float64)
 	// IncreaseWebhookRequest increases the counter for the webhook requests
 	// identified by name
