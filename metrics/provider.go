@@ -19,30 +19,6 @@ const (
 	defaultPrometheusTimeoutSeconds = 60
 )
 
-// Provider is the interface that exposes the communication with the metrics system
-// this interface should be implemented by the different providers we want to include
-type Provider interface {
-	// ObserverHTTPRequestDuration stores the round-trip time for an HTTP request
-	ObserveHTTPRequestDuration(method, handler, statusCode string, elapsed float64)
-	// IncreaseWebhookRequest increases the counter for the webhook requests
-	// identified by name
-	IncreaseWebhookRequest(name string)
-
-	// ObserveGithubRequestDuration stores the elapsed time for github requests
-	ObserveGithubRequestDuration(method, handler, statusCode string, elapsed float64)
-	// IncreaseGithubCacheHits stores the number of cache hits when a github request
-	// is done. The information is stored using the HTTP method and the request handler
-	IncreaseGithubCacheHits(method, handler string)
-	// IncreaseGithubCacheMisses stores the number of cache misses when a github request
-	// is done. The information is stored using the HTTP method and the request handler
-	IncreaseGithubCacheMisses(method, handler string)
-
-	// ObserverCronTaskDuration stores the elapsed time for a cron task
-	ObserveCronTaskDuration(name string, elapsed float64)
-	// IncreaseCronTaskErrors stores the number of errors for a cron task
-	IncreaseCronTaskErrors(name string)
-}
-
 // PrometheusProvider is the implementation of the Provider interface
 // to send metrics to Prometheus
 type PrometheusProvider struct {

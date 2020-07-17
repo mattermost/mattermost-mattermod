@@ -22,7 +22,6 @@ import (
 	"github.com/google/go-github/v32/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
-	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
@@ -39,7 +38,7 @@ type Server struct {
 	commentLock    sync.Mutex
 	StartTime      time.Time
 	awsSession     *session.Session
-	metrics        metrics.Provider
+	metrics        MetricsProvider
 
 	server *http.Server
 }
@@ -61,7 +60,7 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config, metrics metrics.Provider) (*Server, error) {
+func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
 		Config:    config,
 		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
