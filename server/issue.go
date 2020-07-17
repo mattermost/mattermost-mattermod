@@ -53,9 +53,8 @@ func (s *Server) checkIssueForChanges(ctx context.Context, issue *model.Issue) e
 
 		if !hadLabel {
 			mlog.Info("issue added label", mlog.Int("issue", issue.Number), mlog.String("label", label))
-			err = s.handleIssueLabeled(ctx, issue, label)
-			if err != nil {
-				return fmt.Errorf("could not handle issue label added: %w", err)
+			if err = s.handleIssueLabeled(ctx, issue, label); err != nil {
+			    return fmt.Errorf("could not handle issue label added: %w", err)
 			}
 			hasChanges = true
 		}

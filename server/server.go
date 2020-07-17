@@ -241,8 +241,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	eventData := EventDataFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	if eventData == nil || eventData.Action != "created" {
-		err = s.handleIssueEvent(ctx, event)
-		if err != nil {
+		if err = s.handleIssueEvent(ctx, event); err != nil {
 			mlog.Error(err.Error())
 		}
 		return
