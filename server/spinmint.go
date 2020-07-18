@@ -261,12 +261,17 @@ func (s *Server) updateRoute53Subdomain(ctx context.Context, name, target, actio
 // CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
-
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
-	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.metrics.ObserveCronTaskDuration("check_test_server_lifetime", elapsed)
+		defer cancel()
+	}()
 	testServers, err := s.Store.Spinmint().List()
 	if err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", err.Error()))
+		s.metrics.IncreaseCronTaskErrors("check_test_server_lifetime")
 		return
 	}
 
