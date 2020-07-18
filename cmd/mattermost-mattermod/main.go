@@ -30,7 +30,7 @@ func main() {
 
 	// Metrics system
 	metricsProvider := metrics.NewPrometheusProvider()
-	metricsServer := metrics.NewServer("8067", metricsProvider.Handler(), true)
+	metricsServer := metrics.NewServer(config.MetricsServerPort, metricsProvider.Handler(), true)
 	metricsServer.Start()
 	defer metricsServer.Stop()
 
