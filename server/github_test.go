@@ -13,7 +13,6 @@ import (
 	"github.com/jarcoal/httpmock"
 	"golang.org/x/time/rate"
 
-	metricsmocks "github.com/mattermost/mattermost-mattermod/metrics/mocks"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/assert"
@@ -36,6 +35,7 @@ func TestIsOrgMember(t *testing.T) {
 	defer ctrl.Finish()
 
 	orgMocks := mocks.NewMockOrganizationsService(ctrl)
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 	mockedClient := &server.GithubClient{
 		Organizations: orgMocks,
 	}
@@ -56,6 +56,8 @@ func TestIsOrgMember(t *testing.T) {
 		NextPage: 0,
 	}
 	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(dummyUsers, ghR, nil)
+	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
 
 	s := &server.Server{
 		Config: &server.Config{
@@ -63,6 +65,7 @@ func TestIsOrgMember(t *testing.T) {
 		},
 		GithubClient: mockedClient,
 		OrgMembers:   nil,
+		Metrics:      metricsMock,
 	}
 	s.RefreshMembers()
 
@@ -76,6 +79,7 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 	defer ctrl.Finish()
 
 	orgMocks := mocks.NewMockOrganizationsService(ctrl)
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 	mockedClient := &server.GithubClient{
 		Organizations: orgMocks,
 	}
@@ -104,6 +108,8 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 		NextPage: 0,
 	}
 	orgMocks.EXPECT().ListMembers(gomock.Any(), "mattertest", opts).Return(newUsers, ghR, nil)
+	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
 
 	s := &server.Server{
 		Config: &server.Config{
@@ -111,6 +117,7 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 		},
 		GithubClient: mockedClient,
 		OrgMembers:   originalUsers,
+		Metrics:      metricsMock,
 	}
 	s.RefreshMembers()
 
@@ -121,7 +128,7 @@ func TestCacheTransport(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	metricsMock := metricsmocks.NewMockProvider(ctrl)
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 
 	t.Run("Should return cached response", func(t *testing.T) {
 		httpmock.Activate()
@@ -256,7 +263,7 @@ func TestRateLimitTransport(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	metricsMock := metricsmocks.NewMockProvider(ctrl)
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 
 	t.Run("Should be able to perform a request without being hit by rate limiter", func(t *testing.T) {
 		httpmock.Activate()

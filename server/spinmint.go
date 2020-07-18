@@ -265,13 +265,13 @@ func (s *Server) CheckTestServerLifeTime() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
-		s.metrics.ObserveCronTaskDuration("check_test_server_lifetime", elapsed)
+		s.Metrics.ObserveCronTaskDuration("check_test_server_lifetime", elapsed)
 		defer cancel()
 	}()
 	testServers, err := s.Store.Spinmint().List()
 	if err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", err.Error()))
-		s.metrics.IncreaseCronTaskErrors("check_test_server_lifetime")
+		s.Metrics.IncreaseCronTaskErrors("check_test_server_lifetime")
 		return
 	}
 

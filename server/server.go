@@ -38,7 +38,7 @@ type Server struct {
 	commentLock    sync.Mutex
 	StartTime      time.Time
 	awsSession     *session.Session
-	metrics        MetricsProvider
+	Metrics        MetricsProvider
 
 	server *http.Server
 }
@@ -65,10 +65,10 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		Config:    config,
 		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
 		StartTime: time.Now(),
-		metrics:   metrics,
+		Metrics:   metrics,
 	}
 
-	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.metrics)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.Metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -127,16 +127,16 @@ func (s *Server) Stop() error {
 func (s *Server) RefreshMembers() {
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
-		s.metrics.ObserveCronTaskDuration("refresh_members", elapsed)
-		defer cancel()
+		s.Metrics.ObserveCronTaskDuration("refresh_members", elapsed)
 	}()
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
-		s.metrics.IncreaseCronTaskErrors("refresh_members")
+		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
 
@@ -144,7 +144,7 @@ func (s *Server) RefreshMembers() {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
-		s.metrics.IncreaseCronTaskErrors("refresh_members")
+		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
 
@@ -158,7 +158,7 @@ func (s *Server) Tick() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
-		s.metrics.ObserveCronTaskDuration("tick", elapsed)
+		s.Metrics.ObserveCronTaskDuration("tick", elapsed)
 		defer cancel()
 	}()
 
@@ -168,7 +168,7 @@ func (s *Server) Tick() {
 		})
 		if err != nil {
 			mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.metrics.IncreaseCronTaskErrors("tick")
+			s.Metrics.IncreaseCronTaskErrors("tick")
 			continue
 		}
 
@@ -176,7 +176,7 @@ func (s *Server) Tick() {
 			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
-				s.metrics.IncreaseCronTaskErrors("tick")
+				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
 
@@ -188,7 +188,7 @@ func (s *Server) Tick() {
 		})
 		if err != nil {
 			mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.metrics.IncreaseCronTaskErrors("tick")
+			s.Metrics.IncreaseCronTaskErrors("tick")
 			continue
 		}
 
@@ -201,7 +201,7 @@ func (s *Server) Tick() {
 			issue, err := s.GetIssueFromGithub(ctx, repository.Owner, repository.Name, ghIssue)
 			if err != nil {
 				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
-				s.metrics.IncreaseCronTaskErrors("tick")
+				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
 

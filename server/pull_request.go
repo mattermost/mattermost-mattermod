@@ -365,7 +365,7 @@ func (s *Server) CheckPRActivity() {
 	start := time.Now()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
-		s.metrics.ObserveCronTaskDuration("check_pr_activity", elapsed)
+		s.Metrics.ObserveCronTaskDuration("check_pr_activity", elapsed)
 	}()
 	mlog.Info("Checking if need to Stale a Pull request")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
@@ -373,7 +373,7 @@ func (s *Server) CheckPRActivity() {
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
-		s.metrics.IncreaseCronTaskErrors("check_pr_activity")
+		s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 		return
 	}
 
@@ -401,7 +401,7 @@ func (s *Server) CheckPRActivity() {
 			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-				s.metrics.IncreaseCronTaskErrors("check_pr_activity")
+				s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 				continue
 			}
 
@@ -423,7 +423,7 @@ func (s *Server) CheckPRActivity() {
 				_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
-					s.metrics.IncreaseCronTaskErrors("check_pr_activity")
+					s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 					break
 				}
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
@@ -439,13 +439,13 @@ func (s *Server) CleanOutdatedPRs() {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
-		s.metrics.ObserveCronTaskDuration("clean_outdated_prs", elapsed)
+		s.Metrics.ObserveCronTaskDuration("clean_outdated_prs", elapsed)
 		defer cancel()
 	}()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
-		s.metrics.IncreaseCronTaskErrors("clean_outdated_prs")
+		s.Metrics.IncreaseCronTaskErrors("clean_outdated_prs")
 		return
 	}
 
@@ -466,7 +466,7 @@ func (s *Server) CleanOutdatedPRs() {
 			pr.State = pull.GetState()
 			if _, err := s.Store.PullRequest().Save(pr); err != nil {
 				mlog.Error(err.Error())
-				s.metrics.IncreaseCronTaskErrors("clean_outdated_prs")
+				s.Metrics.IncreaseCronTaskErrors("clean_outdated_prs")
 			}
 		} else {
 			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
