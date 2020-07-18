@@ -2,6 +2,64 @@
 
 Auto-generates responses to GitHub issues and pull requests on *mattermost/mattermost-server* repository using the mattermod GitHub account.
 
+## Developing
+
+### Environment Setup
+
+Essentials:
+
+- Install [Go](https://golang.org/doc/install)
+
+Optionals:
+
+- [Tilt](https://tilt.dev/) v0.13+ (to deploy on a local dev K8s cluster)
+- [kind](https://kind.sigs.k8s.io/) v0.8+ (to spin up a local dev K8s cluster)
+  - for better performance use [kind-with-registry.sh](https://github.com/tilt-dev/kind-local#how-to-try-it)
+- [kustomize](https://github.com/kubernetes-sigs/kustomize) v3.6+
+
+### Running
+
+This project uses `tilt` to deploy to local Kubernetes cluster. In order to do this you need a local Kuberetes cluster (`kind` is recommended).
+
+```bash
+KIND_CLUSTER_NAME=mattermod /path/to/kind-with-registry.sh
+
+# Or directly with kind, which is gonna be less performant
+# kind create cluster --name mattermod
+```
+
+Mattermod deployment to any cluster and any environment (dev, prod, etc) depends on existense of `deploy/base/config/config.json` file, this file is `.gitignore`d and you can safeley choose to copy sample config there for local development and testing:
+
+```shell
+cp config.json deploy/base/config/
+```
+
+Point `KUBECONFIG` to the newly created cluster, and start `tilt` and open [http://localhost:8080/](http://localhost:8080/):
+
+```shell
+make run
+```
+
+**Note:** If you don't want to use Tilt nor deploy to local cluster you can ignore it and simply start the binary server:
+
+```bash
+NOTILT=1 make run
+```
+
+### Testing
+
+Running all tests:
+
+```shell
+make test
+```
+
+Generate github mocks:
+
+```shell
+make mocks
+```
+
 ## Configuration file
 
 To make changes to the messages simply add the appropriate `"Label"` / `"Message"` pair to [`config/config-mattermod.json`](https://github.com/mattermost/mattermost-mattermod/blob/master/config/config-mattermod.json).
