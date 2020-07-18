@@ -20,7 +20,7 @@ const (
 )
 
 // PrometheusProvider is the implementation of the Provider interface
-// to send metrics to Prometheus
+// to send metrics to Prometheus.
 type PrometheusProvider struct {
 	Registry *prometheus.Registry
 
@@ -37,7 +37,7 @@ type PrometheusProvider struct {
 
 // NewPrometheusProvider creates a new prometheus metrics provider
 // It'll create the provider and initialize all the needed
-// metric objects
+// metric objects.
 func NewPrometheusProvider() *PrometheusProvider {
 	provider := &PrometheusProvider{}
 	provider.Registry = prometheus.NewRegistry()
@@ -158,7 +158,7 @@ func (p *PrometheusProvider) IncreaseGithubCacheMisses(method, handler string) {
 }
 
 // Handler returns the handler that would be used by the metrics server to expose
-// the metrics
+// the metrics.
 func (p *PrometheusProvider) Handler() Handler {
 	handler := promhttp.HandlerFor(p.Registry, promhttp.HandlerOpts{
 		Timeout:           time.Duration(defaultPrometheusTimeoutSeconds) * time.Second,
