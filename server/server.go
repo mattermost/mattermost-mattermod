@@ -223,7 +223,7 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
-	w = NewWrappedWriter(w)
+	w = newWrappedWriter(w)
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 	defer func() {
