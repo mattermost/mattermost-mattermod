@@ -5,7 +5,6 @@ package metrics
 
 import (
 	"testing"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	prometheusModels "github.com/prometheus/client_model/go"
@@ -16,7 +15,6 @@ func TestMetrics(t *testing.T) {
 	provider := NewPrometheusProvider()
 	server := NewServer("12345", provider.Handler(), false)
 	server.Start()
-	time.Sleep(time.Second * 1)
 	defer server.Stop()
 
 	t.Run("Should store metrics for requests duration", func(t *testing.T) {
