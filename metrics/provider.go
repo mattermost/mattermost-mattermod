@@ -52,7 +52,7 @@ func NewPrometheusProvider() *PrometheusProvider {
 			Namespace: metricsNamespace,
 			Subsystem: httpNamespace,
 			Name:      "requests",
-			Help:      "Received http requests.",
+			Help:      "HTTP requests by different categories.",
 		},
 		[]string{"method", "handler", "status_code"},
 	)
