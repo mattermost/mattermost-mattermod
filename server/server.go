@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -221,8 +222,15 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	w = NewWrappedWriter(w)
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		statusCode := strconv.Itoa(w.(*responseWriterWrapper).StatusCode())
+		s.Metrics.ObserveHTTPRequestDuration(r.Method, "/pr_event", statusCode, elapsed)
+	}()
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
