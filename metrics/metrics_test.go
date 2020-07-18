@@ -47,6 +47,19 @@ func TestMetrics(t *testing.T) {
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 
+	t.Run("Should store metrics for webhook errors", func(t *testing.T) {
+		m := &prometheusModels.Metric{}
+		data, err := provider.webhookErrors.GetMetricWithLabelValues("test")
+		require.NoError(t, err)
+		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.Equal(t, float64(0), m.Counter.GetValue())
+		provider.IncreaseWebhookErrors("test")
+		data, err = provider.webhookErrors.GetMetricWithLabelValues("test")
+		require.NoError(t, err)
+		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.Equal(t, float64(1), m.Counter.GetValue())
+	})
+
 	t.Run("Should store metrics for github requests duration", func(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.githubRequests.GetMetricWith(prometheus.Labels{"handler": "handler", "method": "method", "status_code": "200"})

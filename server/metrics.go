@@ -17,6 +17,8 @@ type MetricsProvider interface {
 	// IncreaseWebhookRequest increases the counter for the webhook requests
 	// identified by name
 	IncreaseWebhookRequest(name string)
+	// IncreaseWebhookErrors stores the number of errors identified by name
+	IncreaseWebhookErrors(name string)
 
 	// ObserveGithubRequestDuration stores the elapsed time for github requests
 	ObserveGithubRequestDuration(method, handler, statusCode string, elapsed float64)

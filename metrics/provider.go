@@ -26,6 +26,7 @@ type PrometheusProvider struct {
 
 	httpRequestsDuration *prometheus.HistogramVec
 	webhookEvents        *prometheus.CounterVec
+	webhookErrors        *prometheus.CounterVec
 
 	cronTasksDuration *prometheus.HistogramVec
 	cronTasksErrors   *prometheus.CounterVec
@@ -68,6 +69,17 @@ func NewPrometheusProvider() *PrometheusProvider {
 		[]string{"type"},
 	)
 	provider.Registry.MustRegister(provider.webhookEvents)
+
+	provider.webhookErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: httpNamespace,
+			Name:      "webhook_errors",
+			Help:      "Number of webhook errors by type.",
+		},
+		[]string{"type"},
+	)
+	provider.Registry.MustRegister(provider.webhookErrors)
 
 	provider.cronTasksDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
@@ -139,6 +151,10 @@ func (p *PrometheusProvider) ObserveGithubRequestDuration(handler, method, statu
 
 func (p *PrometheusProvider) IncreaseWebhookRequest(name string) {
 	p.webhookEvents.WithLabelValues(name).Add(1)
+}
+
+func (p *PrometheusProvider) IncreaseWebhookErrors(name string) {
+	p.webhookErrors.WithLabelValues(name).Add(1)
 }
 
 func (p *PrometheusProvider) ObserveCronTaskDuration(name string, elapsed float64) {

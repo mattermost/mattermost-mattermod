@@ -272,25 +272,33 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if eventData.HasCheckCLA() {
+		s.Metrics.IncreaseWebhookRequest("check_cla")
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("check_cla")
 			mlog.Error("Error checking CLA", mlog.Err(err))
 		}
 	}
 
 	if eventData.HasCherryPick() {
+		s.Metrics.IncreaseWebhookRequest("cherry_pick")
 		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("cherry_pick")
 			mlog.Error("Error cherry picking", mlog.Err(err))
 		}
 	}
 
 	if eventData.HasAutoAssign() {
+		s.Metrics.IncreaseWebhookRequest("auto_assign")
 		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("auto_assign")
 			mlog.Error("Error auto assigning", mlog.Err(err))
 		}
 	}
 
 	if eventData.HasUpdateBranch() {
+		s.Metrics.IncreaseWebhookRequest("update_branch")
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("update_branch")
 			mlog.Error("Error updating branch", mlog.Err(err))
 		}
 	}
