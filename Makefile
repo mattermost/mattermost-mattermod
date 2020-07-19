@@ -7,6 +7,11 @@ PACKAGES=$(shell go list ./...)
 .PHONY: all
 all: check-style test
 
+## Cleans workspace
+.PHONY: clean
+clean:
+	rm -rf dist/ out/
+
 ## Checks code style.
 .PHONY: check-style
 check-style: golangci-lint
@@ -24,25 +29,32 @@ golangci-lint:
 	@echo Running golangci-lint
 	golangci-lint run ./...
 
-build:
-	@echo Building
-
-	rm -rf dist/
-	mkdir -p dist/mattermod
-	$(GO) build ./cmd/mattermost-mattermod
-	mv mattermost-mattermod dist/mattermod/
-	cp config/config-mattermod.default.json dist/mattermod/config-mattermod.json
-
-
-package: build
-	tar -C dist -czf dist/mattermod.tar.gz mattermod
-
 ## Runs tests.
 test:
 	@echo Running Go tests
 	$(GO) test $(PACKAGES)
 	@echo test success
 
+## Builds mattermod.
+.PHONY: build
+build: clean
+	@echo Building
+	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
+
+# Docker variables
+DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+DOCKER_IMAGE ?= mattermost/mattermod
+DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
+
+## Build Docker image
+.PHONY: docker
+docker:
+	docker build --pull --tag $(DOCKER_IMAGE):$(DOCKER_TAG) --file Dockerfile .
+
+## Push Docker image
+.PHONY: push
+push:
+	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 ## Generate mocks.
 .PHONY: mocks
@@ -62,4 +74,4 @@ mocks:
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
-	@cat Makefile | grep -v '\.PHONY' |  grep -v '\help:' | grep -B1 -E '^[a-zA-Z_.-]+:.*' | sed -e "s/:.*//" | sed -e "s/^## //" |  grep -v '\-\-' | sed '1!G;h;$$!d' | awk 'NR%2{printf "\033[36m%-30s\033[0m",$$0;next;}1' | sort
+	@cat Makefile | grep -v '\.PHONY' |  grep -v '\help:' | grep -B1 -E '^[a-zA-Z_.-]+:.*' | sed -e "s/:.*//" | sed -e "s/^## //" |  grep -v '\-\-' | uniq | sed '1!G;h;$$!d' | awk 'NR%2{printf "\033[36m%-30s\033[0m",$$0;next;}1' | sort
