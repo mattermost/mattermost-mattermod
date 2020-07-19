@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
@@ -41,6 +42,10 @@ func TestAutoMergePR(t *testing.T) {
 		PullRequest().
 		Return(prStoreMock).
 		AnyTimes()
+
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
+	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
 
 	t.Run("Basic", func(t *testing.T) {
 		ghPR := &github.PullRequest{
@@ -128,6 +133,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -162,6 +168,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -197,6 +204,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -259,6 +267,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -272,8 +281,9 @@ func TestAutoMergePR(t *testing.T) {
 			AutoPRMergeLabel: "auto-merge",
 		}
 		s := Server{
-			Store:  ss,
-			Config: cfg,
+			Store:   ss,
+			Config:  cfg,
+			Metrics: metricsMock,
 		}
 
 		err := s.AutoMergePR()
