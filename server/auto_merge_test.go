@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
@@ -43,7 +42,7 @@ func TestAutoMergePR(t *testing.T) {
 		Return(prStoreMock).
 		AnyTimes()
 
-	metricsMock := mocks.NewMockMetricsProvider(ctrl)
+	metricsMock := srmock.NewMockMetricsProvider(ctrl)
 	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
 	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
 
