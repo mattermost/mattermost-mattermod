@@ -363,13 +363,13 @@ func (s *Server) removeOldComments(ctx context.Context, comments []*github.Issue
 
 func (s *Server) CheckPRActivity() {
 	start := time.Now()
+	mlog.Info("Checking if need to Stale a Pull request")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
 		s.Metrics.ObserveCronTaskDuration("check_pr_activity", elapsed)
 	}()
-	mlog.Info("Checking if need to Stale a Pull request")
-	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
-	defer cancel()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
@@ -437,10 +437,10 @@ func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated PRs in the mattermod database....")
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
 		s.Metrics.ObserveCronTaskDuration("clean_outdated_prs", elapsed)
-		defer cancel()
 	}()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {

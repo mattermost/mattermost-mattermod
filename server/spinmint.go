@@ -263,10 +263,10 @@ func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
 		s.Metrics.ObserveCronTaskDuration("check_test_server_lifetime", elapsed)
-		defer cancel()
 	}()
 	testServers, err := s.Store.Spinmint().List()
 	if err != nil {

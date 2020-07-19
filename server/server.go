@@ -157,10 +157,10 @@ func (s *Server) Tick() {
 	start := time.Now()
 	mlog.Info("tick")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
 	defer func() {
 		elapsed := float64(time.Since(start)) / float64(time.Second)
 		s.Metrics.ObserveCronTaskDuration("tick", elapsed)
-		defer cancel()
 	}()
 
 	for _, repository := range s.Config.Repositories {
