@@ -234,18 +234,21 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
 	if receivedHash[0] != "sha1" {
 		mlog.Error("Invalid webhook hash signature: SHA1")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 	if err != nil {
 		mlog.Error(err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -272,6 +275,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	pr, err := s.getPRFromEvent(ctx, *eventData)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	var commenter string
@@ -284,6 +288,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("check_cla")
 			mlog.Error("Error checking CLA", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
@@ -292,6 +297,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("cherry_pick")
 			mlog.Error("Error cherry picking", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
@@ -300,6 +306,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("auto_assign")
 			mlog.Error("Error auto assigning", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
@@ -308,6 +315,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("update_branch")
 			mlog.Error("Error updating branch", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }
