@@ -187,7 +187,9 @@ func (s *Server) Tick() {
 				continue
 			}
 
-			s.checkIssueForChanges(ctx, issue)
+			if err := s.checkIssueForChanges(ctx, issue); err != nil {
+				mlog.Error("could not check issue for changes", mlog.Err(err))
+			}
 		}
 	}
 }
@@ -239,7 +241,9 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	eventData := EventDataFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
 	if eventData == nil || eventData.Action != "created" {
-		s.handleIssueEvent(ctx, event)
+		if err = s.handleIssueEvent(ctx, event); err != nil {
+			mlog.Error(err.Error())
+		}
 		return
 	}
 
