@@ -86,7 +86,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
 		}
-		if s.hasAutoMerge(pr.Labels) {
+		if event.Label.GetName() == s.Config.AutoPRMergeLabel {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
@@ -528,7 +528,7 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 
 func (s *Server) getPRFromEvent(ctx context.Context, event EventData) (*model.PullRequest, error) {
 	if event.Issue == nil || event.Repository == nil {
-		return nil, errors.New("either issue and repository field is missing to from the event data")
+		return nil, errors.New("either issue or repository field is missing from the event data")
 	}
 
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
