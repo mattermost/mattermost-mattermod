@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,6 +25,7 @@ func TestPing(t *testing.T) {
 
 	res, err := http.Get(ts.URL)
 	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, res.StatusCode)
 	defer res.Body.Close()
 
 	var ping pingResponse
@@ -32,4 +35,54 @@ func TestPing(t *testing.T) {
 	require.NotZero(t, ping.Uptime)
 	_, err = time.ParseDuration(ping.Uptime)
 	require.NoError(t, err)
+}
+
+func TestGithubEvent(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
+	s := &Server{
+		StartTime: time.Now(),
+		Metrics:   metricsMock,
+		Config: &Config{
+			Org:                 "mattertest",
+			GitHubWebhookSecret: "3dca279e731c97c38e3019a075dee9ebbd0a99f1",
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(s.githubEvent))
+	defer ts.Close()
+
+	t.Run("Should fail if the received hash is not sha1", func(t *testing.T) {
+		metricsMock.EXPECT().ObserveHTTPRequestDuration(
+			gomock.Eq("POST"),
+			gomock.Eq("/pr_event"),
+			gomock.Eq("400"),
+			gomock.Any(),
+		).Times(1)
+
+		req, err := http.NewRequest("POST", ts.URL, nil)
+		require.NoError(t, err)
+		req.Header.Set("X-Hub-Signature", "wrong=3dca279e731c97c38e3019a075dee9ebbd0a99f0")
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+		defer resp.Body.Close()
+	})
+
+	t.Run("Should fail if the signature is not correct", func(t *testing.T) {
+		metricsMock.EXPECT().ObserveHTTPRequestDuration(
+			gomock.Eq("POST"),
+			gomock.Eq("/pr_event"),
+			gomock.Eq("401"),
+			gomock.Any(),
+		).Times(1)
+		req, err := http.NewRequest("POST", ts.URL, nil)
+		require.NoError(t, err)
+		req.Header.Set("X-Hub-Signature", "sha1=3dca279e731c97c38e3019a075dee9ebbd0a99f0")
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		defer resp.Body.Close()
+	})
 }

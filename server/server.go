@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +39,7 @@ type Server struct {
 	commentLock    sync.Mutex
 	StartTime      time.Time
 	awsSession     *session.Session
+	Metrics        MetricsProvider
 
 	server *http.Server
 }
@@ -59,14 +61,15 @@ const (
 	templateInternalIP   = "INTERNAL_IP"
 )
 
-func New(config *Config) (*Server, error) {
+func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
 		Config:    config,
 		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
 		StartTime: time.Now(),
+		Metrics:   metrics,
 	}
 
-	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve)
+	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.Metrics)
 	if err != nil {
 		return nil, err
 	}
@@ -123,12 +126,18 @@ func (s *Server) Stop() error {
 }
 
 func (s *Server) RefreshMembers() {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("refresh_members", elapsed)
+	}()
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
+		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
 
@@ -136,6 +145,7 @@ func (s *Server) RefreshMembers() {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
 		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
+		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
 
@@ -144,9 +154,14 @@ func (s *Server) RefreshMembers() {
 
 // Tick runs a check on objects in the database
 func (s *Server) Tick() {
+	start := time.Now()
 	mlog.Info("tick")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("tick", elapsed)
+	}()
 
 	for _, repository := range s.Config.Repositories {
 		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
@@ -154,6 +169,7 @@ func (s *Server) Tick() {
 		})
 		if err != nil {
 			mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+			s.Metrics.IncreaseCronTaskErrors("tick")
 			continue
 		}
 
@@ -161,6 +177,7 @@ func (s *Server) Tick() {
 			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
 			if errPR != nil {
 				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
+				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
 
@@ -172,6 +189,7 @@ func (s *Server) Tick() {
 		})
 		if err != nil {
 			mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+			s.Metrics.IncreaseCronTaskErrors("tick")
 			continue
 		}
 
@@ -184,6 +202,7 @@ func (s *Server) Tick() {
 			issue, err := s.GetIssueFromGithub(ctx, repository.Owner, repository.Name, ghIssue)
 			if err != nil {
 				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
+				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
 
@@ -205,23 +224,33 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	w = newWrappedWriter(w)
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		statusCode := strconv.Itoa(w.(*responseWriterWrapper).StatusCode())
+		s.Metrics.ObserveHTTPRequestDuration(r.Method, "/pr_event", statusCode, elapsed)
+	}()
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		mlog.Error("Failed to read body", mlog.Err(err))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
 	if receivedHash[0] != "sha1" {
 		mlog.Error("Invalid webhook hash signature: SHA1")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 	if err != nil {
 		mlog.Error(err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -249,7 +278,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	pr, err := s.getPRFromEvent(ctx, *eventData)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("Error getting PR from Comment", mlog.Err(err))
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	var commenter string
@@ -258,26 +288,38 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if eventData.HasCheckCLA() {
+		s.Metrics.IncreaseWebhookRequest("check_cla")
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("check_cla")
 			mlog.Error("Error checking CLA", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
 	if eventData.HasCherryPick() {
+		s.Metrics.IncreaseWebhookRequest("cherry_pick")
 		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("cherry_pick")
 			mlog.Error("Error cherry picking", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
 	if eventData.HasAutoAssign() {
+		s.Metrics.IncreaseWebhookRequest("auto_assign")
 		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("auto_assign")
 			mlog.Error("Error auto assigning", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
 	if eventData.HasUpdateBranch() {
+		s.Metrics.IncreaseWebhookRequest("update_branch")
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("update_branch")
 			mlog.Error("Error updating branch", mlog.Err(err))
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }
