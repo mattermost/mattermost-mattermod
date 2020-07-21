@@ -34,6 +34,12 @@ Mattermod deployment to any cluster and any environment (dev, prod, etc) depends
 cp config.json deploy/base/config/
 ```
 
+**Note:** for local development make sure `DataSource` in `config.json` is set to the following:
+
+```txt
+root:password@tcp(mysql.default.svc.cluster.local:3306)/mattermod?parseTime=true
+```
+
 Point `KUBECONFIG` to the newly created cluster, and start `tilt` and open [http://localhost:8080/](http://localhost:8080/):
 
 ```shell
