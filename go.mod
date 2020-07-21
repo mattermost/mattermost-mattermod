@@ -17,8 +17,7 @@ require (
 	github.com/mattermost/go-circleci v0.4.0
 	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7
 	github.com/pkg/errors v0.9.1
-	github.com/poy/onpar v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.4.0
+	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.6.1
