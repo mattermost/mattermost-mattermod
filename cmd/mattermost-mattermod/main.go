@@ -51,8 +51,8 @@ func main() {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
-		if err3 := mlog.ShutdownAdvancedLogging(ctx); err != nil {
-			mlog.Error("error while shutting logging", mlog.Err(err3))
+		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
+			mlog.Error("error while shutting logging", mlog.Err(err2))
 			code = 1
 		}
 		if code != 0 {
