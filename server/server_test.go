@@ -63,6 +63,7 @@ func TestWithRecovery(t *testing.T) {
 
 	resp := w.Result()
 	if resp.Body != nil {
+		defer resp.Body.Close()
 		_, err := io.Copy(ioutil.Discard, resp.Body)
 		require.NoError(t, err)
 	}
