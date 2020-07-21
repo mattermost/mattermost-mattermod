@@ -5,6 +5,8 @@ package server
 
 import (
 	"encoding/json"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -35,6 +37,35 @@ func TestPing(t *testing.T) {
 	require.NotZero(t, ping.Uptime)
 	_, err = time.ParseDuration(ping.Uptime)
 	require.NoError(t, err)
+}
+
+type panicHandler struct {
+}
+
+func (ph panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	panic("bad handler")
+}
+
+func TestWithRecovery(t *testing.T) {
+	s := Server{}
+	defer func() {
+		if x := recover(); x != nil {
+			require.Fail(t, "got panic")
+		}
+	}()
+
+	ph := panicHandler{}
+	handler := s.withRecovery(ph)
+
+	req := httptest.NewRequest("GET", "http://random", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.Body != nil {
+		_, err := io.Copy(ioutil.Discard, resp.Body)
+		require.NoError(t, err)
+	}
 }
 
 func TestGithubEvent(t *testing.T) {
