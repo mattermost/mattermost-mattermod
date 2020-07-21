@@ -92,6 +92,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
+	r.Use(s.withRecovery)
 
 	s.server = &http.Server{
 		Addr:         s.Config.ListenAddress,
@@ -150,6 +151,17 @@ func (s *Server) RefreshMembers() {
 	}
 
 	s.OrgMembers = members
+}
+
+func (s *Server) withRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if x := recover(); x != nil {
+				mlog.Error("recovered from a panic", mlog.String("url", r.URL.String()), mlog.Any("error", x))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
 
 // Tick runs a check on objects in the database
