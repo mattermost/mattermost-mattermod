@@ -45,8 +45,7 @@ type Server struct {
 }
 
 type pingResponse struct {
-	Uptime  string `json:"uptime"`
-	Healthy string `json:"healthy"`
+	Uptime string `json:"uptime"`
 }
 
 const (
@@ -92,7 +91,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
-	r.HandleFunc("/healthz", s.healthz).Methods(http.MethodGet)
+	r.HandleFunc("/healthz", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 	r.Use(s.withRecovery)
 
@@ -229,17 +228,7 @@ func (s *Server) Tick() {
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
-	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime, Healthy: "OK!"})
-	if err != nil {
-		mlog.Error("Failed to write ping", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
-	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
-	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime, Healthy: "OK!"})
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
