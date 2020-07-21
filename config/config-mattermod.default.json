@@ -116,6 +116,8 @@
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",
 
+    "MetricsServerPort": "8067",
+
     "LogSettings": {
         "EnableConsole": true,
         "ConsoleLevel": "DEBUG",

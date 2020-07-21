@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/robfig/cron/v3"
@@ -32,8 +33,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Metrics system
+	metricsProvider := metrics.NewPrometheusProvider()
+	metricsServer := metrics.NewServer(config.MetricsServerPort, metricsProvider.Handler(), true)
+	metricsServer.Start()
+	defer metricsServer.Stop()
+
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
-	s, err := server.New(config)
+	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
 		os.Exit(1)
@@ -98,6 +105,7 @@ func main() {
 	}
 
 	c.Start()
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 

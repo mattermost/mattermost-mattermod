@@ -78,7 +78,7 @@ type GithubClient struct {
 
 // NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
 // that will be used by the rate limit transport.
-func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int) *GithubClient {
+func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int, metricsProvider MetricsProvider) *GithubClient {
 	const (
 		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1GB
 		lruCacheMaxAgeInSeconds = 2629800            // 1 month
@@ -90,7 +90,8 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport
-	client := github.NewClient(httpCacheTransport.Client())
+	metricsTransport := NewMetricsTransport(httpCacheTransport, metricsProvider)
+	client := github.NewClient(metricsTransport.Client())
 
 	return &GithubClient{
 		client:        client,
@@ -105,12 +106,12 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 
 // NewGithubClient returns a new Github client that will use a fixed 10 req/sec / 10 burst
 // tokens rate limiter configuration
-func NewGithubClient(accessToken string, limitTokens int) (*GithubClient, error) {
+func NewGithubClient(accessToken string, limitTokens int, metrics MetricsProvider) (*GithubClient, error) {
 	if limitTokens <= 0 {
 		return nil, errors.New("rate limit tokens for github client must be greater than 0")
 	}
 	limit := rate.Every(time.Second / time.Duration(limitTokens))
-	return NewGithubClientWithLimiter(accessToken, limit, limitTokens), nil
+	return NewGithubClientWithLimiter(accessToken, limit, limitTokens, metrics), nil
 }
 
 func (c *GithubClient) RateLimits(ctx context.Context) (*github.RateLimits, *github.Response, error) {
