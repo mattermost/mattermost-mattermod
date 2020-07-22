@@ -139,7 +139,7 @@ if ! git log -n1 --format=%H "${BRANCH}" >/dev/null 2>&1; then
   exit 1
 fi
 
-NEWBRANCHREQ="automated-cherry-pick-of-#${PULL}" # "Required" portion for tools.
+NEWBRANCHREQ="automated-cherry-pick-of-${MAIN_REPO_NAME}-#${PULL}" # "Required" portion for tools.
 declare -r NEWBRANCHREQ
 NEWBRANCH="$(echo "${NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
