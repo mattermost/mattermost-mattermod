@@ -10,6 +10,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -153,13 +154,14 @@ type Config struct {
 	MattermostWebhookFooter string
 
 	LogSettings struct {
-		EnableConsole bool
-		ConsoleJSON   bool
-		ConsoleLevel  string
-		EnableFile    bool
-		FileJSON      bool
-		FileLevel     string
-		FileLocation  string
+		EnableConsole   bool
+		ConsoleJSON     bool
+		ConsoleLevel    string
+		EnableFile      bool
+		FileJSON        bool
+		FileLevel       string
+		FileLocation    string
+		AdvancedLogging mlog.LogTargetCfg
 	}
 
 	DaysUntilStale    int

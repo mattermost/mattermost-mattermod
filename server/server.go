@@ -355,7 +355,7 @@ func GetLogFileLocation(fileLocation string) string {
 	return filepath.Join(fileLocation, logFilename)
 }
 
-func SetupLogging(config *Config) {
+func SetupLogging(config *Config) error {
 	loggingConfig := &mlog.LoggerConfiguration{
 		EnableConsole: config.LogSettings.EnableConsole,
 		ConsoleJson:   config.LogSettings.ConsoleJSON,
@@ -369,6 +369,14 @@ func SetupLogging(config *Config) {
 	logger := mlog.NewLogger(loggingConfig)
 	mlog.RedirectStdLog(logger)
 	mlog.InitGlobalLogger(logger)
+
+	if config.LogSettings.AdvancedLogging != nil {
+		err := logger.ConfigAdvancedLogging(config.LogSettings.AdvancedLogging)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func closeBody(r *http.Response) {
