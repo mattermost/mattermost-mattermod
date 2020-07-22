@@ -1,11 +1,10 @@
 GO ?= $(shell command -v go 2> /dev/null)
-DEP ?= $(shell command -v dep 2> /dev/null)
 
 PACKAGES=$(shell go list ./...)
 
-## Checks the code style, tests, builds and bundles the plugin.
+## Checks the code style, tests and builds.
 .PHONY: all
-all: check-style test
+all: check-style test build
 
 ## Cleans workspace
 .PHONY: clean
@@ -25,9 +24,22 @@ golangci-lint:
 		exit 1; \
 	fi; \
 
-
 	@echo Running golangci-lint
 	golangci-lint run ./...
+
+## Runs the mattermod server.
+.PHONY: run
+run: NOTILT ?=
+run:
+ifeq (, $(shell which tilt))
+	go run ./cmd/mattermost-mattermod/main.go
+else
+ifneq (, $(NOTILT))
+	go run ./cmd/mattermost-mattermod/main.go
+else
+	tilt up --web-mode prod
+endif
+endif
 
 ## Runs tests.
 test:

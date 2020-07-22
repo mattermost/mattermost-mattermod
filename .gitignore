@@ -41,3 +41,8 @@ Session.vim
 *~
 
 .agignore
+
+# Deployment
+deploy/**/config.json
+env.sh
+out/
