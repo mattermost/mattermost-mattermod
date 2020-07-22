@@ -5,7 +5,6 @@ namespace: mattermod
 
 bases:
   - ../../base/app
-  - ../../base/db
   - ../../base/config
 
 resources:
@@ -13,14 +12,6 @@ resources:
 
 patchesStrategicMerge:
   - patches/deployment-replicas.yaml
-  - patches/database-pvc.yaml
-
-secretGenerator:
-  - name: mysql
-    behavior: replace
-    envs:
-      - env.sh
-    type: Opaque
 
 configMapGenerator:
   - name: config
