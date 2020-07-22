@@ -91,6 +91,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
+	r.HandleFunc("/issue", s.issueEventHandler).Methods(http.MethodPost)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 	r.Use(s.withRecovery)
 
@@ -273,8 +274,9 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if event != nil && event.PRNumber != 0 {
+	// TODO: remove this after migration complete
+	event, err := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	if err != nil || event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return

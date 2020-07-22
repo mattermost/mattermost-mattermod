@@ -5,6 +5,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 
@@ -60,14 +61,18 @@ func (d *EventData) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/update-branch")
 }
 
-func PullRequestEventFromJSON(data io.Reader) *PullRequestEvent {
+func PullRequestEventFromJSON(data io.Reader) (*PullRequestEvent, error) {
 	decoder := json.NewDecoder(data)
 	var event PullRequestEvent
 	if err := decoder.Decode(&event); err != nil {
-		return nil
+		return nil, err
 	}
 
-	return &event
+	if event.Issue == nil {
+		return nil, errors.New("event issue is missing from body")
+	}
+
+	return &event, nil
 }
 
 func EventDataFromJSON(data io.Reader) *EventData {
