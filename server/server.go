@@ -173,7 +173,7 @@ func (s *Server) withValidation(next http.Handler) http.Handler {
 		defer func() {
 			elapsed := float64(time.Since(start)) / float64(time.Second)
 			statusCode := strconv.Itoa(w.(*responseWriterWrapper).StatusCode())
-			s.Metrics.ObserveHTTPRequestDuration(r.Method, "/pr_event", statusCode, elapsed)
+			s.Metrics.ObserveHTTPRequestDuration(r.Method, r.URL.Path, statusCode, elapsed)
 		}()
 
 		receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)

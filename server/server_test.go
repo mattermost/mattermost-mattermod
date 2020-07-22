@@ -89,7 +89,7 @@ func TestGithubEvent(t *testing.T) {
 	t.Run("Should fail if the received hash is not sha1", func(t *testing.T) {
 		metricsMock.EXPECT().ObserveHTTPRequestDuration(
 			gomock.Eq("POST"),
-			gomock.Eq("/pr_event"),
+			gomock.Eq("/"),
 			gomock.Eq("400"),
 			gomock.Any(),
 		).Times(1)
@@ -106,7 +106,7 @@ func TestGithubEvent(t *testing.T) {
 	t.Run("Should fail if the signature is not correct", func(t *testing.T) {
 		metricsMock.EXPECT().ObserveHTTPRequestDuration(
 			gomock.Eq("POST"),
-			gomock.Eq("/pr_event"),
+			gomock.Eq("/"),
 			gomock.Eq("401"),
 			gomock.Any(),
 		).Times(1)
