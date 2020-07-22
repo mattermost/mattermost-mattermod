@@ -19,7 +19,7 @@ secretGenerator:
   - name: mysql
     behavior: replace
     envs:
-      - database-passwords.env
+      - env.sh
     type: Opaque
 
 images:
