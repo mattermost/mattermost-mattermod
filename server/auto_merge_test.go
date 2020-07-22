@@ -42,6 +42,10 @@ func TestAutoMergePR(t *testing.T) {
 		Return(prStoreMock).
 		AnyTimes()
 
+	metricsMock := srmock.NewMockMetricsProvider(ctrl)
+	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
+
 	t.Run("Basic", func(t *testing.T) {
 		ghPR := &github.PullRequest{
 			State:          github.String("open"),
@@ -128,6 +132,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -162,6 +167,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -197,6 +203,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -259,6 +266,7 @@ func TestAutoMergePR(t *testing.T) {
 			GithubClient: client,
 			Store:        ss,
 			Config:       cfg,
+			Metrics:      metricsMock,
 		}
 
 		err := s.AutoMergePR()
@@ -272,8 +280,9 @@ func TestAutoMergePR(t *testing.T) {
 			AutoPRMergeLabel: "auto-merge",
 		}
 		s := Server{
-			Store:  ss,
-			Config: cfg,
+			Store:   ss,
+			Config:  cfg,
+			Metrics: metricsMock,
 		}
 
 		err := s.AutoMergePR()

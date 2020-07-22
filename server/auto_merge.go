@@ -16,8 +16,13 @@ import (
 
 func (s *Server) AutoMergePR() error {
 	mlog.Info("Starting the process to auto merge PRs")
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("auto_merger_pr", elapsed)
+	}()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		return fmt.Errorf("error while listing open PRs %w", err)

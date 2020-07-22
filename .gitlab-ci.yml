@@ -1,0 +1,3 @@
+include:
+  - project: 'ci/mattermod'
+    file: '/all.yml'

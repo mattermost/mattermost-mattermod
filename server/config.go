@@ -166,6 +166,8 @@ type Config struct {
 	ExemptStaleLabels []string
 	StaleLabel        string
 	StaleComment      string
+
+	MetricsServerPort string
 }
 
 func findConfigFile(fileName string) string {

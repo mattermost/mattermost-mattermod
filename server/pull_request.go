@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -38,11 +39,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
@@ -56,11 +53,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
@@ -89,9 +82,11 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.blockPRMerge(ctx, pr)
+			if err := s.unblockPRMerge(ctx, pr); err != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+			}
 		}
-		if s.hasAutoMerge(pr.Labels) {
+		if event.Label.GetName() == s.Config.AutoPRMergeLabel {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
 			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
@@ -102,7 +97,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			s.unblockPRMerge(ctx, pr)
+			if err := s.unblockPRMerge(ctx, pr); err != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+			}
 		}
 
 		// TODO: remove the old test server code
@@ -135,11 +132,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.triggerEETestsForOrgMembers(pr)
 		}
 
-		if s.isBlockPRMergeInLabels(pr.Labels) {
-			s.blockPRMerge(ctx, pr)
-		} else {
-			s.unblockPRMerge(ctx, pr)
-		}
+		s.setBlockStatusForPR(ctx, pr)
 	case "closed":
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		go s.checkIfNeedCherryPick(pr)
@@ -369,12 +362,18 @@ func (s *Server) removeOldComments(ctx context.Context, comments []*github.Issue
 }
 
 func (s *Server) CheckPRActivity() {
+	start := time.Now()
 	mlog.Info("Checking if need to Stale a Pull request")
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("check_pr_activity", elapsed)
+	}()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
+		s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 		return
 	}
 
@@ -402,6 +401,7 @@ func (s *Server) CheckPRActivity() {
 			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
 				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+				s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 				continue
 			}
 
@@ -423,6 +423,7 @@ func (s *Server) CheckPRActivity() {
 				_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
 					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+					s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 					break
 				}
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
@@ -434,12 +435,17 @@ func (s *Server) CheckPRActivity() {
 
 func (s *Server) CleanOutdatedPRs() {
 	mlog.Info("Cleaning outdated PRs in the mattermod database....")
-
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
 	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("clean_outdated_prs", elapsed)
+	}()
 	prs, err := s.Store.PullRequest().ListOpen()
 	if err != nil {
 		mlog.Error(err.Error())
+		s.Metrics.IncreaseCronTaskErrors("clean_outdated_prs")
 		return
 	}
 
@@ -460,6 +466,7 @@ func (s *Server) CleanOutdatedPRs() {
 			pr.State = pull.GetState()
 			if _, err := s.Store.PullRequest().Save(pr); err != nil {
 				mlog.Error(err.Error())
+				s.Metrics.IncreaseCronTaskErrors("clean_outdated_prs")
 			}
 		} else {
 			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
@@ -519,11 +526,15 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*model.PullRequest, error) {
+func (s *Server) getPRFromEvent(ctx context.Context, event EventData) (*model.PullRequest, error) {
+	if event.Issue == nil || event.Repository == nil {
+		return nil, errors.New("either issue or repository field is missing from the event data")
+	}
+
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
-		*comment.Repository.Owner.Login,
-		*comment.Repository.Name,
-		*comment.Issue.Number,
+		*event.Repository.Owner.Login,
+		*event.Repository.Name,
+		*event.Issue.Number,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not get the latest PR information from github: %w", err)
@@ -534,4 +545,16 @@ func (s *Server) getPRFromComment(ctx context.Context, comment IssueComment) (*m
 		return nil, fmt.Errorf("error updating the PR in the DB: %w", err)
 	}
 	return pr, nil
+}
+
+func (s *Server) setBlockStatusForPR(ctx context.Context, pr *model.PullRequest) {
+	var err error
+	if s.isBlockPRMergeInLabels(pr.Labels) {
+		err = s.blockPRMerge(ctx, pr)
+	} else {
+		err = s.unblockPRMerge(ctx, pr)
+	}
+	if err != nil {
+		mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+	}
 }
