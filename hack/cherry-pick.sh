@@ -120,11 +120,11 @@ if git_status=$(git status --porcelain --untracked=no 2>/dev/null) && [[ -n "${g
   exit 1
 fi
 
-while unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; do
+if unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; then
   echo
   echo "!!! 'git cherry-pick' or other operation in progress. Clean up and try again."
   exit 1
-done
+fi
 
 declare -r BRANCH="$1"
 declare -r PULL="$2"
@@ -155,14 +155,14 @@ echo
 echo "+++ About to attempt cherry pick of PR #${PULL} with merge commit ${COMMITSHA}."
 echo
 git cherry-pick -x "${COMMITSHA}" || {
-  while unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; do
+  if unmerged=$(git status --porcelain | grep ^U) && [[ -n ${unmerged} ]] || [[ -e "${REBASEMAGIC}" ]]; then
     echo
     echo "+++ Conflicts detected:"
     echo
     (git status --porcelain | grep ^U) || echo "!!! None. Did you git cherry-pick --continue or git --cherry-pick --abort?"
     echo "Aborting." >&2
     exit 1
-  done
+  fi
 
   echo "!!! git cherry-pick failed"
   exit 1
