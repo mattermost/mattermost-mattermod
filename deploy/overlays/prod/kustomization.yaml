@@ -1,0 +1,28 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mattermod
+
+bases:
+  - ../../base/app
+  - ../../base/db
+  - ../../base/config
+
+resources:
+  - ingress.yaml
+
+patchesStrategicMerge:
+  - patches/deployment-replicas.yaml
+  - patches/database-pvc.yaml
+
+secretGenerator:
+  - name: mysql
+    behavior: replace
+    envs:
+      - env.sh
+    type: Opaque
+
+images:
+  - name: mattermost/mattermod
+    newName: mattermost/mattermod
+    newTag: 0.1.0
