@@ -82,7 +82,8 @@ func TestGithubEvent(t *testing.T) {
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(s.githubEvent))
+	handler := s.withValidation(http.HandlerFunc(s.githubEvent))
+	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
 	t.Run("Should fail if the received hash is not sha1", func(t *testing.T) {
