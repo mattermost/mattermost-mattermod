@@ -23,22 +23,22 @@ const (
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
-		RepoOwner:           *pullRequest.Base.Repo.Owner.Login,
-		RepoName:            *pullRequest.Base.Repo.Name,
-		Number:              *pullRequest.Number,
-		Username:            *pullRequest.User.Login,
+		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
+		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
+		Number:              pullRequest.GetNumber(),
+		Username:            pullRequest.GetUser().GetLogin(),
 		FullName:            "",
-		Ref:                 *pullRequest.Head.Ref,
-		Sha:                 *pullRequest.Head.SHA,
-		State:               *pullRequest.State,
-		URL:                 *pullRequest.URL,
+		Ref:                 pullRequest.GetHead().GetRef(),
+		Sha:                 pullRequest.GetHead().GetSHA(),
+		State:               pullRequest.GetState(),
+		URL:                 pullRequest.GetURL(),
 		CreatedAt:           pullRequest.GetCreatedAt(),
-		Merged:              sql.NullBool{Bool: *pullRequest.Merged, Valid: true},
+		Merged:              sql.NullBool{Bool: pullRequest.GetMerged(), Valid: true},
 		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 
 	if pullRequest.Head.Repo != nil {
-		pr.FullName = *pullRequest.Head.Repo.FullName
+		pr.FullName = pullRequest.GetHead().GetRepo().GetFullName()
 	}
 
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
@@ -49,9 +49,9 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		}
 
 		for _, status := range combined.Statuses {
-			if *status.Context == repo.BuildStatusContext {
-				pr.BuildStatus = *status.State
-				pr.BuildLink = *status.TargetURL
+			if status.GetContext() == repo.BuildStatusContext {
+				pr.BuildStatus = status.GetState()
+				pr.BuildLink = status.GetTargetURL()
 				break
 			}
 		}
@@ -63,7 +63,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		}
 
 		for _, status := range checks.CheckRuns {
-			if *status.Name == repo.BuildStatusContext {
+			if status.GetName() == repo.BuildStatusContext {
 				pr.BuildStatus = status.GetStatus()
 				pr.BuildConclusion = status.GetConclusion()
 				pr.BuildLink = status.GetHTMLURL()
