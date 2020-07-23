@@ -26,4 +26,4 @@ configMapGenerator:
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
-    newTag: 0.1.0
+    newTag: 0.2.0
