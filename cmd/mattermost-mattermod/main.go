@@ -25,7 +25,7 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		mlog.Error("unable to load server config", mlog.Err(err))
+		mlog.Error("unable to load server config", mlog.Err(err), mlog.String("file", configFile))
 		os.Exit(1)
 	}
 	if err = server.SetupLogging(config); err != nil {
