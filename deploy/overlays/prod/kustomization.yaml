@@ -12,6 +12,7 @@ resources:
 
 patchesStrategicMerge:
   - patches/deployment-replicas.yaml
+  - patches/deployment-config.yaml
 
 configMapGenerator:
   - name: config
