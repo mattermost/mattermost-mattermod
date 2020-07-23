@@ -35,7 +35,7 @@ ifeq (, $(shell which tilt))
 	go run ./cmd/mattermost-mattermod/main.go
 else
 ifneq (, $(NOTILT))
-	go run ./cmd/mattermost-mattermod/main.go
+	go run ./cmd/mattermost-mattermod/main.go --config=config/config-mattermod.json
 else
 	tilt up --web-mode prod
 endif
