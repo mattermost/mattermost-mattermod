@@ -15,13 +15,13 @@ require (
 	github.com/jarcoal/httpmock v1.0.5
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
 	github.com/mattermost/go-circleci v0.4.0
-	github.com/mattermost/mattermost-server/v5 v5.23.0
+	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7
 	github.com/pkg/errors v0.9.1
-	github.com/poy/onpar v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.4.0
+	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
+	golang.org/x/net v0.0.0-20200625001655-4c5254603344
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 )
