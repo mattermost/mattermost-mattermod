@@ -69,7 +69,7 @@ func TestWithRecovery(t *testing.T) {
 	}
 }
 
-func TestGithubEvent(t *testing.T) {
+func TestWithDurationMiddleware(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	metricsMock := mocks.NewMockMetricsProvider(ctrl)
