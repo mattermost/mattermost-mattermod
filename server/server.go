@@ -94,6 +94,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	r.HandleFunc("/healthz", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 	r.Use(s.withRecovery)
+	r.Use(s.withRequestDuration)
 	r.Use(s.withValidation)
 
 	s.server = &http.Server{
@@ -166,41 +167,16 @@ func (s *Server) withRecovery(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) withValidation(next http.Handler) http.Handler {
+func (s *Server) withRequestDuration(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w = newWrappedWriter(w)
 
-		defer func() {
-			elapsed := float64(time.Since(start)) / float64(time.Second)
-			statusCode := strconv.Itoa(w.(*responseWriterWrapper).StatusCode())
-			s.Metrics.ObserveHTTPRequestDuration(r.Method, r.URL.Path, statusCode, elapsed)
-		}()
-
-		receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
-		if receivedHash[0] != "sha1" {
-			mlog.Error("Invalid webhook hash signature: SHA1")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			mlog.Error("Failed to read body", mlog.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		r.Body.Close()
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
-
-		err = ValidateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
-		if err != nil {
-			mlog.Error(err.Error())
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
 		next.ServeHTTP(w, r)
+
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		statusCode := strconv.Itoa(w.(*responseWriterWrapper).StatusCode())
+		s.Metrics.ObserveHTTPRequestDuration(r.Method, r.URL.Path, statusCode, elapsed)
 	})
 }
 
