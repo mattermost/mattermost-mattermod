@@ -69,52 +69,36 @@ func TestWithRecovery(t *testing.T) {
 	}
 }
 
-func TestGithubEvent(t *testing.T) {
+func TestWithDurationMiddleware(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 	s := &Server{
 		StartTime: time.Now(),
 		Metrics:   metricsMock,
-		Config: &Config{
-			Org:                 "mattertest",
-			GitHubWebhookSecret: "3dca279e731c97c38e3019a075dee9ebbd0a99f1",
-		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(s.githubEvent))
+	h := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}
+
+	handler := s.withRequestDuration(http.HandlerFunc(h))
+	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	t.Run("Should fail if the received hash is not sha1", func(t *testing.T) {
+	t.Run("Should observe http request", func(t *testing.T) {
 		metricsMock.EXPECT().ObserveHTTPRequestDuration(
 			gomock.Eq("POST"),
-			gomock.Eq("/pr_event"),
-			gomock.Eq("400"),
+			gomock.Eq("/"),
+			gomock.Eq("201"),
 			gomock.Any(),
 		).Times(1)
 
 		req, err := http.NewRequest("POST", ts.URL, nil)
 		require.NoError(t, err)
-		req.Header.Set("X-Hub-Signature", "wrong=3dca279e731c97c38e3019a075dee9ebbd0a99f0")
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
-		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
-		defer resp.Body.Close()
-	})
-
-	t.Run("Should fail if the signature is not correct", func(t *testing.T) {
-		metricsMock.EXPECT().ObserveHTTPRequestDuration(
-			gomock.Eq("POST"),
-			gomock.Eq("/pr_event"),
-			gomock.Eq("401"),
-			gomock.Any(),
-		).Times(1)
-		req, err := http.NewRequest("POST", ts.URL, nil)
-		require.NoError(t, err)
-		req.Header.Set("X-Hub-Signature", "sha1=3dca279e731c97c38e3019a075dee9ebbd0a99f0")
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+		require.Equal(t, http.StatusCreated, resp.StatusCode)
 		defer resp.Body.Close()
 	})
 }
