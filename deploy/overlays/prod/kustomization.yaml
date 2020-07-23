@@ -22,6 +22,16 @@ secretGenerator:
       - env.sh
     type: Opaque
 
+configMapGenerator:
+  - name: config
+    behavior: merge
+    files:
+      - instance-setup-mattermost-server
+      - instance-setup-mattermost-webapp
+      - instance-setup-upgrade-mattermost-server
+      - test.spinmint.com.fullchain.pem
+      - test.spinmint.com.privkey.pem
+
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
