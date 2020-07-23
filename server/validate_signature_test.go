@@ -68,6 +68,16 @@ func TestWithValidationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 		defer resp.Body.Close()
 	})
+
+	t.Run("Should skip validation", func(t *testing.T) {
+		req, err := http.NewRequest("GET", ts.URL+"/healthz", nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+		defer resp.Body.Close()
+	})
 }
 
 func TestValidateSignatureWithIncorrectSignature(t *testing.T) {
