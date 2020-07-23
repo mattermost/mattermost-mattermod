@@ -45,4 +45,5 @@ Session.vim
 # Deployment
 deploy/base/config/*
 !deploy/base/config/kustomization.yaml
+deploy/overlays/prod/config/
 out/

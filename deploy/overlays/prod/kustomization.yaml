@@ -17,11 +17,11 @@ configMapGenerator:
   - name: config
     behavior: merge
     files:
-      - instance-setup-mattermost-server
-      - instance-setup-mattermost-webapp
-      - instance-setup-upgrade-mattermost-server
-      - test.spinmint.com.fullchain.pem
-      - test.spinmint.com.privkey.pem
+      - config/instance-setup-mattermost-server
+      - config/instance-setup-mattermost-webapp
+      - config/instance-setup-upgrade-mattermost-server
+      - config/test.spinmint.com.fullchain.pem
+      - config/test.spinmint.com.privkey.pem
 
 images:
   - name: mattermost/mattermod
