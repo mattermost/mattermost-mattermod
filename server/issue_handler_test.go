@@ -80,7 +80,7 @@ func TestIssueEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
-	t.Run("Should fail with no body", func(t *testing.T) {
+	t.Run("Should fail with invalid url", func(t *testing.T) {
 		url := "http://someaddr.com"
 
 		b, err := json.Marshal(&PullRequestEvent{
