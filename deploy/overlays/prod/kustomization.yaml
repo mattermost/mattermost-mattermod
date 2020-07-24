@@ -9,10 +9,12 @@ bases:
 
 resources:
   - ingress.yaml
+  - pvc.yaml
 
 patchesStrategicMerge:
   - patches/deployment-replicas.yaml
   - patches/deployment-config.yaml
+  - patches/deployment-data-pvc.yaml
 
 configMapGenerator:
   - name: config
