@@ -107,7 +107,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 		return "", errors.Errorf("can't get merge commit SHA for PR: %d", pr.Number)
 	}
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-	repoFolder := fmt.Sprintf("/home/ubuntu/git/mattermost/%s", pr.RepoName)
+	repoFolder := fmt.Sprintf("/app/repos/%s", pr.RepoName)
 	cmd := exec.Command("/app/scripts/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
