@@ -5,7 +5,7 @@ metadata:
   name: mattermod-data
 spec:
   accessModes:
-    - "ReadWriteMany"
+    - "ReadWriteOnce"
   resources:
     requests:
       storage: "2Gi"
