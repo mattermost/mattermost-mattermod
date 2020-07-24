@@ -18,6 +18,7 @@ FROM alpine:3.12.0
 RUN apk --no-cache add ca-certificates
 
 COPY --from=builder /go/src/mattermod/dist/mattermod /usr/local/bin/
+COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/cherry-pick.sh
 
 WORKDIR /app
 
