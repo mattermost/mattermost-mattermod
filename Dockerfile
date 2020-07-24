@@ -32,6 +32,7 @@ COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/cherry-pi
 
 WORKDIR /app
 
+RUN mkdir -p /app/repos && chown -R 1000:1000 /app/repos/
 RUN mkdir -p /app/logs && chown -R 1000:1000 /app/logs/
 
 USER 1000
