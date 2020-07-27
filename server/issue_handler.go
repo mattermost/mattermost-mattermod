@@ -5,44 +5,50 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
+
+type issueEvent struct {
+	Action string        `json:"action"`
+	Issue  *github.Issue `json:"issue"`
+}
 
 func (s *Server) issueEventHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	event, err := PullRequestEventFromJSON(r.Body)
+	event, err := issueEventFromJSON(r.Body)
 	if err != nil {
 		mlog.Error("could not parse issue event", mlog.Err(err))
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	parts := strings.Split(event.Issue.GetHTMLURL(), "/")
-	if len(parts) < 4 {
-		mlog.Error("incorrect pattern for issue url")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	mlog.Info("handle issue event",
+		mlog.String("repoUrl", event.Issue.GetHTMLURL()),
+		mlog.String("Action", event.Action),
+		mlog.Int("Issue number", event.Issue.GetNumber()))
 
-	mlog.Info("handle issue event", mlog.String("repoUrl", *event.Issue.HTMLURL), mlog.String("Action", event.Action), mlog.Int("PRNumber", event.PRNumber))
-	issue, err := s.GetIssueFromGithub(ctx, parts[len(parts)-4], parts[len(parts)-3], event.Issue)
+	issue, err := s.GetIssueFromGithub(ctx, event.Issue)
 	if err != nil {
 		mlog.Error("could not get the issue from GitHub", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "could not get the issue from GitHub", http.StatusInternalServerError)
 		return
 	}
 
 	if err := s.checkIssueForChanges(ctx, issue); err != nil {
 		mlog.Error("could not check issue for changes", mlog.Err(err))
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -88,7 +94,7 @@ func (s *Server) checkIssueForChanges(ctx context.Context, issue *model.Issue) e
 }
 
 func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, addedLabel string) error {
-	// Must be sure the comment is created before we let anouther request test
+	// Must be sure the comment is created before we let another request test MM-27284
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
@@ -105,4 +111,18 @@ func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, add
 		}
 	}
 	return nil
+}
+
+func issueEventFromJSON(data io.Reader) (*issueEvent, error) {
+	decoder := json.NewDecoder(data)
+	var event issueEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil, err
+	}
+
+	if event.Issue == nil {
+		return nil, errors.New("github issue is missing from body")
+	}
+
+	return &event, nil
 }
