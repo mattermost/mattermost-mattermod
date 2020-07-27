@@ -87,13 +87,13 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	return pr, nil
 }
 
-func (s *Server) GetIssueFromGithub(ctx context.Context, repoOwner, repoName string, ghIssue *github.Issue) (*model.Issue, error) {
+func (s *Server) GetIssueFromGithub(ctx context.Context, ghIssue *github.Issue) (*model.Issue, error) {
 	issue := &model.Issue{
-		RepoOwner: repoOwner,
-		RepoName:  repoName,
-		Number:    *ghIssue.Number,
-		Username:  *ghIssue.User.Login,
-		State:     *ghIssue.State,
+		RepoOwner: ghIssue.GetRepository().GetOwner().GetLogin(),
+		RepoName:  ghIssue.GetRepository().GetName(),
+		Number:    ghIssue.GetNumber(),
+		Username:  ghIssue.GetUser().GetLogin(),
+		State:     ghIssue.GetState(),
 	}
 
 	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
