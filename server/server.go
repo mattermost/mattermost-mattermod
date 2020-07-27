@@ -94,6 +94,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 
 	webhooks := r.PathPrefix("/webhooks").Subrouter()
 	webhooks.HandleFunc("/issue", s.issueEventHandler).Methods(http.MethodPost)
+	webhooks.HandleFunc("/pr_comment", s.prCommentEventHandler).Methods(http.MethodPost)
 
 	r.HandleFunc("/healthz", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
@@ -281,7 +282,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	eventData := EventDataFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	eventData, _ := prCommentEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	// TODO: remove this after migration complete; MM-27283
 	if eventData == nil || eventData.Action != "created" {
 		if err = s.handleIssueEvent(ctx, event); err != nil {
 			mlog.Error(err.Error())
@@ -289,7 +291,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pr, err := s.getPRFromEvent(ctx, *eventData)
+	pr, err := s.getPRFromEvent(ctx, eventData)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
 		w.WriteHeader(http.StatusBadRequest)
