@@ -16,6 +16,10 @@ import (
 
 func (s *Server) withValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/healthz" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
 		if receivedHash[0] != "sha1" {
 			mlog.Error("Invalid webhook hash signature: SHA1")

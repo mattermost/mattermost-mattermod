@@ -43,6 +43,7 @@ Session.vim
 .agignore
 
 # Deployment
-deploy/**/config.json
-env.sh
+deploy/base/config/*
+!deploy/base/config/kustomization.yaml
+deploy/overlays/prod/config/
 out/

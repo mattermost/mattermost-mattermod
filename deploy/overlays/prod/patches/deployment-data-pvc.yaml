@@ -1,0 +1,17 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mattermod
+spec:
+  template:
+    spec:
+      containers:
+        - name: mattermod
+          volumeMounts:
+            - name: data-repos
+              mountPath: /app/repos/
+      volumes:
+        - name: data-repos
+          persistentVolumeClaim:
+              claimName: mattermod-data

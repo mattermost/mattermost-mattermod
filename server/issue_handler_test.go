@@ -50,11 +50,11 @@ func TestIssueEventHandler(t *testing.T) {
 
 	s.Store = ss
 
-	url := "https://api.github.com/repos/mattermost/mattermost-server/issues/1"
+	url := "https://api.github.com/repos/mattermost/mmctl/issues/1"
 	number := 1
 	state := "state"
 	login := "mattermost"
-	name := "mattermost-server"
+	name := "mmctl"
 
 	event := issueEvent{
 		Issue: &github.Issue{

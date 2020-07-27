@@ -59,6 +59,8 @@ func (s *Server) checkIssueForChanges(ctx context.Context, issue *model.Issue) e
 	}
 
 	if oldIssue == nil {
+		// TODO: since there is no old entity, we are simply saving the issue and
+		// returning here. However, this logic should be reviewed: MM-27307
 		_, err = s.Store.Issue().Save(issue)
 		return err
 	}
