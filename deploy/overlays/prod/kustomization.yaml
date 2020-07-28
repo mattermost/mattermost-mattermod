@@ -13,8 +13,8 @@ resources:
 
 patchesStrategicMerge:
   - patches/deployment-replicas.yaml
-  - patches/deployment-config.yaml
   - patches/deployment-data-pvc.yaml
+  - patches/deployment-gitconfig.yaml
 
 configMapGenerator:
   - name: config
@@ -25,6 +25,13 @@ configMapGenerator:
       - config/instance-setup-upgrade-mattermost-server
       - config/test.spinmint.com.fullchain.pem
       - config/test.spinmint.com.privkey.pem
+
+secretGenerator:
+  - name: gitconfig
+    files:
+      - ssh/id_rsa
+      - ssh/config
+      - ssh/known_hosts
 
 images:
   - name: mattermost/mattermod
