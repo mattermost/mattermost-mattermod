@@ -167,7 +167,8 @@ func (s *Server) withRecovery(next http.Handler) http.Handler {
 			if x := recover(); x != nil {
 				mlog.Error("recovered from a panic",
 					mlog.String("url", r.URL.String()),
-					mlog.String("error", string(debug.Stack())))
+					mlog.Any("error", x),
+					mlog.String("stack", string(debug.Stack())))
 			}
 		}()
 		next.ServeHTTP(w, r)
