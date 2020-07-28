@@ -120,6 +120,7 @@
     "MattermostWebhookFooter": "",
 
     "MetricsServerPort": "8067",
+    "AutoPRMergeLabel": "AutoMerge",
 
     "LogSettings": {
         "EnableConsole": true,
