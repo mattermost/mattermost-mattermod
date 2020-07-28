@@ -275,7 +275,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: remove this after migration complete; MM-27283
 	event, err := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if err != nil || event.PRNumber != 0 {
+	if err == nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return
