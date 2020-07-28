@@ -33,7 +33,6 @@ func (s *Server) issueEventHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	mlog.Info("handle issue event",
 		mlog.String("repoUrl", event.Issue.GetHTMLURL()),
