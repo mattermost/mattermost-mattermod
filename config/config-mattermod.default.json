@@ -29,6 +29,7 @@
     ],
 
     "BlockPRMergeLabels": [],
+    "AutoPRMergeLabel": "AutoMerge",
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],
@@ -120,7 +121,6 @@
     "MattermostWebhookFooter": "",
 
     "MetricsServerPort": "8067",
-    "AutoPRMergeLabel": "AutoMerge",
 
     "LogSettings": {
         "EnableConsole": true,
