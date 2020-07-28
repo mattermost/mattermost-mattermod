@@ -46,4 +46,5 @@ Session.vim
 deploy/base/config/*
 !deploy/base/config/kustomization.yaml
 deploy/overlays/prod/config/
+deploy/overlays/prod/ssh/
 out/
