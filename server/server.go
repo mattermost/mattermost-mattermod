@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -164,7 +165,10 @@ func (s *Server) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				mlog.Error("recovered from a panic", mlog.String("url", r.URL.String()), mlog.Any("error", x))
+				mlog.Error("recovered from a panic",
+					mlog.String("url", r.URL.String()),
+					mlog.Any("error", x),
+					mlog.String("stack", string(debug.Stack())))
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -275,7 +279,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: remove this after migration complete; MM-27283
 	event, err := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if err != nil || event.PRNumber != 0 {
+	if err == nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return
