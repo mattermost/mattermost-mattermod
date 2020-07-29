@@ -63,5 +63,6 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 		return err
 	}
 
-	return nil
+	err = nil
+	return err
 }
