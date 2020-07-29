@@ -30,7 +30,11 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
-		s.triggerCircleCiIfNeeded(ctx, pr)
+
+		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		}
+
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
@@ -45,7 +49,11 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
-		s.triggerCircleCiIfNeeded(ctx, pr)
+
+		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		}
+
 		s.handleTranslationPR(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
@@ -125,7 +133,10 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
-		s.triggerCircleCiIfNeeded(ctx, pr)
+
+		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
