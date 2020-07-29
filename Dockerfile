@@ -50,6 +50,6 @@ RUN for d in .ssh repos logs; do \
     done
 
 USER mattermod
-EXPOSE 8080
+EXPOSE 8080 9000
 
 ENTRYPOINT ["mattermod"]
