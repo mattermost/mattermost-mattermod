@@ -81,18 +81,23 @@ In order to test Mattermod locally a couple of steps are needed.
 1. Since Mattermod needs to consume webhooks from GitHub, we need to expose our webserver to the public internet. It is recommended to use [ngrok](https://ngrok.com/) for this, but you are free to use anything else.
 
     For Mattermost staff, please visit https://dashboard.ngrok.com/endpoints/domains and reserve a domain under your name, under the correct region. As a convention, please use `<githubusername>.<region>.ngrok.io`.
-    
+
     Download ngrok locally and setup your authtoken from this page: https://dashboard.ngrok.com/get-started/setup.
-    
+
     Fire up ngrok with `./ngrok http -subdomain=<githubusername> -region=<region> 8086`.
 
-2. Go to https://github.com/mattermosttest/mattermost-server/settings/hooks and add your webhook. The payload URL will point to your ngrok URL. For now the path should be at "/pr_event", but it is going to be split into multiple paths later.
+2. Go to https://github.com/mattermosttest/mattermost-server/settings/hooks and add your webhook (If you don't have access to that URL, ping in the [Mattermod](https://community-daily.mattermost.com/private-core/channels/mattermod-logs) channel). The payload URL will point to your ngrok URL. For now the path should be at "/pr_event", but it is going to be split into multiple paths later.
 
     Create a webhook secret. This can be any random string. Note it down.
 
 3. Go to https://github.com/settings/tokens and generate an access token. Note it down.
 
-4. Now we need to populate `config-mattermod.json` with the right values.
+4. We also need to have a MySQL DB instance running. If you are using docker, use the following command:
+```
+docker run --name mattermod-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mattermod -e MYSQL_USER=mattermod -e MYSQL_PASSWORD=mattermod -e MYSQL_DATABASE=mattermod -d mysql:5.7 > /dev/null;
+```
+
+5. Now we need to populate `config-mattermod.json` with the right values.
 - Set `GithubAccessToken` and `GithubAccessTokenCherryPick` with your GitHub access token.
 - Set `GithubWebhookSecret` with the webhook secret.
 - Set `Org`, `GitHubUsername` correctly. For Mattermost staff, org should be `mattermosttest`.
@@ -101,4 +106,6 @@ In order to test Mattermod locally a couple of steps are needed.
 
     For any other relevant config which is missing, please see https://github.com/mattermost/platform-private/blob/master/mattermod/config.json.
 
-5. Start up Mattermod server.
+6. For cherry-picking to work, [hub](https://github.com/github/hub) needs to be installed in the system, and the script from `hacks/cherry-pick.sh` should be placed at `/app/scripts/cherry-pick.sh`.
+
+7. Start up Mattermod server.
