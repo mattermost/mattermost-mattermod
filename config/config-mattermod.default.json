@@ -120,7 +120,7 @@
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",
 
-    "MetricsServerPort": "8067",
+    "MetricsServerPort": "9000",
 
     "LogSettings": {
         "EnableConsole": true,
