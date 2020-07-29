@@ -6,7 +6,9 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v32/github"
@@ -94,6 +96,16 @@ func (s *Server) GetIssueFromGithub(ctx context.Context, ghIssue *github.Issue) 
 		Number:    ghIssue.GetNumber(),
 		Username:  ghIssue.GetUser().GetLogin(),
 		State:     ghIssue.GetState(),
+	}
+
+	if issue.RepoOwner == "" || issue.RepoName == "" {
+		// URL is expected to be in the form of https://github.com/{repoOwner}/{repoName}/pull/{number}
+		parts := strings.Split(ghIssue.GetHTMLURL(), "/")
+		if len(parts) < 5 {
+			return nil, fmt.Errorf("could not get repo owner or repo name from url: %q", ghIssue.GetHTMLURL())
+		}
+		issue.RepoOwner = parts[3]
+		issue.RepoName = parts[4]
 	}
 
 	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
