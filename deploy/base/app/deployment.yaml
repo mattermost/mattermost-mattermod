@@ -67,6 +67,3 @@ spec:
         - name: config
           configMap:
             name: config
-            items:
-              - key: config.json
-                path: config.json
