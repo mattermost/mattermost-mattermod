@@ -130,4 +130,19 @@ func TestHandeUpdateBranch(t *testing.T) {
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.NoError(t, err)
 	})
+
+	t.Run("job scheduled on GitHub", func(t *testing.T) {
+		s.OrgMembers = make([]string, 1)
+		s.OrgMembers[0] = userHandle
+		pr.FullName = organization + "/" + userHandle
+
+		*msg = ""
+
+		prs := mocks.NewMockPullRequestsService(ctrl)
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, errors.New("job scheduled on GitHub side; try again later"))
+		s.GithubClient.PullRequests = prs
+
+		err := s.handleUpdateBranch(ctx, userHandle, pr)
+		require.NoError(t, err)
+	})
 }
