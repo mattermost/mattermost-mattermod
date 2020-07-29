@@ -293,6 +293,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// We ignore comments from issues.
+	if !eventData.Issue.IsPullRequest() {
+		return
+	}
+
 	pr, err := s.getPRFromEvent(ctx, *eventData)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
