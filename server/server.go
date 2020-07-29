@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -164,7 +165,10 @@ func (s *Server) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				mlog.Error("recovered from a panic", mlog.String("url", r.URL.String()), mlog.Any("error", x))
+				mlog.Error("recovered from a panic",
+					mlog.String("url", r.URL.String()),
+					mlog.Any("error", x),
+					mlog.String("stack", string(debug.Stack())))
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -286,6 +290,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err = s.handleIssueEvent(ctx, event); err != nil {
 			mlog.Error(err.Error())
 		}
+		return
+	}
+
+	// We ignore comments from issues.
+	if !eventData.Issue.IsPullRequest() {
 		return
 	}
 
