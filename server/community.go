@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -29,6 +30,21 @@ func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullReques
 	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest"})
 	if err != nil {
 		mlog.Error("Error applying Hacktoberfest label", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+		return
+	}
+}
+
+func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest) {
+	// Only post welcome Message for community member
+	if s.IsOrgMember(pr.Username) {
+		return
+	}
+
+	msg := strings.ReplaceAll(s.Config.PRWelcomeMessage, "USERNAME", "@"+pr.Username)
+
+	err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+	if err != nil {
+		mlog.Warn("Error while commenting PR welcome message", mlog.Err(err))
 		return
 	}
 }

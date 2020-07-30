@@ -122,6 +122,7 @@ type Config struct {
 
 	SignedCLAURL          string
 	NeedsToSignCLAMessage string
+	PRWelcomeMessage      string
 
 	PrLabels    []LabelResponse
 	IssueLabels []LabelResponse
