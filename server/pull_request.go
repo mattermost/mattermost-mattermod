@@ -380,7 +380,13 @@ func (s *Server) CheckPRActivity() {
 	for _, pr := range prs {
 		pull, _, errPull := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if errPull != nil {
-			mlog.Error("Error getting Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+			mlog.Error(
+				"Error getting Pull Request",
+				mlog.String("RepoOwner", pr.RepoOwner),
+				mlog.String("RepoName", pr.RepoName),
+				mlog.Int("PRNumber", pr.Number),
+				mlog.Err(errPull),
+			)
 			break
 		}
 
@@ -400,7 +406,13 @@ func (s *Server) CheckPRActivity() {
 			canStale := true
 			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 			if err != nil {
-				mlog.Error("Error getting the labels in the Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+				mlog.Error(
+					"Error getting the labels in the Pull Request",
+					mlog.String("RepoOwner", pr.RepoOwner),
+					mlog.String("RepoName", pr.RepoName),
+					mlog.Int("PRNumber", pr.Number),
+					mlog.Err(err),
+				)
 				s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 				continue
 			}
@@ -422,7 +434,13 @@ func (s *Server) CheckPRActivity() {
 				label := []string{s.Config.StaleLabel}
 				_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
 				if errLabel != nil {
-					mlog.Error("Error adding the stale labe in the  Pull Request", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
+					mlog.Error(
+						"Error adding the stale label in the Pull Request",
+						mlog.String("RepoOwner", pr.RepoOwner),
+						mlog.String("RepoName", pr.RepoName),
+						mlog.Int("PRNumber", pr.Number),
+						mlog.Err(errLabel),
+					)
 					s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 					break
 				}
