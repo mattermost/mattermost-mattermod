@@ -8,19 +8,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 func (s *Server) triggerEETestsForOrgMembers(pr *model.PullRequest) {
-	if s.IsOrgMember(pr.Username) {
+	if s.IsOrgMember(pr.Username) || s.IsBotUserFromCLAExclusionsList(pr.Username) {
 		s.triggerEnterpriseTests(pr)
 	}
 }
 
 func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultEETaskTimeout*time.Second)
 	defer cancel()
 
 	triggerInfo, err := s.getPRInfo(ctx, pr)
@@ -142,7 +142,7 @@ func (s *Server) createEnterpriseTestsPendingStatus(ctx context.Context, pr *mod
 	}
 	err := s.createRepoStatus(ctx, pr, enterpriseStatus)
 	if err != nil {
-		s.logToMattermost("failed to create status for PR: " + strconv.Itoa(pr.Number) + " Context: " + s.Config.EnterpriseGithubStatusContext + " Error: ```" + err.Error() + "```")
+		s.logToMattermost(ctx, "failed to create status for PR: "+strconv.Itoa(pr.Number)+" Context: "+s.Config.EnterpriseGithubStatusContext+" Error: ```"+err.Error()+"```")
 	}
 }
 
@@ -153,7 +153,7 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 		Description: github.String("Enterprise tests error"),
 		TargetURL:   github.String(""),
 	}
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number,
+	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number,
 		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
 	_ = s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
 }

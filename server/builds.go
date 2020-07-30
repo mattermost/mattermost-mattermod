@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +18,6 @@ type Builds struct{}
 
 type buildsInterface interface {
 	getInstallationVersion(pr *model.PullRequest) string
-	dockerRegistryClient(s *Server) (*registry.Registry, error)
 	waitForImage(ctx context.Context, s *Server, reg *registry.Registry, pr *model.PullRequest) (*model.PullRequest, error)
 	buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error)
 	waitForBuild(ctx context.Context, s *Server, client *jenkins.Jenkins, pr *model.PullRequest) (*model.PullRequest, error)
@@ -28,19 +26,6 @@ type buildsInterface interface {
 
 func (b *Builds) getInstallationVersion(pr *model.PullRequest) string {
 	return pr.Sha[0:7]
-}
-
-func (b *Builds) dockerRegistryClient(s *Server) (reg *registry.Registry, err error) {
-	if _, err = url.ParseRequestURI(s.Config.DockerRegistryURL); err != nil {
-		return nil, errors.Wrap(err, "invalid url for docker registry")
-	}
-
-	reg, err = registry.New(s.Config.DockerRegistryURL, s.Config.DockerUsername, s.Config.DockerPassword)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to connect to docker registry")
-	}
-
-	return reg, nil
 }
 
 func (b *Builds) buildJenkinsClient(s *Server, pr *model.PullRequest) (*Repository, *jenkins.Jenkins, error) {
@@ -67,17 +52,17 @@ func (b *Builds) waitForImage(ctx context.Context, s *Server, reg *registry.Regi
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for image to publish")
 		case <-time.After(10 * time.Second):
-			var appErr *model.AppError
-			pr, appErr = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-			if appErr != nil {
-				return nil, errors.Wrap(appErr, "unable to get updated PR from Mattermod database")
+			var err error
+			pr, err = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
 			desiredTag := b.getInstallationVersion(pr)
 			image := "mattermost/mattermost-enterprise-edition"
 
-			_, err := reg.ManifestDigest(image, desiredTag)
+			_, err = reg.ManifestDigest(image, desiredTag)
 			if err != nil && !strings.Contains(err.Error(), "status=404") {
 				return pr, errors.Wrap(err, "unable to fetch tag from docker registry")
 			}
@@ -98,15 +83,14 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 		case <-ctx.Done():
 			return pr, errors.New("timed out waiting for build to finish")
 		case <-time.After(30 * time.Second):
-			var appErr *model.AppError
-			pr, appErr = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
-			if appErr != nil {
-				return nil, errors.Wrap(appErr, "unable to get updated PR from Mattermod database")
+			var err error
+			pr, err = s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to get updated PR from Mattermod database")
 			}
 
 			// Update the PR in case the build link has changed because of a new commit
-			var err error
-			pr, err = s.GetUpdateChecks(pr.RepoOwner, pr.RepoName, pr.Number)
+			pr, err = s.GetUpdateChecks(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 			if err != nil {
 				return pr, errors.Wrap(err, "unable to get updated PR from GitHub")
 			}
@@ -180,7 +164,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRequest) (string, error) {
 	repo, _ := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	for {
-		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}
@@ -193,7 +177,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 		}
 
 		// for the repos using circleci we have the checks now
-		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return "", err
 		}
@@ -205,7 +189,7 @@ func (b *Builds) checkBuildLink(ctx context.Context, s *Server, pr *model.PullRe
 
 		select {
 		case <-ctx.Done():
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Timed out waiting for build link. Please check the logs.")
 			return "", errors.New("timed out waiting the build link")
 		case <-time.After(10 * time.Second):
 		}

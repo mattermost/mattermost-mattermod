@@ -9,11 +9,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
+	"golang.org/x/net/context"
 )
 
 func main() {
@@ -23,21 +25,47 @@ func main() {
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
-		err = errors.Wrap(err, "unable to load server config")
-		mlog.Error("unable to load server config", mlog.Err(err))
-		panic(err)
+		mlog.Error("unable to load server config", mlog.Err(err), mlog.String("file", configFile))
+		os.Exit(1)
 	}
-	server.SetupLogging(config)
+	if err = server.SetupLogging(config); err != nil {
+		mlog.Error("unable to configure logging", mlog.Err(err))
+		os.Exit(1)
+	}
+
+	// Metrics system
+	metricsProvider := metrics.NewPrometheusProvider()
+	metricsServer := metrics.NewServer(config.MetricsServerPort, metricsProvider.Handler(), true)
+	metricsServer.Start()
+	defer metricsServer.Stop()
 
 	mlog.Info("Loaded config", mlog.String("filename", configFile))
-
-	s, err := server.New(config)
+	s, err := server.New(config, metricsProvider)
 	if err != nil {
-		panic("failed creating server")
+		mlog.Error("unable to start server", mlog.Err(err))
+		os.Exit(1)
 	}
 
+	mlog.Info("Starting Mattermod Server")
 	s.Start()
-	defer s.Stop()
+
+	defer func() {
+		mlog.Info("Stopping Mattermod Server")
+		code := 0
+		if err2 := s.Stop(); err2 != nil {
+			mlog.Error("error while shutting down server", mlog.Err(err2))
+			code = 1
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
+			mlog.Error("error while shutting logging", mlog.Err(err2))
+			code = 1
+		}
+		if code != 0 {
+			os.Exit(code)
+		}
+	}()
 
 	c := cron.New()
 
@@ -60,7 +88,12 @@ func main() {
 	if err != nil {
 		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
 	}
-	_, err = c.AddFunc("@every 30m", s.AutoMergePR)
+	_, err = c.AddFunc("@every 30m", func() {
+		err2 := s.AutoMergePR()
+		if err2 != nil {
+			mlog.Error("Error from AutoMergePR", mlog.Err(err2))
+		}
+	})
 	if err != nil {
 		mlog.Error("failed adding AutoMergePR cron", mlog.Err(err))
 	}
@@ -72,7 +105,9 @@ func main() {
 	}
 
 	c.Start()
+
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
 	<-sig
 }

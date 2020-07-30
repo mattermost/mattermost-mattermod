@@ -1,0 +1,39 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mattermod
+
+bases:
+  - ../../base/app
+  - ../../base/config
+
+resources:
+  - ingress.yaml
+  - pvc.yaml
+
+patchesStrategicMerge:
+  - patches/deployment-replicas.yaml
+  - patches/deployment-data-pvc.yaml
+  - patches/deployment-gitconfig.yaml
+
+configMapGenerator:
+  - name: config
+    behavior: merge
+    files:
+      - config/instance-setup-mattermost-server
+      - config/instance-setup-mattermost-webapp
+      - config/instance-setup-upgrade-mattermost-server
+      - config/test.spinmint.com.fullchain.pem
+      - config/test.spinmint.com.privkey.pem
+
+secretGenerator:
+  - name: gitconfig
+    files:
+      - ssh/id_rsa
+      - ssh/config
+      - ssh/known_hosts
+
+images:
+  - name: mattermost/mattermod
+    newName: mattermost/mattermod
+    newTag: 0.2.3

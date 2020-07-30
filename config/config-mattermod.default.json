@@ -1,8 +1,11 @@
 {
-    "ListenAddress": "0.0.0.0:8086",
+    "ListenAddress": "0.0.0.0:8080",
     "MattermodURL": "",
     "GithubAccessToken": "",
-    "GitHubTokenReserve": 50,
+    "GitHubTokenReserve": 10,
+    "GithubUsername": "",
+    "GithubAccessTokenCherryPick": "",
+    "GithubWebhookSecret": "",
     "Org": "",
     "Username": "",
     "CircleCIToken": "",
@@ -26,6 +29,7 @@
     ],
 
     "BlockPRMergeLabels": [],
+    "AutoPRMergeLabel": "AutoMerge",
 
     "DaysUntilStale": 14,
     "ExemptStaleLabels": [],
@@ -58,6 +62,7 @@
             "ExpectedArtifacts": 0
         }
     ],
+
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
     "EnterpriseWebappReponame": "",
@@ -66,6 +71,11 @@
     "EnterpriseGithubStatusEETests": "",
     "EnterpriseGithubStatusTETests": "",
     "EnterpriseWorkflowName": "",
+
+    "TranslationsMattermostWebhookURL": "",
+    "TranslationsMattermostMessage": "",
+    "TranslationsBot": "",
+
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "CLAExclusionsList": [],
@@ -109,6 +119,8 @@
 
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",
+
+    "MetricsServerPort": "9000",
 
     "LogSettings": {
         "EnableConsole": true,

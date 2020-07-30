@@ -13,16 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 
-	"github.com/metanerd/go-circleci"
+	"github.com/mattermost/go-circleci"
 )
 
-func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
-	client := &circleci.Client{Token: s.Config.CircleCIToken}
+func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
@@ -33,7 +31,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 	}
 
 	// Checking if the repo have circleci setup
-	builds, err := client.ListRecentBuildsForProject("github", pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
+	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
 		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
@@ -44,26 +42,20 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		return
 	}
 
-	blackList, ok := s.Config.FileBlacklist[pr.RepoName]
-	if ok {
-		// List the files that was modified or added in the PullRequest
-		var prFiles []*github.CommitFile
-		prFiles, _, err = s.GithubClient.PullRequests.ListFiles(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
-		if err != nil {
-			mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-			return
-		}
+	// List the files that was modified or added in the PullRequest
+	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
+		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+		return
+	}
 
-		for _, blackListItem := range blackList {
-			for _, prFile := range prFiles {
-				if prFile.GetFilename() == blackListItem {
-					mlog.Error("File is on the blacklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-					msg := fmt.Sprintf(
-						"The file `%s` is in the blacklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the PR is merged. Please be careful when reviewing it.\n /cc @mattermost/core-security @mattermost/core-build-engineers",
-						prFile.GetFilename())
-					s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, msg)
-					return
-				}
+	for _, prFile := range prFiles {
+		for _, blockListPath := range s.Config.BlacklistPaths {
+			if prFile.GetFilename() == blockListPath {
+				mlog.Error("File is on the blocklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
+				msg := fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+				return
 			}
 		}
 	}
@@ -73,7 +65,7 @@ func (s *Server) triggerCircleCiIfNeeded(pr *model.PullRequest) {
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = client.BuildByProject("github", pr.RepoOwner, pr.RepoName, opts)
+	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
 		return
@@ -218,16 +210,15 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
-			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			var builds []*circleci.Build
 			var err error
-			builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
+			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
 			if err != nil {
 				return nil, err
 			}
 
 			if len(builds) == 0 {
-				builds, err = client.ListRecentBuildsForProject(circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
+				builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
 				if err != nil {
 					return nil, err
 				}
@@ -251,9 +242,8 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 		case <-ctx.Done():
 			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
-			client := &circleci.Client{Token: s.Config.CircleCIToken}
 			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
-			artifacts, err := client.ListBuildArtifacts(circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
+			artifacts, err := s.CircleCiClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
 			if err != nil {
 				return nil, err
 			}

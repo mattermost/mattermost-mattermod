@@ -5,10 +5,13 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -18,51 +21,52 @@ const (
 	statePending = "pending"
 	stateSuccess = "success"
 	stateError   = "error"
-
-	timeoutRequestGithub = 5 * time.Second
 )
 
-func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*model.PullRequest, error) {
+func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
-		RepoOwner: *pullRequest.Base.Repo.Owner.Login,
-		RepoName:  *pullRequest.Base.Repo.Name,
-		Number:    *pullRequest.Number,
-		Username:  *pullRequest.User.Login,
-		FullName:  "",
-		Ref:       *pullRequest.Head.Ref,
-		Sha:       *pullRequest.Head.SHA,
-		State:     *pullRequest.State,
-		URL:       *pullRequest.URL,
-		CreatedAt: pullRequest.GetCreatedAt(),
+		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
+		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
+		Number:              pullRequest.GetNumber(),
+		Username:            pullRequest.GetUser().GetLogin(),
+		FullName:            "",
+		Ref:                 pullRequest.GetHead().GetRef(),
+		Sha:                 pullRequest.GetHead().GetSHA(),
+		State:               pullRequest.GetState(),
+		URL:                 pullRequest.GetURL(),
+		CreatedAt:           pullRequest.GetCreatedAt(),
+		Merged:              sql.NullBool{Bool: pullRequest.GetMerged(), Valid: true},
+		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
+		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 
 	if pullRequest.Head.Repo != nil {
-		pr.FullName = *pullRequest.Head.Repo.FullName
+		pr.FullName = pullRequest.GetHead().GetRepo().GetFullName()
 	}
 
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {
-		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		combined, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, status := range combined.Statuses {
-			if *status.Context == repo.BuildStatusContext {
-				pr.BuildStatus = *status.State
-				pr.BuildLink = *status.TargetURL
+			if status.GetContext() == repo.BuildStatusContext {
+				pr.BuildStatus = status.GetState()
+				pr.BuildLink = status.GetTargetURL()
 				break
 			}
 		}
 
 		// for the repos using circleci we have the checks now
-		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+		checks, _, err := s.GithubClient.Checks.ListCheckRunsForRef(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, status := range checks.CheckRuns {
-			if *status.Name == repo.BuildStatusContext {
+			if status.GetName() == repo.BuildStatusContext {
 				pr.BuildStatus = status.GetStatus()
 				pr.BuildConclusion = status.GetConclusion()
 				pr.BuildLink = status.GetHTMLURL()
@@ -71,7 +75,7 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 		}
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -79,22 +83,32 @@ func (s *Server) GetPullRequestFromGithub(pullRequest *github.PullRequest) (*mod
 	pr.Labels = labelsToStringArray(labels)
 
 	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		mlog.Error(err.Error())
+		return nil, err
 	}
 
 	return pr, nil
 }
 
-func (s *Server) GetIssueFromGithub(repoOwner, repoName string, ghIssue *github.Issue) (*model.Issue, error) {
+func (s *Server) GetIssueFromGithub(ctx context.Context, ghIssue *github.Issue) (*model.Issue, error) {
 	issue := &model.Issue{
-		RepoOwner: repoOwner,
-		RepoName:  repoName,
-		Number:    *ghIssue.Number,
-		Username:  *ghIssue.User.Login,
-		State:     *ghIssue.State,
+		RepoOwner: ghIssue.GetRepository().GetOwner().GetLogin(),
+		RepoName:  ghIssue.GetRepository().GetName(),
+		Number:    ghIssue.GetNumber(),
+		Username:  ghIssue.GetUser().GetLogin(),
+		State:     ghIssue.GetState(),
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(context.Background(), issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	if issue.RepoOwner == "" || issue.RepoName == "" {
+		// URL is expected to be in the form of https://github.com/{repoOwner}/{repoName}/pull/{number}
+		parts := strings.Split(ghIssue.GetHTMLURL(), "/")
+		if len(parts) < 5 {
+			return nil, fmt.Errorf("could not get repo owner or repo name from url: %q", ghIssue.GetHTMLURL())
+		}
+		issue.RepoOwner = parts[3]
+		issue.RepoName = parts[4]
+	}
+
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -113,18 +127,18 @@ func labelsToStringArray(labels []*github.Label) []string {
 	return out
 }
 
-func (s *Server) sendGitHubComment(repoOwner, repoName string, number int, comment string) {
+func (s *Server) sendGitHubComment(ctx context.Context, repoOwner, repoName string, number int, comment string) {
 	mlog.Debug("Sending GitHub comment", mlog.Int("issue", number), mlog.String("comment", comment))
-	_, _, err := s.GithubClient.Issues.CreateComment(context.Background(), repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	_, _, err := s.GithubClient.Issues.CreateComment(ctx, repoOwner, repoName, number, &github.IssueComment{Body: &comment})
 	if err != nil {
 		mlog.Error("Error commenting", mlog.Err(err))
 	}
 }
 
-func (s *Server) removeLabel(repoOwner, repoName string, number int, label string) {
+func (s *Server) removeLabel(ctx context.Context, repoOwner, repoName string, number int, label string) {
 	mlog.Info("Removing label on issue", mlog.Int("issue", number), mlog.String("label", label))
 
-	_, err := s.GithubClient.Issues.RemoveLabelForIssue(context.Background(), repoOwner, repoName, number, label)
+	_, err := s.GithubClient.Issues.RemoveLabelForIssue(ctx, repoOwner, repoName, number, label)
 	if err != nil {
 		mlog.Error("Error removing the label", mlog.Err(err))
 	}
@@ -155,14 +169,14 @@ func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (commen
 	return allComments, nil
 }
 
-func (s *Server) GetUpdateChecks(owner, repoName string, prNumber int) (*model.PullRequest, error) {
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(context.Background(), owner, repoName, prNumber)
+func (s *Server) GetUpdateChecks(ctx context.Context, owner, repoName string, prNumber int) (*model.PullRequest, error) {
+	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx, owner, repoName, prNumber)
 	if err != nil {
 		mlog.Error("Failed to get PR for update check", mlog.Err(err))
 		return nil, err
 	}
 
-	pr, err := s.GetPullRequestFromGithub(prGitHub)
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return nil, err
@@ -212,8 +226,17 @@ func (s *Server) IsOrgMember(user string) bool {
 	return false
 }
 
-func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string) (bool, error) {
-	_, r, err := s.GithubClient.Git.GetRef(context.Background(), org, pr.RepoName, ref)
+func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
+	for _, claExcludedUser := range s.Config.CLAExclusionsList {
+		if user == claExcludedUser {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) checkIfRefExists(ctx context.Context, pr *model.PullRequest, org string, ref string) (bool, error) {
+	_, r, err := s.GithubClient.Git.GetRef(ctx, org, pr.RepoName, ref)
 	if err != nil {
 		if r == nil || r.StatusCode != http.StatusNotFound {
 			mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
@@ -225,9 +248,9 @@ func (s *Server) checkIfRefExists(pr *model.PullRequest, org string, ref string)
 	return true, nil
 }
 
-func (s *Server) createRef(pr *model.PullRequest, ref string) {
+func (s *Server) createRef(ctx context.Context, pr *model.PullRequest, ref string) {
 	_, _, err := s.GithubClient.Git.CreateRef(
-		context.Background(),
+		ctx,
 		pr.RepoOwner,
 		pr.RepoName,
 		&github.Reference{
@@ -242,14 +265,14 @@ func (s *Server) createRef(pr *model.PullRequest, ref string) {
 	}
 }
 
-func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repoName string, ref string) error {
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), repoOwner, repoName, ref, nil)
+func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(ctx context.Context, repoOwner string, repoName string, ref string) error {
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, ref, nil)
 	if err != nil {
 		return err
 	}
 
 	if cStatus.GetState() == stateSuccess {
-		_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+		_, err := s.GithubClient.Git.DeleteRef(ctx, repoOwner, repoName, ref)
 		if err != nil {
 			return err
 		}
@@ -258,17 +281,17 @@ func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(repoOwner string, repo
 	return nil
 }
 
-func (s *Server) deleteRef(repoOwner string, repoName string, ref string) error {
-	_, err := s.GithubClient.Git.DeleteRef(context.Background(), repoOwner, repoName, ref)
+func (s *Server) deleteRef(ctx context.Context, repoOwner string, repoName string, ref string) error {
+	_, err := s.GithubClient.Git.DeleteRef(ctx, repoOwner, repoName, ref)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Server) areChecksSuccessfulForPr(pr *model.PullRequest, org string) (bool, error) {
+func (s *Server) areChecksSuccessfulForPr(ctx context.Context, pr *model.PullRequest, org string) (bool, error) {
 	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(context.Background(), org, pr.RepoName, pr.Sha, nil)
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, org, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err
@@ -297,7 +320,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return errors.New("timed out waiting for status " + statusContext)
 		case <-ticker.C:
 			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
-			statuses, _, err := s.GithubClient.Repositories.ListStatuses(context.Background(), pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 			if err != nil {
 				return err
 			}

@@ -10,7 +10,17 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
+)
+
+const (
+	// In seconds
+	defaultRequestTimeout       = 60
+	defaultEETaskTimeout        = 300
+	defaultCronTaskTimeout      = 300
+	defaultBuildMobileTimeout   = 7200
+	defaultBuildSpinmintTimeout = 2700
 )
 
 type LabelResponse struct {
@@ -99,6 +109,10 @@ type Config struct {
 	EnterpriseGithubStatusEETests string
 	EnterpriseWorkflowName        string
 
+	TranslationsMattermostWebhookURL string
+	TranslationsMattermostMessage    string
+	TranslationsBot                  string
+
 	StartLoadtestTag     string
 	StartLoadtestMessage string
 
@@ -140,19 +154,22 @@ type Config struct {
 	MattermostWebhookFooter string
 
 	LogSettings struct {
-		EnableConsole bool
-		ConsoleJSON   bool
-		ConsoleLevel  string
-		EnableFile    bool
-		FileJSON      bool
-		FileLevel     string
-		FileLocation  string
+		EnableConsole   bool
+		ConsoleJSON     bool
+		ConsoleLevel    string
+		EnableFile      bool
+		FileJSON        bool
+		FileLevel       string
+		FileLocation    string
+		AdvancedLogging mlog.LogTargetCfg
 	}
 
 	DaysUntilStale    int
 	ExemptStaleLabels []string
 	StaleLabel        string
 	StaleComment      string
+
+	MetricsServerPort string
 }
 
 func findConfigFile(fileName string) string {

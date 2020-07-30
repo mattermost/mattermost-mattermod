@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mattermod
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 10%
+      maxUnavailable: 10%
+  selector:
+    matchLabels:
+      app: mattermod
+  minReadySeconds: 5
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9000"
+        prometheus.io/scrape: "true"
+      labels:
+        app: mattermod
+    spec:
+      serviceAccountName: mattermod
+      securityContext:
+        runAsUser: 1000
+        fsGroup: 1000
+      restartPolicy: Always
+      containers:
+        - name: mattermod
+          image: mattermost/mattermod
+          imagePullPolicy: IfNotPresent
+          command:
+            - "mattermod"
+            - "-config=/app/config/config.json"
+          resources:
+            limits:
+              cpu: "1"
+              memory: 400Mi
+            requests:
+              cpu: 200m
+              memory: 100Mi
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: config

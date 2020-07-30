@@ -4,8 +4,7 @@
 package model
 
 import (
-	"encoding/json"
-	"io"
+	"database/sql"
 	"time"
 )
 
@@ -15,37 +14,21 @@ const (
 )
 
 type PullRequest struct {
-	RepoOwner       string
-	RepoName        string
-	FullName        string
-	Number          int
-	Username        string
-	Ref             string
-	Sha             string
-	Labels          []string
-	State           string
-	BuildStatus     string
-	BuildConclusion string
-	BuildLink       string
-	URL             string
-	CreatedAt       time.Time
-}
-
-func (o *PullRequest) ToJSON() (string, error) {
-	b, err := json.Marshal(o)
-	if err != nil {
-		return "", err
-	}
-
-	return string(b), nil
-}
-
-func PullRequestFromJSON(data io.Reader) (*PullRequest, error) {
-	var pr PullRequest
-	err := json.NewDecoder(data).Decode(&pr)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pr, nil
+	RepoOwner           string
+	RepoName            string
+	FullName            string
+	Number              int
+	Username            string
+	Ref                 string
+	Sha                 string
+	Labels              []string
+	State               string
+	BuildStatus         string
+	BuildConclusion     string
+	BuildLink           string
+	URL                 string
+	CreatedAt           time.Time
+	Merged              sql.NullBool
+	MergeCommitSHA      string `db:"-"`
+	MaintainerCanModify sql.NullBool
 }

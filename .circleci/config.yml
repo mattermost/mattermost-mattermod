@@ -25,6 +25,17 @@ jobs:
       - checkout
       - run: make build
 
+  check-dependencies:
+    executor:
+      name: default
+    steps:
+      - checkout
+      - run:
+          name: Check unused Go dependencies
+          command: |
+            go mod tidy -v
+            if [[ -n $(git --no-pager diff --exit-code go.mod go.sum) ]]; then echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; exit 1; fi
+
   test:
     docker:
       - image: circleci/golang:1.14
@@ -48,14 +59,74 @@ jobs:
             echo Failed waiting for MySQL && exit 1
       - run: make test
 
+  docker:
+    parameters:
+      target:
+        type: string
+    docker:
+      - image: circleci/buildpack-deps:stretch
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build docker image
+          command: |
+            if [ -z "<<parameters.target>>" ]; then
+              echo "'target' is missing"
+              exit 1
+            fi
+            if [ "<<parameters.target>>" == "pr" ]; then
+              export TAG_NAME=$(echo "${CIRCLE_SHA1}" | cut -c1-8)
+              DOCKER_TAG=${TAG_NAME} make docker
+            else
+              echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
+              if [ "<<parameters.target>>" == "edge" ]; then
+                DOCKER_TAG=edge make docker push
+              elif [ "<<parameters.target>>" == "latest" ]; then
+                export TAG_NAME=$(echo "${CIRCLE_TAG}" | tr -d 'v')
+                DOCKER_TAG=${TAG_NAME} make docker push
+                docker tag mattermost/mattermod:${TAG_NAME} mattermost/mattermod:latest
+                DOCKER_TAG=latest make push
+              fi
+            fi
+
 workflows:
   version: 2
   untagged-build:
     jobs:
       - lint
+      - check-dependencies
       - build:
           requires:
             - lint
+            - check-dependencies
       - test:
           requires:
             - build
+      - docker:
+          name: docker-pr
+          target: pr
+          requires:
+            - test
+          filters:
+            branches:
+              ignore: master
+      - docker:
+          name: docker-edge
+          target: edge
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+
+  release-build:
+    jobs:
+      - docker:
+          name: docker-latest
+          target: latest
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/

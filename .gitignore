@@ -41,3 +41,10 @@ Session.vim
 *~
 
 .agignore
+
+# Deployment
+deploy/base/config/*
+!deploy/base/config/kustomization.yaml
+deploy/overlays/prod/config/
+deploy/overlays/prod/ssh/
+out/

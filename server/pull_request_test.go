@@ -2,10 +2,11 @@ package server_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v32/github"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/server"
@@ -19,6 +20,8 @@ func TestCleanUpLabels(t *testing.T) {
 		Number:    123,
 	}
 
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
 	for name, test := range map[string]struct {
 		SetupClient func(*gomock.Controller) *server.GithubClient
 	}{
@@ -29,14 +32,15 @@ func TestCleanUpLabels(t *testing.T) {
 					Issues: issueMocks,
 				}
 
-				ctx := context.Background()
 				labels := []*github.Label{{
 					Name: github.String("abc"),
 				}, {
 					Name: github.String("def"),
 				}}
 
-				issueMocks.EXPECT().ListLabelsByIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
+				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface),
+					gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
+					gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
 
 				return client
 			},
@@ -48,7 +52,6 @@ func TestCleanUpLabels(t *testing.T) {
 					Issues: issueMocks,
 				}
 
-				ctx := context.Background()
 				labels := []*github.Label{{
 					Name: github.String("AutoMerge"),
 				}, {
@@ -57,10 +60,10 @@ func TestCleanUpLabels(t *testing.T) {
 					Name: github.String("Work In Progress"),
 				}}
 
-				issueMocks.EXPECT().ListLabelsByIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
-				issueMocks.EXPECT().RemoveLabelForIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("AutoMerge")).Return(nil, nil)
-				issueMocks.EXPECT().RemoveLabelForIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Do Not Merge")).Return(nil, nil)
-				issueMocks.EXPECT().RemoveLabelForIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Work In Progress")).Return(nil, nil)
+				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
+				issueMocks.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("AutoMerge")).Return(nil, nil)
+				issueMocks.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Do Not Merge")).Return(nil, nil)
+				issueMocks.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Work In Progress")).Return(nil, nil)
 
 				return client
 			},
@@ -72,7 +75,6 @@ func TestCleanUpLabels(t *testing.T) {
 					Issues: issueMocks,
 				}
 
-				ctx := context.Background()
 				labels := []*github.Label{{
 					Name: github.String("Work In Progress"),
 				}, {
@@ -83,9 +85,9 @@ func TestCleanUpLabels(t *testing.T) {
 					Name: github.String("def"),
 				}}
 
-				issueMocks.EXPECT().ListLabelsByIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
-				issueMocks.EXPECT().RemoveLabelForIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("AutoMerge")).Return(nil, nil)
-				issueMocks.EXPECT().RemoveLabelForIssue(gomock.Eq(ctx), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Work In Progress")).Return(nil, nil)
+				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
+				issueMocks.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("AutoMerge")).Return(nil, nil)
+				issueMocks.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), gomock.Eq("Work In Progress")).Return(nil, nil)
 
 				return client
 			},

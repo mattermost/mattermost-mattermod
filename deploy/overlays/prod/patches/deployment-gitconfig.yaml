@@ -1,0 +1,19 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mattermod
+spec:
+  template:
+    spec:
+      containers:
+        - name: mattermod
+          volumeMounts:
+            - name: gitconfig
+              mountPath: /app/.ssh
+              readOnly: true
+      volumes:
+        - name: gitconfig
+          secret:
+            secretName: gitconfig
+            defaultMode: 0400

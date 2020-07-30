@@ -14,48 +14,46 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/pkg/errors"
 )
 
 func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServer bool) {
+	// This needs its own context because is executing a heavy job
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBuildMobileTimeout*time.Second)
+	defer cancel()
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
 	mlog.Info("Waiting for Jenkins to build to set up spinmint for PR", mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
-	defer cancel()
-
 	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
 	var instance *ec2.Instance
-	spinmint, appErr := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-	if appErr != nil {
-		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", appErr.Error()))
+	spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+	if err != nil {
+		mlog.Error("Unable to get the spinmint information. Will not build the spinmint", mlog.String("pr_error", err.Error()))
 		return
 	}
 
 	if spinmint == nil {
 		mlog.Error("No spinmint for this PR in the Database. will start a fresh one.")
 		var errInstance error
-		instance, errInstance = s.setupSpinmint(pr, repo, upgradeServer)
+		instance, errInstance = s.setupSpinmint(ctx, pr, repo, upgradeServer)
 		if errInstance != nil {
-			s.logToMattermost("Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+			s.logToMattermost(ctx, "Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 			return
 		}
 		spinmint = &model.Spinmint{
@@ -74,11 +72,11 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 
 	mlog.Info("Waiting for instance to come up.")
 	time.Sleep(time.Minute * 2)
-	publicDNS, internalIP := s.getIPsForInstance(*instance.InstanceId)
+	publicDNS, internalIP := s.getIPsForInstance(ctx, *instance.InstanceId)
 
-	if err := s.updateRoute53Subdomain(*instance.InstanceId, publicDNS, "CREATE"); err != nil {
-		s.logToMattermost("Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+	if err := s.updateRoute53Subdomain(ctx, *instance.InstanceId, publicDNS, "CREATE"); err != nil {
+		s.logToMattermost(ctx, "Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
 		return
 	}
 
@@ -100,18 +98,14 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	message = strings.Replace(message, templateInstanceID, instanceIDMessage+*instance.InstanceId, 1)
 	message = strings.Replace(message, templateInternalIP, internalIP, 1)
 
-	s.sendGitHubComment(pr.RepoOwner, pr.RepoName, pr.Number, message)
+	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, message)
 }
 
 // Returns instance ID of instance created
-func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
+func (s *Server) setupSpinmint(ctx context.Context, pr *model.PullRequest, repo *Repository, upgrade bool) (*ec2.Instance, error) {
 	mlog.Info("Setting up spinmint for PR", mlog.Int("pr", pr.Number))
 
-	ses, err := session.NewSession()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create aws session")
-	}
-	svc := ec2.New(ses, s.GetAwsConfig())
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 
 	var setupScript string
 	if upgrade {
@@ -147,14 +141,14 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 		SubnetId:         &s.Config.AWSSubNetID,
 	}
 
-	resp, err := svc.RunInstances(params)
+	resp, err := svc.RunInstancesWithContext(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add tags to the created instance
 	time.Sleep(time.Second * 10)
-	_, errtag := svc.CreateTags(&ec2.CreateTagsInput{
+	_, errtag := svc.CreateTagsWithContext(ctx, &ec2.CreateTagsInput{
 		Resources: []*string{resp.Instances[0].InstanceId},
 		Tags: []*ec2.Tag{
 			{
@@ -183,14 +177,11 @@ func (s *Server) setupSpinmint(pr *model.PullRequest, repo *Repository, upgrade 
 }
 
 func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBuildSpinmintTimeout*time.Second)
+	defer cancel()
 	mlog.Info("Destroying spinmint for PR", mlog.String("instance", instanceID), mlog.Int("pr", pr.Number), mlog.String("repo_owner", pr.RepoOwner), mlog.String("repo_name", pr.RepoName))
 
-	ses, err := session.NewSession()
-	if err != nil {
-		mlog.Error("failed to create aws session", mlog.Err(err))
-		return
-	}
-	svc := ec2.New(ses, s.GetAwsConfig())
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 
 	params := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{
@@ -198,14 +189,14 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 		},
 	}
 
-	_, err = svc.TerminateInstances(params)
+	_, err := svc.TerminateInstancesWithContext(ctx, params)
 	if err != nil {
 		mlog.Error("Error terminating instances", mlog.Err(err))
 		return
 	}
 
 	// Remove route53 entry
-	err = s.updateRoute53Subdomain(instanceID, "", "DELETE")
+	err = s.updateRoute53Subdomain(ctx, instanceID, "", "DELETE")
 	if err != nil {
 		mlog.Error("Error removing the Route53 entry", mlog.Err(err))
 		return
@@ -214,20 +205,14 @@ func (s *Server) destroySpinmint(pr *model.PullRequest, instanceID string) {
 	s.removeTestServerFromDB(instanceID)
 }
 
-func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP string) {
-	ses, err := session.NewSession()
-	if err != nil {
-		mlog.Error("failed to create aws session", mlog.Err(err))
-		return
-	}
-
-	svc := ec2.New(ses, s.GetAwsConfig())
+func (s *Server) getIPsForInstance(ctx context.Context, instance string) (publicIP string, privateIP string) {
+	svc := ec2.New(s.awsSession, s.GetAwsConfig())
 	params := &ec2.DescribeInstancesInput{
 		InstanceIds: []*string{
 			&instance,
 		},
 	}
-	resp, err := svc.DescribeInstances(params)
+	resp, err := svc.DescribeInstancesWithContext(ctx, params)
 	if err != nil {
 		mlog.Error("Problem getting instance ip", mlog.Err(err))
 		return "", ""
@@ -236,18 +221,13 @@ func (s *Server) getIPsForInstance(instance string) (publicIP string, privateIP 
 	return *resp.Reservations[0].Instances[0].PublicIpAddress, *resp.Reservations[0].Instances[0].PrivateIpAddress
 }
 
-func (s *Server) updateRoute53Subdomain(name, target, action string) error {
-	ses, err := session.NewSession()
-	if err != nil {
-		return errors.Wrap(err, "failed to create aws session")
-	}
-
-	svc := route53.New(ses, s.GetAwsConfig())
+func (s *Server) updateRoute53Subdomain(ctx context.Context, name, target, action string) error {
+	svc := route53.New(s.awsSession, s.GetAwsConfig())
 	domainName := fmt.Sprintf("%v.%v", name, s.Config.AWSDnsSuffix)
 
 	targetServer := target
 	if target == "" && action == "DELETE" {
-		targetServer, _ = s.getIPsForInstance(name)
+		targetServer, _ = s.getIPsForInstance(ctx, name)
 	}
 
 	params := &route53.ChangeResourceRecordSetsInput{
@@ -271,8 +251,7 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 		HostedZoneId: &s.Config.AWSHostedZoneID,
 	}
 
-	_, err = svc.ChangeResourceRecordSets(params)
-	if err != nil {
+	if _, err := svc.ChangeResourceRecordSetsWithContext(ctx, params); err != nil {
 		return err
 	}
 
@@ -282,10 +261,17 @@ func (s *Server) updateRoute53Subdomain(name, target, action string) error {
 // CheckTestServerLifeTime checks the age of the test server and kills if reach the limit
 func (s *Server) CheckTestServerLifeTime() {
 	mlog.Info("Checking Test Server lifetime...")
-
+	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
+	defer func() {
+		elapsed := float64(time.Since(start)) / float64(time.Second)
+		s.Metrics.ObserveCronTaskDuration("check_test_server_lifetime", elapsed)
+	}()
 	testServers, err := s.Store.Spinmint().List()
 	if err != nil {
 		mlog.Error("Unable to get updated PR while waiting for test server", mlog.String("testServer_error", err.Error()))
+		s.Metrics.IncreaseCronTaskErrors("check_test_server_lifetime")
 		return
 	}
 
@@ -302,7 +288,7 @@ func (s *Server) CheckTestServerLifeTime() {
 			}
 			go s.destroySpinmint(pr, testServer.InstanceID)
 			s.removeTestServerFromDB(testServer.InstanceID)
-			s.sendGitHubComment(testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
+			s.sendGitHubComment(ctx, testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
 		}
 	}
 
