@@ -59,7 +59,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		for _, blockListPath := range blockList {
 			if prFile.GetFilename() == blockListPath {
 				mlog.Error("File is on the blocklist and will not re-trigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-				msg := fmt.Sprintf("The file `%s` iss in the blacklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
+				msg := fmt.Sprintf("The file `%s` is in the blacklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 				return
 			}
