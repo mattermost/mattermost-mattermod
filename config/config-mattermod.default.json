@@ -82,7 +82,8 @@
     "CLAGithubStatusContext": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-    "FileBlacklist": {},
+    "BlacklistPaths": [],
+    "RepoBlockListPaths": {},
     "PrLabels": [
     ],
     "IssueLabels": [

@@ -133,7 +133,8 @@ type Config struct {
 	DockerUsername    string
 	DockerPassword    string
 
-	FileBlacklist map[string][]string
+	BlacklistPaths     []string
+	RepoBlockListPaths map[string][]string // RepoBlockListPaths is a per repository list of blocked files
 
 	AWSCredentials struct {
 		ID     string
