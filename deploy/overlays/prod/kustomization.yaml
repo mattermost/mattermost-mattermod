@@ -36,4 +36,4 @@ secretGenerator:
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
-    newTag: 0.2.4
+    newTag: 0.2.5
