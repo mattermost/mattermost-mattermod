@@ -4,4 +4,4 @@ kind: Deployment
 metadata:
   name: mattermod
 spec:
-  replicas: 1
+  replicas: 3
