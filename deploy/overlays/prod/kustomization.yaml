@@ -12,7 +12,7 @@ resources:
   - pvc.yaml
 
 patchesStrategicMerge:
-  - patches/deployment-replicas.yaml
+#  - patches/deployment-replicas.yaml
   - patches/deployment-data-pvc.yaml
   - patches/deployment-gitconfig.yaml
 
