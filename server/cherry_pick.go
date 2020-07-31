@@ -119,7 +119,12 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	)
 	out, err := cmd.Output()
 	if err != nil {
-		mlog.Error("cmd.Run() failed", mlog.Err(err), mlog.String("cmdOut", string(out)), mlog.String("repo", pr.RepoName), mlog.Int("PR", pr.Number))
+		mlog.Error("cmd.Run() failed",
+			mlog.Err(err),
+			mlog.String("cmdOut", string(out)),
+			mlog.String("repo", pr.RepoName),
+			mlog.Int("PR", pr.Number),
+		)
 		returnToMaster(repoFolder)
 		return string(out), err
 	}
