@@ -6,6 +6,7 @@ package server
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -57,13 +58,16 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	if resp == nil && err != nil {
 		return resp, err
 	}
+	splittedPath := strings.Split(req.URL.Path, "/")
+	// This would leave path as "/repos/{user/org}/{repository}/issues"
+	path := strings.Join(splittedPath[:5], "/")
 	statusCode := strconv.Itoa(resp.StatusCode)
-	t.metrics.ObserveGithubRequestDuration(req.Method, req.URL.Path, statusCode, elapsed)
+	t.metrics.ObserveGithubRequestDuration(path, req.Method, statusCode, elapsed)
 
 	if resp.Header.Get("X-From-Cache") == "1" {
-		t.metrics.IncreaseGithubCacheHits(req.Method, req.URL.Path)
+		t.metrics.IncreaseGithubCacheHits(req.Method, path)
 	} else {
-		t.metrics.IncreaseGithubCacheMisses(req.Method, req.URL.Path)
+		t.metrics.IncreaseGithubCacheMisses(req.Method, path)
 	}
 
 	return resp, err
