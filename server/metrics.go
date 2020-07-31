@@ -60,7 +60,10 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	}
 	splittedPath := strings.Split(req.URL.Path, "/")
 	// This would leave path as "/repos/{user/org}/{repository}/issues"
-	path := strings.Join(splittedPath[:5], "/")
+	path := req.URL.Path
+	if len(splittedPath) > 5 {
+		path = strings.Join(splittedPath[:5], "/")
+	}
 	statusCode := strconv.Itoa(resp.StatusCode)
 	t.metrics.ObserveGithubRequestDuration(path, req.Method, statusCode, elapsed)
 
