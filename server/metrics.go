@@ -59,9 +59,9 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 		return resp, err
 	}
 	splittedPath := strings.Split(req.URL.Path, "/")
-	// This would leave path as "/repos/{user/org}/{repository}/issues"
 	path := req.URL.Path
 	if len(splittedPath) > 5 {
+		// This would leave path as "/repos/{user/org}/{repository}/issues"
 		path = strings.Join(splittedPath[:5], "/")
 	}
 	statusCode := strconv.Itoa(resp.StatusCode)
