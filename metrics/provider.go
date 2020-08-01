@@ -123,6 +123,7 @@ func NewPrometheusProvider() *PrometheusProvider {
 		},
 		[]string{"method", "handler"},
 	)
+	provider.Registry.MustRegister(provider.githubCacheHits)
 
 	provider.githubCacheMisses = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -133,6 +134,7 @@ func NewPrometheusProvider() *PrometheusProvider {
 		},
 		[]string{"method", "handler"},
 	)
+	provider.Registry.MustRegister(provider.githubCacheMisses)
 
 	return provider
 }
