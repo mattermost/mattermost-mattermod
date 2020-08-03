@@ -387,7 +387,7 @@ func (s *Server) CheckPRActivity() {
 				mlog.Int("PRNumber", pr.Number),
 				mlog.Err(errPull),
 			)
-			break
+			continue
 		}
 
 		if *pull.State == model.StateClosed {
@@ -442,7 +442,7 @@ func (s *Server) CheckPRActivity() {
 						mlog.Err(errLabel),
 					)
 					s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
-					break
+					continue
 				}
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
 			}
