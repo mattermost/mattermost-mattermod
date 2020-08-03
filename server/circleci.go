@@ -49,8 +49,8 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return
 	}
 
-	blockList := s.Config.BlacklistPaths
-	repoBlockList, ok := s.Config.RepoBlockListPaths[pr.RepoName]
+	blockList := s.Config.BlockListPathsGlobal
+	repoBlockList, ok := s.Config.BlockListPathsPerRepo[pr.RepoName]
 	if ok {
 		blockList = append(blockList, repoBlockList...)
 	}
