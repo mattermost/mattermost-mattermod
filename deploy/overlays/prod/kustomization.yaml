@@ -12,7 +12,7 @@ resources:
   - pvc.yaml
 
 patchesStrategicMerge:
-  - patches/deployment-replicas.yaml
+#  - patches/deployment-replicas.yaml
   - patches/deployment-data-pvc.yaml
   - patches/deployment-gitconfig.yaml
 
@@ -36,4 +36,4 @@ secretGenerator:
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
-    newTag: 0.2.3
+    newTag: 0.2.6

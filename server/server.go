@@ -278,8 +278,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: remove this after migration complete; MM-27283
-	event, err := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if err == nil && event.PRNumber != 0 {
+	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return
@@ -290,6 +290,11 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		if err = s.handleIssueEvent(ctx, event); err != nil {
 			mlog.Error(err.Error())
 		}
+		return
+	}
+
+	// We ignore comments from issues.
+	if !eventData.Issue.IsPullRequest() {
 		return
 	}
 
