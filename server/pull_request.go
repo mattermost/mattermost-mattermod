@@ -543,7 +543,7 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) getPRFromEvent(ctx context.Context, event *prCommentEvent) (*model.PullRequest, error) {
+func (s *Server) getPRFromIssueCommentEvent(ctx context.Context, event *issueCommentEvent) (*model.PullRequest, error) {
 	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
 		event.Repository.GetOwner().GetLogin(),
 		event.Repository.GetName(),

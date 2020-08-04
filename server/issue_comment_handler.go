@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -16,26 +17,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-type prCommentEvent struct {
+type issueCommentEvent struct {
 	Action     string                     `json:"action"`
 	Comment    *github.PullRequestComment `json:"comment"`
 	Issue      *github.Issue              `json:"issue"`
 	Repository *github.Repository         `json:"repository"`
 }
 
-func (s *Server) prCommentEventHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	ev, err := prCommentEventFromJSON(r.Body)
+	ev, err := issueCommentEventFromJSON(r.Body)
 	if err != nil {
 		mlog.Error("could not parse pr comment event", mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
-	pr, err := s.getPRFromEvent(ctx, ev)
+	// We ignore comments from issues.
+	if !ev.Issue.IsPullRequest() {
+		return
+	}
+
+	pr, err := s.getPRFromIssueCommentEvent(ctx, ev)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -46,12 +51,13 @@ func (s *Server) prCommentEventHandler(w http.ResponseWriter, r *http.Request) {
 		commenter = ev.Comment.GetUser().GetLogin()
 	}
 
+	errs := make([]error, 0)
+
 	if ev.HasCheckCLA() {
 		s.Metrics.IncreaseWebhookRequest("check_cla")
 		if err := s.handleCheckCLA(ctx, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("check_cla")
-			mlog.Error("Error checking CLA", mlog.Err(err))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errs = append(errs, fmt.Errorf("error checking CLA: %w", err))
 		}
 	}
 
@@ -59,8 +65,7 @@ func (s *Server) prCommentEventHandler(w http.ResponseWriter, r *http.Request) {
 		s.Metrics.IncreaseWebhookRequest("cherry_pick")
 		if err := s.handleCherryPick(ctx, commenter, ev.Comment.GetBody(), pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("cherry_pick")
-			mlog.Error("Error cherry picking", mlog.Err(err))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errs = append(errs, fmt.Errorf("error cherry picking: %w", err))
 		}
 	}
 
@@ -68,8 +73,7 @@ func (s *Server) prCommentEventHandler(w http.ResponseWriter, r *http.Request) {
 		s.Metrics.IncreaseWebhookRequest("auto_assign")
 		if err := s.handleAutoAssign(ctx, ev.Comment.GetHTMLURL(), pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("auto_assign")
-			mlog.Error("Error auto assigning", mlog.Err(err))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errs = append(errs, fmt.Errorf("error auto assigning: %w", err))
 		}
 	}
 
@@ -77,15 +81,22 @@ func (s *Server) prCommentEventHandler(w http.ResponseWriter, r *http.Request) {
 		s.Metrics.IncreaseWebhookRequest("update_branch")
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("update_branch")
-			mlog.Error("Error updating branch", mlog.Err(err))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errs = append(errs, fmt.Errorf("error updating branch: %w", err))
 		}
+	}
+
+	for _, err := range errs {
+		mlog.Error("Error handling PR comment", mlog.Err(err))
+	}
+
+	if len(errs) > 0 {
+		http.Error(w, "Error handling PR comment", http.StatusInternalServerError)
 	}
 }
 
-func prCommentEventFromJSON(data io.Reader) (*prCommentEvent, error) {
+func issueCommentEventFromJSON(data io.Reader) (*issueCommentEvent, error) {
 	decoder := json.NewDecoder(data)
-	var pr prCommentEvent
+	var pr issueCommentEvent
 	if err := decoder.Decode(&pr); err != nil {
 		return nil, err
 	}
@@ -104,21 +115,21 @@ func prCommentEventFromJSON(data io.Reader) (*prCommentEvent, error) {
 }
 
 // HasCheckCLA is true if body contains "/check-cla"
-func (e *prCommentEvent) HasCheckCLA() bool {
+func (e *issueCommentEvent) HasCheckCLA() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/check-cla")
 }
 
 // HasCherryPick is true if body contains "/cherry-pick"
-func (e *prCommentEvent) HasCherryPick() bool {
+func (e *issueCommentEvent) HasCherryPick() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/cherry-pick")
 }
 
 // HasAutoAssign is true if body contains "/autoassign"
-func (e *prCommentEvent) HasAutoAssign() bool {
+func (e *issueCommentEvent) HasAutoAssign() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/autoassign")
 }
 
 // HasUpdateBranch is true if body contains "/update-branch"
-func (e *prCommentEvent) HasUpdateBranch() bool {
+func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
 }

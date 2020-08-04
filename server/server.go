@@ -93,10 +93,6 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
 
-	webhooks := r.PathPrefix("/webhooks").Subrouter()
-	webhooks.HandleFunc("/issue", s.issueEventHandler).Methods(http.MethodPost)
-	webhooks.HandleFunc("/pr_comment", s.prCommentEventHandler).Methods(http.MethodPost)
-
 	r.HandleFunc("/healthz", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
 	r.Use(s.withRecovery)
@@ -261,91 +257,37 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
-	defer cancel()
-
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		mlog.Error("Failed to read body", mlog.Err(err))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if r.Header.Get("X-GitHub-Event") == "ping" {
-		if pingEvent := PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf))); pingEvent != nil {
-			mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+	switch event := r.Header.Get("X-GitHub-Event"); event {
+	case "ping":
+		pingEvent := PingEventFromJSON(r.Body)
+		if pingEvent == nil {
+			http.Error(w, "could not parse ping event", http.StatusBadRequest)
 			return
 		}
-	}
-
-	// TODO: remove this after migration complete; MM-27283
-	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if event != nil && event.PRNumber != 0 {
-		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-		s.handlePullRequestEvent(ctx, event)
-		return
-	}
-
-	eventData, _ := prCommentEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	// TODO: remove this after migration complete; MM-27283
-	if eventData == nil || eventData.Action != "created" {
-		if err = s.handleIssueEvent(ctx, event); err != nil {
-			mlog.Error(err.Error())
+		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+	case "issues":
+		s.issueEventHandler(w, r)
+	case "issue_comment":
+		s.issueCommentEventHandler(w, r)
+	case "pull_request":
+		ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+		defer cancel()
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			mlog.Error("Failed to read body", mlog.Err(err))
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
-		return
-	}
 
-	// We ignore comments from issues.
-	if !eventData.Issue.IsPullRequest() {
-		return
-	}
-
-	pr, err := s.getPRFromEvent(ctx, eventData)
-	if err != nil {
-		mlog.Error("Error getting PR from Comment", mlog.Err(err))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var commenter string
-	if eventData.Comment != nil && eventData.Comment.User != nil {
-		commenter = eventData.Comment.User.GetLogin()
-	}
-
-	if eventData.HasCheckCLA() {
-		s.Metrics.IncreaseWebhookRequest("check_cla")
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("check_cla")
-			mlog.Error("Error checking CLA", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
+		// TODO: remove this after migration complete; MM-27283
+		event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+		if event != nil && event.PRNumber != 0 {
+			mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
+			s.handlePullRequestEvent(ctx, event)
+			return
 		}
-	}
-
-	if eventData.HasCherryPick() {
-		s.Metrics.IncreaseWebhookRequest("cherry_pick")
-		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("cherry_pick")
-			mlog.Error("Error cherry picking", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if eventData.HasAutoAssign() {
-		s.Metrics.IncreaseWebhookRequest("auto_assign")
-		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("auto_assign")
-			mlog.Error("Error auto assigning", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if eventData.HasUpdateBranch() {
-		s.Metrics.IncreaseWebhookRequest("update_branch")
-		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("update_branch")
-			mlog.Error("Error updating branch", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+	default:
+		http.Error(w, "unhandled event type", http.StatusNotImplemented)
 	}
 }
 

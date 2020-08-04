@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPRCommentEventHandler(t *testing.T) {
+func TestIssueCommentEventHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -52,7 +52,7 @@ func TestPRCommentEventHandler(t *testing.T) {
 	name := "mattermod"
 	body := "some-text"
 
-	event := prCommentEvent{
+	event := issueCommentEvent{
 		Repository: &github.Repository{
 			Owner: &github.User{
 				Login: &login,
@@ -74,10 +74,11 @@ func TestPRCommentEventHandler(t *testing.T) {
 			User: &github.User{
 				Login: &login,
 			},
+			PullRequestLinks: &github.PullRequestLinks{},
 		},
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(s.prCommentEventHandler))
+	ts := httptest.NewServer(http.HandlerFunc(s.issueCommentEventHandler))
 	defer ts.Close()
 
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -89,6 +90,37 @@ func TestPRCommentEventHandler(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("Missing entities in body", func(t *testing.T) {
+		b, err := json.Marshal(issueCommentEvent{
+			Action:  "new",
+			Comment: &github.PullRequestComment{},
+		})
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("Not a pull request comment, should not fail", func(t *testing.T) {
+		b, err := json.Marshal(issueCommentEvent{
+			Issue:      &github.Issue{},
+			Repository: &github.Repository{},
+			Comment:    &github.PullRequestComment{},
+		})
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
 	t.Run("Should fail on getting the PR", func(t *testing.T) {
