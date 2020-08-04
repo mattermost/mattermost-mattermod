@@ -16,6 +16,10 @@ spec:
   minReadySeconds: 5
   template:
     metadata:
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9000"
+        prometheus.io/scrape: "true"
       labels:
         app: mattermod
     spec:
@@ -41,6 +45,8 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: metrics
+              containerPort: 9000
           livenessProbe:
             httpGet:
               path: /healthz
@@ -67,6 +73,3 @@ spec:
         - name: config
           configMap:
             name: config
-            items:
-              - key: config.json
-                path: config.json

@@ -96,6 +96,46 @@ func TestIssueEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
+	t.Run("Should fail for incorrect url", func(t *testing.T) {
+		url := "http://someaddr.com"
+
+		b, err := json.Marshal(&PullRequestEvent{
+			Issue: &github.Issue{
+				HTMLURL: &url,
+			},
+		})
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+
+	t.Run("Should be able to parse url", func(t *testing.T) {
+		url := "https://github.com/owner/repo/pull/1" //we are not parsing issue number
+
+		is.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "owner", "repo", 0, nil).
+			Times(1).
+			Return(nil, nil, errors.New("error"))
+
+		b, err := json.Marshal(&PullRequestEvent{
+			Issue: &github.Issue{
+				HTMLURL: &url,
+			},
+		})
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+	})
+
 	t.Run("Should fail for not getting issue from github", func(t *testing.T) {
 		is.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, nil).
 			Times(1).

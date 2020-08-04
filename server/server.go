@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -165,7 +166,10 @@ func (s *Server) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				mlog.Error("recovered from a panic", mlog.String("url", r.URL.String()), mlog.Any("error", x))
+				mlog.Error("recovered from a panic",
+					mlog.String("url", r.URL.String()),
+					mlog.Any("error", x),
+					mlog.String("stack", string(debug.Stack())))
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -275,8 +279,8 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: remove this after migration complete; MM-27283
-	event, err := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if err != nil || event.PRNumber != 0 {
+	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
+	if event != nil && event.PRNumber != 0 {
 		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 		s.handlePullRequestEvent(ctx, event)
 		return
@@ -291,12 +295,18 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// We ignore comments from issues.
+	if !eventData.Issue.IsPullRequest() {
+		return
+	}
+
 	pr, err := s.getPRFromEvent(ctx, eventData)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	var commenter string
 	if eventData.Comment != nil && eventData.Comment.User != nil {
 		commenter = eventData.Comment.User.GetLogin()

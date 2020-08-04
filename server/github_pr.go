@@ -5,8 +5,8 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
+	"strings"
 
 	"github.com/google/go-github/v32/github"
 )
@@ -21,18 +21,53 @@ type PullRequestEvent struct {
 	RepositoryURL string              `json:"repository_url"`
 }
 
-func PullRequestEventFromJSON(data io.Reader) (*PullRequestEvent, error) {
+type EventData struct {
+	Action     string                     `json:"action"`
+	Comment    *github.PullRequestComment `json:"comment"`
+	Issue      *github.Issue              `json:"issue"`
+	Repository *github.Repository         `json:"repository"`
+}
+
+// HasCheckCLA is true if body contains "/check-cla"
+func (d *EventData) HasCheckCLA() bool {
+	if d.Comment == nil || d.Comment.Body == nil {
+		return false
+	}
+	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/check-cla")
+}
+
+// HasCherryPick is true if body contains "/cherry-pick"
+func (d *EventData) HasCherryPick() bool {
+	if d.Comment == nil || d.Comment.Body == nil {
+		return false
+	}
+	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/cherry-pick")
+}
+
+// HasAutoAssign is true if body contains "/autoassign"
+func (d *EventData) HasAutoAssign() bool {
+	if d.Comment == nil || d.Comment.Body == nil {
+		return false
+	}
+	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/autoassign")
+}
+
+// HasUpdateBranch is true if body contains "/update-branch"
+func (d *EventData) HasUpdateBranch() bool {
+	if d.Comment == nil || d.Comment.Body == nil {
+		return false
+	}
+	return strings.Contains(strings.TrimSpace(*d.Comment.Body), "/update-branch")
+}
+
+func PullRequestEventFromJSON(data io.Reader) *PullRequestEvent {
 	decoder := json.NewDecoder(data)
 	var event PullRequestEvent
 	if err := decoder.Decode(&event); err != nil {
-		return nil, err
+		return nil
 	}
 
-	if event.Issue == nil {
-		return nil, errors.New("event issue is missing from body")
-	}
-
-	return &event, nil
+	return &event
 }
 
 func PingEventFromJSON(data io.Reader) *github.PingEvent {

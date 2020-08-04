@@ -11,3 +11,6 @@ spec:
     - name: http
       port: 8080
       targetPort: http
+    - name: metrics
+      port: 9000
+      targetPort: metrics
