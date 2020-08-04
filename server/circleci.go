@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -49,15 +51,16 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return
 	}
 
-	for _, prFile := range prFiles {
-		for _, blockListPath := range s.Config.BlacklistPaths {
-			if prFile.GetFilename() == blockListPath {
-				mlog.Error("File is on the blocklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-				msg := fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-				return
-			}
+	blockMessage, err := s.validateBlockPaths(prFiles)
+	if err != nil {
+		if blockMessage != "" {
+			mlog.Error("File is on the blocklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockMessage)
+			return
 		}
+
+		mlog.Error("failed to check the block list", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+		return
 	}
 
 	opts := map[string]interface{}{
@@ -102,6 +105,31 @@ type PipelineTriggeredResponse struct {
 	State     string    `json:"state"`
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+func (s *Server) validateBlockPaths(prFiles []*github.CommitFile) (string, error) {
+	var matches []string
+	for _, prFile := range prFiles {
+		for _, blockListPath := range s.Config.BlocklistPaths {
+			if matched, err := filepath.Match(blockListPath, prFile.GetFilename()); err != nil {
+				return "", errors.Wrap(err, "failed to match the path")
+			} else if matched {
+				matches = append(matches, prFile.GetFilename())
+			}
+		}
+	}
+
+	if len(matches) > 0 {
+		var msg string
+		if len(matches) > 1 {
+			msg = fmt.Sprintf("The files `%s` are in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(matches, ", "))
+		} else {
+			msg = fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", matches[0])
+		}
+		return msg, errors.New("files in the blocklist")
+	}
+
+	return "", nil
 }
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {

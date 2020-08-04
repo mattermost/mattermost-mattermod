@@ -82,7 +82,7 @@
     "CLAGithubStatusContext": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-    "BlacklistPaths": [],
+    "BlocklistPaths": [],
     "PrLabels": [
     ],
     "IssueLabels": [
