@@ -56,14 +56,14 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-	if err != nil {
-		mlog.Error("Error getting the PR info", mlog.Err(err))
+	if !pr.Merged.Valid || !pr.Merged.Bool {
+		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
-	if !prCherryCandidate.GetMerged() {
-		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prCherryCandidate.GetNumber()), mlog.String("Repo", pr.RepoName))
+	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+	if err != nil {
+		mlog.Error("Error getting the PR info", mlog.Err(err))
 		return
 	}
 
