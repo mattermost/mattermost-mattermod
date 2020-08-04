@@ -34,7 +34,7 @@ type Server struct {
 	Config         *Config
 	Store          store.Store
 	GithubClient   *GithubClient
-	CircleCiClient *circleci.Client
+	CircleCIClient *circleci.Client
 	OrgMembers     []string
 	Builds         buildsInterface
 	commentLock    sync.Mutex
@@ -75,7 +75,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
-	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
+	s.CircleCIClient = &circleci.Client{Token: s.Config.CircleCIToken}
 	awsSession, err := session.NewSession()
 	if err != nil {
 		return nil, err

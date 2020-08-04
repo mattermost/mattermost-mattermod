@@ -31,9 +31,10 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		if err := s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
 		}
+		mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
@@ -50,9 +51,10 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		if err := s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
 		}
+		mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 
 		s.handleTranslationPR(ctx, pr)
 
@@ -134,9 +136,10 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err := s.triggerCircleCiIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.Err(err))
+		if err := s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
 		}
+		mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)

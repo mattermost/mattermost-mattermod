@@ -20,8 +20,8 @@ import (
 	"github.com/mattermost/go-circleci"
 )
 
-func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) error {
-	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequest) error {
+	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
 		// It is from upstream mattermost repo don't need to trigger the circleci because org members
@@ -29,10 +29,10 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return nil
 	}
 
-	// Checking if the repo have circleci setup
-	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
+	// Checking if the repo have CircleCI setup
+	builds, err := s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
-		return fmt.Errorf("could not list the circleci builds for project: %w", err)
+		return fmt.Errorf("could not list the CircleCI builds for project: %w", err)
 	}
 
 	// If builds are 0 means no build ran for master and most probably this is not setup, so skipping.
@@ -51,7 +51,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 			if prFile.GetFilename() == blockListPath {
 				msg := fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-				return errors.New("file is on the blocklist and will not retrigger circleci to give the contexts")
+				return errors.New("file is on the blocklist and will not retrigger CircleCI to give the contexts")
 			}
 		}
 	}
@@ -61,7 +61,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
+	err = s.CircleCIClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		return fmt.Errorf("could not trigger circleci: %w", err)
 	}
@@ -208,13 +208,13 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
 			var builds []*circleci.Build
 			var err error
-			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
+			builds, err = s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
 			if err != nil {
 				return nil, err
 			}
 
 			if len(builds) == 0 {
-				builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
+				builds, err = s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
 				if err != nil {
 					return nil, err
 				}
@@ -239,7 +239,7 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
 			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
-			artifacts, err := s.CircleCiClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
+			artifacts, err := s.CircleCIClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
 			if err != nil {
 				return nil, err
 			}
