@@ -50,15 +50,15 @@ test:
 	$(GO) test $(PACKAGES)
 	@echo test success
 
-## Builds mattermod.
+## Builds mattermod binaries
 .PHONY: build
-build: clean build-mattermod build-jobserver
+build: build-mattermod build-jobserver
 
-build-mattermod:
+build-mattermod: clean
 	@echo Building mattermod
 	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
 
-build-jobserver:
+build-jobserver: clean
 	@echo Building mattermod
 	$(GO) build -o dist/jobserver ./cmd/jobserver
 
@@ -68,18 +68,22 @@ DOCKER_IMAGE ?= mattermost/mattermod
 DOCKER_IMAGE_JOBSERVER ?= mattermost/mattermod-jobserver
 DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
 
-## Build Docker image
+## Build Docker images
 .PHONY: docker
-docker:
+docker: docker-mattermod docker-jobserver
+
+docker-mattermod:
 	docker build --pull --tag $(DOCKER_IMAGE):$(DOCKER_TAG) --file Dockerfile .
 
 .PHONY: docker-jobserver
 docker-jobserver:
 	docker build --pull --tag $(DOCKER_IMAGE_JOBSERVER):$(DOCKER_TAG) --file Dockerfile.jobserver .
 
-## Push Docker image
+## Push Docker images
 .PHONY: push
-push:
+push: push-mattermod push-jobserver
+
+push-mattermod:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 .PHONY: push-jobserver
