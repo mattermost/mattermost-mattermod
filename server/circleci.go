@@ -51,15 +51,11 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return
 	}
 
-	blockMessage, err := s.validateBlockPaths(prFiles)
-	if err != nil {
-		if blockMessage != "" {
-			mlog.Error("File is on the blocklist and will not retrigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockMessage)
-			return
-		}
-
-		mlog.Error("failed to check the block list", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
+	err = s.validateBlockPaths(prFiles)
+	var blockError *BlockPathValidationError
+	if err != nil && errors.As(err, &blockError) {
+		mlog.Info("Files found in the block list", mlog.Err(err))
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles())
 		return
 	}
 
@@ -107,12 +103,46 @@ type PipelineTriggeredResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Server) validateBlockPaths(prFiles []*github.CommitFile) (string, error) {
+type BlockPathValidationError struct {
+	files []string
+}
+
+// Error implements the error interface.
+func (e *BlockPathValidationError) Error() string {
+	return "files in the Block List " + strings.Join(e.files, ",")
+}
+
+// BlockListFiles return an array of block files
+func (e *BlockPathValidationError) BlockListFiles() []string {
+	return e.files
+}
+
+// ReportBlockFiles return a message based on how many files are in the block list
+// to be send out
+func (e *BlockPathValidationError) ReportBlockFiles() string {
+	var msg string
+	if len(e.files) > 1 {
+		msg = fmt.Sprintf("The files `%s` are in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(e.files, ", "))
+	} else {
+		msg = fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", e.files[0])
+	}
+	return msg
+}
+
+func newBlockPathValidationError(files []string) *BlockPathValidationError {
+	return &BlockPathValidationError{
+		files: files,
+	}
+}
+
+func (s *Server) validateBlockPaths(prFiles []*github.CommitFile) error {
 	var matches []string
 	for _, prFile := range prFiles {
 		for _, blockListPath := range s.Config.BlocklistPaths {
 			if matched, err := filepath.Match(blockListPath, prFile.GetFilename()); err != nil {
-				return "", errors.Wrap(err, "failed to match the path")
+				mlog.Error("failed to match the file", mlog.String("blockPathPattern", blockListPath), mlog.String("filename", prFile.GetFilename()), mlog.Err(err))
+
+				continue
 			} else if matched {
 				matches = append(matches, prFile.GetFilename())
 			}
@@ -120,16 +150,10 @@ func (s *Server) validateBlockPaths(prFiles []*github.CommitFile) (string, error
 	}
 
 	if len(matches) > 0 {
-		var msg string
-		if len(matches) > 1 {
-			msg = fmt.Sprintf("The files `%s` are in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(matches, ", "))
-		} else {
-			msg = fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", matches[0])
-		}
-		return msg, errors.New("files in the blocklist")
+		return newBlockPathValidationError(matches)
 	}
 
-	return "", nil
+	return nil
 }
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {

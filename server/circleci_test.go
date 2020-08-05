@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/go-github/v32/github"
@@ -41,13 +42,12 @@ func TestAreNotAllExpectedJobs(t *testing.T) {
 
 func TestBlockPaths(t *testing.T) {
 	testcases := []struct {
-		name                 string
-		input                []*github.CommitFile
-		expectedError        bool
-		expectedMessageError string
+		name          string
+		input         []*github.CommitFile
+		expectedFiles []string
 	}{
 		{
-			name: "A file is in the block list",
+			name: "file is in the block list",
 			input: []*github.CommitFile{
 				{
 					Filename: github.String(".circleci/config.yml"),
@@ -59,8 +59,7 @@ func TestBlockPaths(t *testing.T) {
 					Filename: github.String("build/validone-honk.go"),
 				},
 			},
-			expectedError:        true,
-			expectedMessageError: "The file `.circleci/config.yml` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers",
+			expectedFiles: []string{".circleci/config.yml"},
 		},
 		{
 			name: "No files in the blocklist",
@@ -75,8 +74,7 @@ func TestBlockPaths(t *testing.T) {
 					Filename: github.String("build/validone.go"),
 				},
 			},
-			expectedError:        false,
-			expectedMessageError: "",
+			expectedFiles: []string{},
 		},
 		{
 			name: "Several files the blocklist",
@@ -100,8 +98,7 @@ func TestBlockPaths(t *testing.T) {
 					Filename: github.String("build/honk/honk.fake"),
 				},
 			},
-			expectedError:        true,
-			expectedMessageError: "The files `.circleci/config.yml, .circleci/anotherconfig.yml, .docker/config.json, build/honk.fake, build/honk/honk.fake` are in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers",
+			expectedFiles: []string{".circleci/config.yml", ".circleci/anotherconfig.yml", ".docker/config.json", "build/honk.fake", "build/honk/honk.fake"},
 		},
 	}
 
@@ -124,12 +121,13 @@ func TestBlockPaths(t *testing.T) {
 				},
 			}
 
-			blockMessage, err := s.validateBlockPaths(tc.input)
-			if tc.expectedError {
-				assert.Equal(t, tc.expectedMessageError, blockMessage)
-				assert.Error(t, err)
+			err := s.validateBlockPaths(tc.input)
+			if len(tc.expectedFiles) > 0 {
+				var blockError *BlockPathValidationError
+				assert.True(t, errors.As(err, &blockError))
+				assert.Len(t, blockError.BlockListFiles(), len(tc.expectedFiles))
+				assert.Equal(t, tc.expectedFiles, blockError.BlockListFiles())
 			} else {
-				assert.Empty(t, blockMessage)
 				assert.NoError(t, err)
 			}
 		})
