@@ -42,5 +42,6 @@ RUN for d in logs; do \
     done
 
 USER mattermod
+EXPOSE 9000
 
 ENTRYPOINT ["jobserver"]
