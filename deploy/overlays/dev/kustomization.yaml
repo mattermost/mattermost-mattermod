@@ -4,6 +4,7 @@ kind: Kustomization
 
 bases:
   - ../../base/app
+  - ../../base/jobserver
   - ../../base/db
   - ../../base/config
 

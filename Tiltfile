@@ -1,4 +1,5 @@
 docker_build('mattermost/mattermod', '.', dockerfile='Dockerfile')
+docker_build('mattermost/mattermod-jobserver', '.', dockerfile='Dockerfile.jobserver')
 
 k8s_yaml(kustomize('./deploy/overlays/dev'))
 
