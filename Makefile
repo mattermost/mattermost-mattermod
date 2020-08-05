@@ -41,6 +41,9 @@ else
 endif
 endif
 
+run-jobserver:
+	go run ./cmd/jobserver --config=config/config-mattermod.json
+
 ## Runs tests.
 test:
 	@echo Running Go tests
@@ -52,10 +55,12 @@ test:
 build: clean
 	@echo Building
 	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
+	$(GO) build -o dist/jobserver ./cmd/jobserver
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
 DOCKER_IMAGE ?= mattermost/mattermod
+DOCKER_IMAGE_JOBSERVER ?= mattermost/jobserver
 DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
 
 ## Build Docker image
@@ -63,10 +68,18 @@ DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
 docker:
 	docker build --pull --tag $(DOCKER_IMAGE):$(DOCKER_TAG) --file Dockerfile .
 
+.PHONY: docker-jobserver
+docker-jobserver:
+	docker build --pull --tag $(DOCKER_IMAGE_JOBSERVER):$(DOCKER_TAG) --file Dockerfile.jobserver .
+
 ## Push Docker image
 .PHONY: push
 push:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+.PHONY: push-jobserver
+push-jobserver:
+	docker push $(DOCKER_IMAGE_JOBSERVER):$(DOCKER_TAG)
 
 ## Generate mocks.
 .PHONY: mocks

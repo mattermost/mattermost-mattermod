@@ -1,0 +1,46 @@
+FROM golang:1.14.6-alpine AS builder
+
+RUN apk add --update --no-cache ca-certificates bash make gcc musl-dev git openssh wget curl
+
+WORKDIR /go/src/mattermod
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 make build
+
+################
+
+FROM debian:buster-slim
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y ca-certificates ssh-client \
+    && apt-get clean all \
+    && rm -rf /var/cache/apt/
+
+RUN groupadd \
+        --gid 1000 mattermod \
+    && useradd \
+        --home-dir /app \
+        --create-home \
+        --uid 1000 \
+        --gid 1000 \
+        --shell /bin/sh \
+        --skel /dev/null \
+        mattermod \
+    && chown -R mattermod:mattermod /app
+
+COPY --from=builder /go/src/mattermod/dist/jobserver /usr/local/bin/
+
+WORKDIR /app
+
+RUN for d in logs; do \
+        mkdir -p /app/${d} ; \
+        chown -R mattermod:mattermod /app/${d}/ ; \
+    done
+
+USER mattermod
+
+ENTRYPOINT ["jobserver"]
