@@ -46,33 +46,27 @@ func TestIssueCommentEventHandler(t *testing.T) {
 
 	s.Store = ss
 
-	number := 1
-	state := "a-state"
-	login := "mattertest"
-	name := "mattermod"
-	body := "some-text"
-
 	event := issueCommentEvent{
 		Repository: &github.Repository{
 			Owner: &github.User{
-				Login: &login,
+				Login: github.String("mattertest"),
 			},
-			Name: &name,
+			Name: github.String("mattermod"),
 		},
 		Comment: &github.PullRequestComment{
-			Body: &body,
+			Body: github.String("some-text"),
 		},
 		Issue: &github.Issue{
 			Repository: &github.Repository{
 				Owner: &github.User{
-					Login: &login,
+					Login: github.String("mattertest"),
 				},
-				Name: &name,
+				Name: github.String("mattermod"),
 			},
-			Number: &number,
-			State:  &state,
+			Number: github.Int(1),
+			State:  github.String("a-state"),
 			User: &github.User{
-				Login: &login,
+				Login: github.String("mattertest"),
 			},
 			PullRequestLinks: &github.PullRequestLinks{},
 		},

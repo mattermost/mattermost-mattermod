@@ -46,10 +46,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var commenter string
-	if ev.Comment != nil {
-		commenter = ev.Comment.GetUser().GetLogin()
-	}
+	commenter := ev.Comment.GetUser().GetLogin()
 
 	errs := make([]error, 0)
 
