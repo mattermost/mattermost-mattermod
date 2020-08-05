@@ -52,15 +52,20 @@ test:
 
 ## Builds mattermod.
 .PHONY: build
-build: clean
-	@echo Building
+build: clean build-mattermod build-jobserver
+
+build-mattermod:
+	@echo Building mattermod
 	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
+
+build-jobserver:
+	@echo Building mattermod
 	$(GO) build -o dist/jobserver ./cmd/jobserver
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
 DOCKER_IMAGE ?= mattermost/mattermod
-DOCKER_IMAGE_JOBSERVER ?= mattermost/jobserver
+DOCKER_IMAGE_JOBSERVER ?= mattermost/mattermod-jobserver
 DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
 
 ## Build Docker image

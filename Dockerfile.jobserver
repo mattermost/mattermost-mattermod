@@ -9,14 +9,14 @@ COPY go.sum .
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 make build
+RUN CGO_ENABLED=0 make build-jobserver
 
 ################
 
 FROM debian:buster-slim
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y ca-certificates ssh-client \
+    && apt-get install --no-install-recommends -y ca-certificates \
     && apt-get clean all \
     && rm -rf /var/cache/apt/
 

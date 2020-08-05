@@ -15,7 +15,7 @@ COPY go.sum .
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 make build
+RUN CGO_ENABLED=0 make build-mattermod
 
 ################
 
