@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mattermod
+  name: mattermod-jobserver
 spec:
   replicas: 1
   strategy:
@@ -13,6 +13,7 @@ spec:
   selector:
     matchLabels:
       app: mattermod
+      component: jobserver
   minReadySeconds: 5
   template:
     metadata:
@@ -22,6 +23,7 @@ spec:
         prometheus.io/scrape: "true"
       labels:
         app: mattermod
+        component: jobserver
     spec:
       serviceAccountName: mattermod
       securityContext:
@@ -29,11 +31,11 @@ spec:
         fsGroup: 1000
       restartPolicy: Always
       containers:
-        - name: mattermod
-          image: mattermost/mattermod
+        - name: mattermod-jobserver
+          image: mattermost/mattermod-jobserver
           imagePullPolicy: IfNotPresent
           command:
-            - "mattermod"
+            - "jobserver"
             - "-config=/app/config/config.json"
           resources:
             limits:
@@ -43,32 +45,12 @@ spec:
               cpu: 200m
               memory: 100Mi
           ports:
-            - name: http
-              containerPort: 8080
             - name: metrics
               containerPort: 9000
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 1
-            successThreshold: 1
-            failureThreshold: 3
           volumeMounts:
             - name: config
               mountPath: /app/config/config.json
-              subPath: config-mattermod.json
+              subPath: config-jobserver.json
               readOnly: true
       volumes:
         - name: config

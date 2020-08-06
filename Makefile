@@ -41,32 +41,54 @@ else
 endif
 endif
 
+run-jobserver:
+	go run ./cmd/jobserver --config=config/config-mattermod.json
+
 ## Runs tests.
 test:
 	@echo Running Go tests
 	$(GO) test $(PACKAGES)
 	@echo test success
 
-## Builds mattermod.
+## Builds mattermod binaries
 .PHONY: build
-build: clean
-	@echo Building
+build: build-mattermod build-jobserver
+
+build-mattermod: clean
+	@echo Building mattermod
 	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
+
+build-jobserver: clean
+	@echo Building mattermod
+	$(GO) build -o dist/jobserver ./cmd/jobserver
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
 DOCKER_IMAGE ?= mattermost/mattermod
+DOCKER_IMAGE_JOBSERVER ?= mattermost/mattermod-jobserver
 DOCKER_TAG   ?= $(shell echo "$(DEFAULT_TAG)" | tr -d 'v')
 
-## Build Docker image
+## Build Docker images
 .PHONY: docker
-docker:
+docker: docker-mattermod docker-jobserver
+
+docker-mattermod:
 	docker build --pull --tag $(DOCKER_IMAGE):$(DOCKER_TAG) --file Dockerfile .
 
-## Push Docker image
+.PHONY: docker-jobserver
+docker-jobserver:
+	docker build --pull --tag $(DOCKER_IMAGE_JOBSERVER):$(DOCKER_TAG) --file Dockerfile.jobserver .
+
+## Push Docker images
 .PHONY: push
-push:
+push: push-mattermod push-jobserver
+
+push-mattermod:
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+.PHONY: push-jobserver
+push-jobserver:
+	docker push $(DOCKER_IMAGE_JOBSERVER):$(DOCKER_TAG)
 
 ## Generate mocks.
 .PHONY: mocks

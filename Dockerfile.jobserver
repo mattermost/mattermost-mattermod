@@ -2,12 +2,6 @@ FROM golang:1.14.6-alpine AS builder
 
 RUN apk add --update --no-cache ca-certificates bash make gcc musl-dev git openssh wget curl
 
-ENV HUB_VERSION 2.14.2
-WORKDIR /opt/hub
-RUN curl -sSLo hub.tgz https://github.com/github/hub/releases/download/v${HUB_VERSION}/hub-linux-amd64-${HUB_VERSION}.tgz \
-    && tar xzf hub.tgz \
-    && mv hub-linux-amd64-${HUB_VERSION}/bin/hub .
-
 WORKDIR /go/src/mattermod
 
 COPY go.mod .
@@ -15,7 +9,7 @@ COPY go.sum .
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 make build-mattermod
+RUN CGO_ENABLED=0 make build-jobserver
 
 ################
 
@@ -23,7 +17,7 @@ FROM debian:buster-slim
 
 RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get update \
-    && apt-get install --no-install-recommends -y ca-certificates ssh-client git \
+    && apt-get install --no-install-recommends -y ca-certificates \
     && apt-get clean all \
     && rm -rf /var/cache/apt/
 
@@ -39,18 +33,16 @@ RUN groupadd \
         mattermod \
     && chown -R mattermod:mattermod /app
 
-COPY --from=builder /opt/hub/hub /usr/local/bin/hub
-COPY --from=builder /go/src/mattermod/dist/mattermod /usr/local/bin/
-COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/
+COPY --from=builder /go/src/mattermod/dist/jobserver /usr/local/bin/
 
 WORKDIR /app
 
-RUN for d in .ssh repos logs; do \
+RUN for d in logs; do \
         mkdir -p /app/${d} ; \
         chown -R mattermod:mattermod /app/${d}/ ; \
     done
 
 USER mattermod
-EXPOSE 8080 9000
+EXPOSE 9000
 
-ENTRYPOINT ["mattermod"]
+ENTRYPOINT ["jobserver"]
