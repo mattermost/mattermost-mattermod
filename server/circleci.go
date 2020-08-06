@@ -22,6 +22,19 @@ import (
 	"github.com/mattermost/go-circleci"
 )
 
+// CircleCIService exposes an interface of CircleCI client.
+// Useful to mock in tests.
+type CircleCIService interface {
+	// ListRecentBuildsForProject fetches the list of recent builds for the given repository
+	// The status and branch parameters are used to further filter results if non-empty
+	// If limit is -1, fetches all builds.
+	ListRecentBuildsForProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, status string, limit, offset int) ([]*circleci.Build, error)
+	// BuildByProjectWithContext triggers a build by project.
+	BuildByProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, opts map[string]interface{}) error
+	// ListBuildArtifactsWithContext fetches the build artifacts for the given build.
+	ListBuildArtifactsWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, buildNum int) ([]*circleci.Artifact, error)
+}
+
 func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
