@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -106,9 +107,20 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	if pr.MergeCommitSHA == "" {
 		return "", errors.Errorf("can't get merge commit SHA for PR: %d", pr.Number)
 	}
+
+	if s.Config.RepoFolder == "" {
+		return "", errors.Errorf("path to folder containing local checkout of repositories is not set in the config")
+	}
+	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
+
+	if s.Config.ScriptsFolder == "" {
+		return "", errors.Errorf("path to folder containing the cherry-pick.sh script is not set in the config")
+	}
+	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
+
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-	repoFolder := fmt.Sprintf("/app/repos/%s", pr.RepoName)
-	cmd := exec.Command("/app/scripts/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
+
+	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),
