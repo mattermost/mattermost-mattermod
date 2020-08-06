@@ -309,7 +309,6 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 
 	comments, _, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
-		// mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return fmt.Errorf("unable to list comments for PR: %w", err)
 	}
 
