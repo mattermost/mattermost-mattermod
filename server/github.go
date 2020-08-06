@@ -40,9 +40,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		MaintainerCanModify: sql.NullBool{Bool: pullRequest.GetMaintainerCanModify(), Valid: true},
 	}
 
-	if pullRequest.Head.Repo != nil {
-		pr.FullName = pullRequest.GetHead().GetRepo().GetFullName()
-	}
+	pr.FullName = pullRequest.GetHead().GetRepo().GetFullName()
 
 	repo, ok := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 	if ok && repo.BuildStatusContext != "" {

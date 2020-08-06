@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -49,21 +51,12 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return
 	}
 
-	blockList := s.Config.BlockListPathsGlobal
-	repoBlockList, ok := s.Config.BlockListPathsPerRepo[pr.RepoName]
-	if ok {
-		blockList = append(blockList, repoBlockList...)
-	}
-
-	for _, prFile := range prFiles {
-		for _, blockListPath := range blockList {
-			if prFile.GetFilename() == blockListPath {
-				mlog.Error("File is on the blocklist and will not re-trigger circleci to give the contexts", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName))
-				msg := fmt.Sprintf("The file `%s` is in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-				return
-			}
-		}
+	err = s.validateBlockPaths(pr.RepoName, prFiles)
+	var blockError *BlockPathValidationError
+	if err != nil && errors.As(err, &blockError) {
+		mlog.Info("Files found in the block list", mlog.Err(err))
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles())
+		return
 	}
 
 	opts := map[string]interface{}{
@@ -108,6 +101,65 @@ type PipelineTriggeredResponse struct {
 	State     string    `json:"state"`
 	ID        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type BlockPathValidationError struct {
+	files []string
+}
+
+// Error implements the error interface.
+func (e *BlockPathValidationError) Error() string {
+	return "files in the Block List " + strings.Join(e.files, ",")
+}
+
+// BlockListFiles return an array of block files
+func (e *BlockPathValidationError) BlockListFiles() []string {
+	return e.files
+}
+
+// ReportBlockFiles return a message based on how many files are in the block list
+// to be send out
+func (e *BlockPathValidationError) ReportBlockFiles() string {
+	var msg string
+	if len(e.files) > 1 {
+		msg = fmt.Sprintf("The files `%s` are in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(e.files, ", "))
+	} else {
+		msg = fmt.Sprintf("The file `%s` is in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", e.files[0])
+	}
+	return msg
+}
+
+func newBlockPathValidationError(files []string) *BlockPathValidationError {
+	return &BlockPathValidationError{
+		files: files,
+	}
+}
+
+func (s *Server) validateBlockPaths(repo string, prFiles []*github.CommitFile) error {
+	blockList := s.Config.BlockListPathsGlobal
+	repoBlockList, ok := s.Config.BlockListPathsPerRepo[repo]
+	if ok {
+		blockList = append(blockList, repoBlockList...)
+	}
+
+	var matches []string
+	for _, prFile := range prFiles {
+		for _, blockListPath := range blockList {
+			if matched, err := filepath.Match(blockListPath, prFile.GetFilename()); err != nil {
+				mlog.Error("failed to match the file", mlog.String("blockPathPattern", blockListPath), mlog.String("filename", prFile.GetFilename()), mlog.Err(err))
+
+				continue
+			} else if matched {
+				matches = append(matches, prFile.GetFilename())
+			}
+		}
+	}
+
+	if len(matches) > 0 {
+		return newBlockPathValidationError(matches)
+	}
+
+	return nil
 }
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
