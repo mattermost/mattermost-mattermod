@@ -34,7 +34,7 @@ type Server struct {
 	Config         *Config
 	Store          store.Store
 	GithubClient   *GithubClient
-	CircleCiClient *circleci.Client
+	CircleCiClient CircleCIService
 	OrgMembers     []string
 	Builds         buildsInterface
 	commentLock    sync.Mutex
