@@ -171,6 +171,9 @@ type Config struct {
 	StaleComment      string
 
 	MetricsServerPort string
+
+	RepoFolder    string // folder containing local checkouts of repositories for cherry-picking
+	ScriptsFolder string // folder containing the cherry-pick.sh script
 }
 
 func findConfigFile(fileName string) string {
