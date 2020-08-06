@@ -283,6 +283,7 @@ func TestRateLimitTransport(t *testing.T) {
 		metricsMock.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 		metricsMock.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
 		metricsMock.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMock.EXPECT().IncreaseRateLimiterErrors().AnyTimes()
 
 		ghClient, _ := server.NewGithubClient("testtoken", 1, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")

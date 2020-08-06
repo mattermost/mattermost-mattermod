@@ -34,6 +34,8 @@ type PrometheusProvider struct {
 	githubRequests    *prometheus.HistogramVec
 	githubCacheHits   *prometheus.CounterVec
 	githubCacheMisses *prometheus.CounterVec
+
+	rateLimiterErrors prometheus.Counter
 }
 
 // NewPrometheusProvider creates a new prometheus metrics provider
@@ -136,6 +138,16 @@ func NewPrometheusProvider() *PrometheusProvider {
 	)
 	provider.Registry.MustRegister(provider.githubCacheMisses)
 
+	provider.rateLimiterErrors = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Namespace: metricsNamespace,
+			Subsystem: httpNamespace,
+			Name:      "rate_limit_errors",
+			Help:      "Number of rate limit errors.",
+		},
+	)
+	provider.Registry.MustRegister(provider.rateLimiterErrors)
+
 	return provider
 }
 
@@ -173,6 +185,10 @@ func (p *PrometheusProvider) IncreaseGithubCacheHits(method, handler string) {
 
 func (p *PrometheusProvider) IncreaseGithubCacheMisses(method, handler string) {
 	p.githubCacheMisses.WithLabelValues(method, handler).Add(1)
+}
+
+func (p *PrometheusProvider) IncreaseRateLimiterErrors() {
+	p.rateLimiterErrors.Add(1)
 }
 
 // Handler returns the handler that would be used by the metrics server to expose

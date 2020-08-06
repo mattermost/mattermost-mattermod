@@ -30,6 +30,10 @@ type MetricsProvider interface {
 	// is done. The information is stored using the HTTP method and the request handler
 	IncreaseGithubCacheMisses(method, handler string)
 
+	// IncreaseRateLimiterErrors stores the number of errors received when trying to
+	// rate limit the requests
+	IncreaseRateLimiterErrors()
+
 	// ObserverCronTaskDuration stores the elapsed time for a cron task
 	ObserveCronTaskDuration(name string, elapsed float64)
 	// IncreaseCronTaskErrors stores the number of errors for a cron task

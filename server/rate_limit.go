@@ -14,10 +14,12 @@ import (
 type RateLimitTransport struct {
 	limiter *rate.Limiter
 	base    http.RoundTripper
+	metrics MetricsProvider
 }
 
 func (t *RateLimitTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err := t.limiter.Wait(req.Context()); err != nil {
+		t.metrics.IncreaseRateLimiterErrors()
 		return nil, err
 	}
 	return t.base.RoundTrip(req)
@@ -26,7 +28,7 @@ func (t *RateLimitTransport) RoundTrip(req *http.Request) (*http.Response, error
 // NewRateLimitTransport will return a new transport that provides rate limiting capability
 // based on the provided limit and burst tokens.
 // It also needs the base RountTripper that will be called in case the rate limit is not needed
-func NewRateLimitTransport(limit rate.Limit, tokens int, base http.RoundTripper) *RateLimitTransport {
+func NewRateLimitTransport(limit rate.Limit, tokens int, base http.RoundTripper, metrics MetricsProvider) *RateLimitTransport {
 	limiter := rate.NewLimiter(limit, tokens)
-	return &RateLimitTransport{limiter, base}
+	return &RateLimitTransport{limiter, base, metrics}
 }
