@@ -51,7 +51,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 		return
 	}
 
-	err = s.validateBlockPaths(prFiles)
+	err = s.validateBlockPaths(pr.RepoName, prFiles)
 	var blockError *BlockPathValidationError
 	if err != nil && errors.As(err, &blockError) {
 		mlog.Info("Files found in the block list", mlog.Err(err))
@@ -122,9 +122,9 @@ func (e *BlockPathValidationError) BlockListFiles() []string {
 func (e *BlockPathValidationError) ReportBlockFiles() string {
 	var msg string
 	if len(e.files) > 1 {
-		msg = fmt.Sprintf("The files `%s` are in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(e.files, ", "))
+		msg = fmt.Sprintf("The files `%s` are in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(e.files, ", "))
 	} else {
-		msg = fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", e.files[0])
+		msg = fmt.Sprintf("The file `%s` is in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", e.files[0])
 	}
 	return msg
 }
@@ -135,10 +135,16 @@ func newBlockPathValidationError(files []string) *BlockPathValidationError {
 	}
 }
 
-func (s *Server) validateBlockPaths(prFiles []*github.CommitFile) error {
+func (s *Server) validateBlockPaths(repo string, prFiles []*github.CommitFile) error {
+	blockList := s.Config.BlockListPathsGlobal
+	repoBlockList, ok := s.Config.BlockListPathsPerRepo[repo]
+	if ok {
+		blockList = append(blockList, repoBlockList...)
+	}
+
 	var matches []string
 	for _, prFile := range prFiles {
-		for _, blockListPath := range s.Config.BlocklistPaths {
+		for _, blockListPath := range blockList {
 			if matched, err := filepath.Match(blockListPath, prFile.GetFilename()); err != nil {
 				mlog.Error("failed to match the file", mlog.String("blockPathPattern", blockListPath), mlog.String("filename", prFile.GetFilename()), mlog.Err(err))
 

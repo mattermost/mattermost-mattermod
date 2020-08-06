@@ -44,6 +44,7 @@ func TestBlockPaths(t *testing.T) {
 	testcases := []struct {
 		name          string
 		input         []*github.CommitFile
+		repo          string
 		expectedFiles []string
 	}{
 		{
@@ -100,6 +101,25 @@ func TestBlockPaths(t *testing.T) {
 			},
 			expectedFiles: []string{".circleci/config.yml", ".circleci/anotherconfig.yml", ".docker/config.json", "build/honk.fake", "build/honk/honk.fake"},
 		},
+		{
+			name: "Several files the blocklist, some block by repo specific list",
+			repo: "mattermost-server",
+			input: []*github.CommitFile{
+				{
+					Filename: github.String("foo1"),
+				},
+				{
+					Filename: github.String("bar1"),
+				},
+				{
+					Filename: github.String("another"),
+				},
+				{
+					Filename: github.String("Makefile"),
+				},
+			},
+			expectedFiles: []string{"foo1", "bar1", "Makefile"},
+		},
 	}
 
 	for _, tc := range testcases {
@@ -107,7 +127,7 @@ func TestBlockPaths(t *testing.T) {
 			s := &Server{
 				Config: &Config{
 					Org: "mattertest",
-					BlocklistPaths: []string{
+					BlockListPathsGlobal: []string{
 						".circleci/*.yml",
 						"build/Dockerfile",
 						"Makefile",
@@ -118,10 +138,13 @@ func TestBlockPaths(t *testing.T) {
 						"**/*.fake",
 						"**/**/*.fake",
 					},
+					BlockListPathsPerRepo: map[string][]string{
+						"mattermost-server": {"foo1", "foo2", "bar1", "bar2"},
+					},
 				},
 			}
 
-			err := s.validateBlockPaths(tc.input)
+			err := s.validateBlockPaths(tc.repo, tc.input)
 			if len(tc.expectedFiles) > 0 {
 				var blockError *BlockPathValidationError
 				assert.True(t, errors.As(err, &blockError))
