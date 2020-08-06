@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -31,16 +32,17 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config         *Config
-	Store          store.Store
-	GithubClient   *GithubClient
-	CircleCiClient *circleci.Client
-	OrgMembers     []string
-	Builds         buildsInterface
-	commentLock    sync.Mutex
-	StartTime      time.Time
-	awsSession     *session.Session
-	Metrics        MetricsProvider
+	Config           *Config
+	Store            store.Store
+	GithubClient     *GithubClient
+	CircleCiClient   *circleci.Client
+	CircleCiClientV2 *circleci.Client
+	OrgMembers       []string
+	Builds           buildsInterface
+	commentLock      sync.Mutex
+	StartTime        time.Time
+	awsSession       *session.Session
+	Metrics          MetricsProvider
 
 	server *http.Server
 }
@@ -75,7 +77,13 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
-	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
+	s.CircleCiClient = &circleci.Client{
+		Token: s.Config.CircleCIToken,
+	}
+	s.CircleCiClientV2 = &circleci.Client{
+		Token:   s.Config.CircleCIToken,
+		BaseURL: &url.URL{Host: "circleci.com", Scheme: "https", Path: "/api/v2/"},
+	}
 	awsSession, err := session.NewSession()
 	if err != nil {
 		return nil, err

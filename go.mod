@@ -25,3 +25,5 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 )
+
+replace github.com/mattermost/go-circleci => ../go-circleci
