@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -214,7 +213,12 @@ func (s *Server) Tick() {
 				continue
 			}
 
-			s.checkPullRequestForChanges(ctx, pullRequest)
+			changed, err2 := s.checkPullRequestForChanges(ctx, pullRequest)
+			if err2 != nil {
+				mlog.Error("Could not check changes for PR", mlog.Err(err2))
+			} else if changed {
+				mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
+			}
 		}
 
 		issues, _, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, &github.IssueListByRepoOptions{
@@ -270,22 +274,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 	case "issue_comment":
 		s.issueCommentEventHandler(w, r)
 	case "pull_request":
-		ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
-		defer cancel()
-		buf, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			mlog.Error("Failed to read body", mlog.Err(err))
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		// TODO: remove this after migration complete; MM-27283
-		event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-		if event != nil && event.PRNumber != 0 {
-			mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-			s.handlePullRequestEvent(ctx, event)
-			return
-		}
+		s.pullRequestEventHandler(w, r)
 	default:
 		http.Error(w, "unhandled event type", http.StatusNotImplemented)
 	}
@@ -338,4 +327,14 @@ func closeBody(r *http.Response) {
 		_, _ = io.Copy(ioutil.Discard, r.Body)
 		_ = r.Body.Close()
 	}
+}
+
+func PingEventFromJSON(data io.Reader) *github.PingEvent {
+	decoder := json.NewDecoder(data)
+	var event github.PingEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil
+	}
+
+	return &event
 }

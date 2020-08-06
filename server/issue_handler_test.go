@@ -99,7 +99,7 @@ func TestIssueEventHandler(t *testing.T) {
 	t.Run("Should fail for incorrect url", func(t *testing.T) {
 		url := "http://someaddr.com"
 
-		b, err := json.Marshal(&PullRequestEvent{
+		b, err := json.Marshal(&issueEvent{
 			Issue: &github.Issue{
 				HTMLURL: &url,
 			},
@@ -121,7 +121,7 @@ func TestIssueEventHandler(t *testing.T) {
 			Times(1).
 			Return(nil, nil, errors.New("error"))
 
-		b, err := json.Marshal(&PullRequestEvent{
+		b, err := json.Marshal(&issueEvent{
 			Issue: &github.Issue{
 				HTMLURL: &url,
 			},
