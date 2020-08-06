@@ -82,7 +82,8 @@
     "CLAGithubStatusContext": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-    "BlacklistPaths": [],
+    "BlockListPathsGlobal": [],
+    "BlockListPathsPerRepo": {},
     "PrLabels": [
     ],
     "IssueLabels": [
