@@ -133,7 +133,7 @@ type Config struct {
 	DockerUsername    string
 	DockerPassword    string
 
-	BlacklistPaths []string
+	BlocklistPaths []string
 
 	AWSCredentials struct {
 		ID     string
