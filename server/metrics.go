@@ -92,20 +92,22 @@ func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Re
 		t.metrics.IncreaseGithubCacheMisses(req.Method, path)
 	}
 
-	msg := struct {
-		Message          string `json:"message"`
-		DocumentationURL string `json:"documentation_url"`
-	}{}
-	// Read body to check if there is an error message,
-	// then close it and reassing the body again for the
-	// next layer so it could read the body without problem
-	bodyBytes, _ := ioutil.ReadAll(req.Body)
-	req.Body.Close()
-	err := json.Unmarshal(bodyBytes, &msg)
-	if err == nil && statusCode == "403" && strings.Contains(msg.Message, "temporarily blocked") {
-		t.metrics.IncreaseRateLimiterErrors()
+	if resp.Body != nil {
+		msg := struct {
+			Message          string `json:"message"`
+			DocumentationURL string `json:"documentation_url"`
+		}{}
+		// Read body to check if there is an error message,
+		// then close it and reassing the body again for the
+		// next layer so it could read the body without problem
+		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		err := json.Unmarshal(bodyBytes, &msg)
+		if err == nil && statusCode == "403" && strings.Contains(msg.Message, "temporarily blocked") {
+			t.metrics.IncreaseRateLimiterErrors()
+		}
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 }
 
 // Client returns a new http.Client using Transport
