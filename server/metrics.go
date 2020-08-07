@@ -4,6 +4,9 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -58,26 +61,51 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	start := time.Now()
 	resp, err = t.Base.RoundTrip(req)
 	elapsed := float64(time.Since(start)) / float64(time.Second)
-	// rate limit error
 	if resp == nil && err != nil {
 		return resp, err
 	}
-	splittedPath := strings.Split(req.URL.Path, "/")
-	path := req.URL.Path
+	statusCode := strconv.Itoa(resp.StatusCode)
+	requestPath := req.URL.Path
+	if strings.Contains(req.URL.Host, "github") {
+		requestPath = t.getGithubRequestPath(requestPath)
+		t.processGithubMetrics(req, resp, requestPath, statusCode)
+	}
+	t.metrics.ObserveGithubRequestDuration(requestPath, req.Method, statusCode, elapsed)
+
+	return resp, err
+}
+
+func (t *MetricsTransport) getGithubRequestPath(requestPath string) string {
+	path := requestPath
+	splittedPath := strings.Split(path, "/")
 	if len(splittedPath) > 5 {
 		// This would leave path as "/repos/{user/org}/{repository}/issues"
 		path = strings.Join(splittedPath[:5], "/")
 	}
-	statusCode := strconv.Itoa(resp.StatusCode)
-	t.metrics.ObserveGithubRequestDuration(path, req.Method, statusCode, elapsed)
+	return path
+}
 
+func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Response, path, statusCode string) {
 	if resp.Header.Get("X-From-Cache") == "1" {
 		t.metrics.IncreaseGithubCacheHits(req.Method, path)
 	} else {
 		t.metrics.IncreaseGithubCacheMisses(req.Method, path)
 	}
 
-	return resp, err
+	msg := struct {
+		Message          string `json:"message"`
+		DocumentationURL string `json:"documentation_url"`
+	}{}
+	// Read body to check if there is an error message,
+	// then close it and reassing the body again for the
+	// next layer so it could read the body without problem
+	bodyBytes, _ := ioutil.ReadAll(req.Body)
+	req.Body.Close()
+	err := json.Unmarshal(bodyBytes, &msg)
+	if err == nil && statusCode == "403" && strings.Contains(msg.Message, "temporarily blocked") {
+		t.metrics.IncreaseRateLimiterErrors()
+	}
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 }
 
 // Client returns a new http.Client using Transport
