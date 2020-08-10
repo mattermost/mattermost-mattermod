@@ -14,7 +14,7 @@ require (
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/jarcoal/httpmock v1.0.5
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
-	github.com/mattermost/go-circleci v0.4.0
+	github.com/mattermost/go-circleci v0.5.0
 	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.7.1
@@ -25,5 +25,3 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 )
-
-replace github.com/mattermost/go-circleci => ../go-circleci
