@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -77,12 +76,13 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
-	s.CircleCiClient = &circleci.Client{
-		Token: s.Config.CircleCIToken,
+	s.CircleCiClient, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion11)
+	if err != nil {
+		return nil, err
 	}
-	s.CircleCiClientV2 = &circleci.Client{
-		Token:   s.Config.CircleCIToken,
-		BaseURL: &url.URL{Host: "circleci.com", Scheme: "https", Path: "/api/v2/"},
+	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
+	if err != nil {
+		return nil, err
 	}
 	awsSession, err := session.NewSession()
 	if err != nil {
