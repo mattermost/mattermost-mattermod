@@ -48,6 +48,21 @@ func (mr *MockCircleCIServiceMockRecorder) BuildByProjectWithContext(arg0, arg1,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildByProjectWithContext", reflect.TypeOf((*MockCircleCIService)(nil).BuildByProjectWithContext), arg0, arg1, arg2, arg3, arg4)
 }
 
+// GetPipelineWorkflowWithContext mocks base method
+func (m *MockCircleCIService) GetPipelineWorkflowWithContext(arg0 context.Context, arg1, arg2 string) (*circleci.WorkflowList, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPipelineWorkflowWithContext", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*circleci.WorkflowList)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPipelineWorkflowWithContext indicates an expected call of GetPipelineWorkflowWithContext
+func (mr *MockCircleCIServiceMockRecorder) GetPipelineWorkflowWithContext(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPipelineWorkflowWithContext", reflect.TypeOf((*MockCircleCIService)(nil).GetPipelineWorkflowWithContext), arg0, arg1, arg2)
+}
+
 // ListBuildArtifactsWithContext mocks base method
 func (m *MockCircleCIService) ListBuildArtifactsWithContext(arg0 context.Context, arg1 circleci.VcsType, arg2, arg3 string, arg4 int) ([]*circleci.Artifact, error) {
 	m.ctrl.T.Helper()
@@ -76,4 +91,19 @@ func (m *MockCircleCIService) ListRecentBuildsForProjectWithContext(arg0 context
 func (mr *MockCircleCIServiceMockRecorder) ListRecentBuildsForProjectWithContext(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRecentBuildsForProjectWithContext", reflect.TypeOf((*MockCircleCIService)(nil).ListRecentBuildsForProjectWithContext), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+}
+
+// TriggerPipelineWithContext mocks base method
+func (m *MockCircleCIService) TriggerPipelineWithContext(arg0 context.Context, arg1 circleci.VcsType, arg2, arg3, arg4, arg5 string, arg6 map[string]interface{}) (*circleci.Pipeline, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TriggerPipelineWithContext", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret0, _ := ret[0].(*circleci.Pipeline)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TriggerPipelineWithContext indicates an expected call of TriggerPipelineWithContext
+func (mr *MockCircleCIServiceMockRecorder) TriggerPipelineWithContext(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerPipelineWithContext", reflect.TypeOf((*MockCircleCIService)(nil).TriggerPipelineWithContext), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
 }
