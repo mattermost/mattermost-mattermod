@@ -95,7 +95,6 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 }
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*circleci.Pipeline, error) {
-
 	params := map[string]interface{}{
 		"tbs_sha":           pr.Sha,
 		"tbs_pr":            strconv.Itoa(pr.Number),
