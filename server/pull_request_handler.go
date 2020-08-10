@@ -219,43 +219,28 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		return false, nil
 	}
 
-	var prHasChanges bool
+	compare := func(src, dst []string, f func(context.Context, *model.PullRequest, string) error) bool {
+		for _, label := range src {
+			hadLabel := false
 
-	for _, label := range pr.Labels {
-		hadLabel := false
+			for _, oldLabel := range dst {
+				if label == oldLabel {
+					hadLabel = true
+					break
+				}
+			}
 
-		for _, oldLabel := range oldPr.Labels {
-			if label == oldLabel {
-				hadLabel = true
-				break
+			if !hadLabel {
+				if err := f(ctx, pr, label); err != nil {
+					mlog.Error("Could not handle PR labeled event", mlog.Err(err))
+				}
+				return true
 			}
 		}
-
-		if !hadLabel {
-			if err := s.handlePRLabeled(ctx, pr, label); err != nil {
-				mlog.Error("Could not handle PR labeled event", mlog.Err(err))
-			}
-			prHasChanges = true
-		}
+		return false
 	}
 
-	for _, oldLabel := range oldPr.Labels {
-		hasLabel := false
-
-		for _, label := range pr.Labels {
-			if label == oldLabel {
-				hasLabel = true
-				break
-			}
-		}
-
-		if !hasLabel {
-			if err := s.handlePRUnlabeled(ctx, pr, oldLabel); err != nil {
-				mlog.Error("Could not handle PR unlabeled event", mlog.Err(err))
-			}
-			prHasChanges = true
-		}
-	}
+	prHasChanges := compare(pr.Labels, oldPr.Labels, s.handlePRLabeled) || compare(oldPr.Labels, pr.Labels, s.handlePRUnlabeled)
 
 	if oldPr.Ref != pr.Ref {
 		prHasChanges = true
@@ -290,7 +275,6 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 	}
 
 	if prHasChanges {
-		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
 		if _, err := s.Store.PullRequest().Save(pr); err != nil {
 			return true, fmt.Errorf("could not save PR: %w", err)
 		}
