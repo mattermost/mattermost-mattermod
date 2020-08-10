@@ -30,6 +30,10 @@ type CircleCIService interface {
 	BuildByProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, opts map[string]interface{}) error
 	// ListBuildArtifactsWithContext fetches the build artifacts for the given build.
 	ListBuildArtifactsWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, buildNum int) ([]*circleci.Artifact, error)
+	// TriggerPipeline triggers a new pipeline for the given project for the given branch or tag.
+	TriggerPipelineWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, tag string, params map[string]interface{}) (*circleci.Pipeline, error)
+	// GetPipelineWorkflowWithContext returns a list of paginated workflows by pipeline ID
+	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
 }
 
 func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
