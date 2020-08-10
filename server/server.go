@@ -30,16 +30,17 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config         *Config
-	Store          store.Store
-	GithubClient   *GithubClient
-	CircleCiClient *circleci.Client
-	OrgMembers     []string
-	Builds         buildsInterface
-	commentLock    sync.Mutex
-	StartTime      time.Time
-	awsSession     *session.Session
-	Metrics        MetricsProvider
+	Config           *Config
+	Store            store.Store
+	GithubClient     *GithubClient
+	CircleCiClient   CircleCIService
+	CircleCiClientV2 CircleCIService
+	OrgMembers       []string
+	Builds           buildsInterface
+	commentLock      sync.Mutex
+	StartTime        time.Time
+	awsSession       *session.Session
+	Metrics          MetricsProvider
 
 	server *http.Server
 }
@@ -74,7 +75,14 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
-	s.CircleCiClient = &circleci.Client{Token: s.Config.CircleCIToken}
+	s.CircleCiClient, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion11)
+	if err != nil {
+		return nil, err
+	}
+	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
+	if err != nil {
+		return nil, err
+	}
 	awsSession, err := session.NewSession()
 	if err != nil {
 		return nil, err

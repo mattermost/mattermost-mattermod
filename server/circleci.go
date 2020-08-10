@@ -5,10 +5,7 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -21,6 +18,23 @@ import (
 
 	"github.com/mattermost/go-circleci"
 )
+
+// CircleCIService exposes an interface of CircleCI client.
+// Useful to mock in tests.
+type CircleCIService interface {
+	// ListRecentBuildsForProject fetches the list of recent builds for the given repository
+	// The status and branch parameters are used to further filter results if non-empty
+	// If limit is -1, fetches all builds.
+	ListRecentBuildsForProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, status string, limit, offset int) ([]*circleci.Build, error)
+	// BuildByProjectWithContext triggers a build by project.
+	BuildByProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, opts map[string]interface{}) error
+	// ListBuildArtifactsWithContext fetches the build artifacts for the given build.
+	ListBuildArtifactsWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, buildNum int) ([]*circleci.Artifact, error)
+	// TriggerPipeline triggers a new pipeline for the given project for the given branch or tag.
+	TriggerPipelineWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, tag string, params map[string]interface{}) (*circleci.Pipeline, error)
+	// GetPipelineWorkflowWithContext returns a list of paginated workflows by pipeline ID
+	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
+}
 
 func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
 	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
@@ -96,11 +110,31 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 	return nil
 }
 
-type PipelineTriggeredResponse struct {
-	Number    int       `json:"number"`
-	State     string    `json:"state"`
-	ID        string    `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
+func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*circleci.Pipeline, error) {
+	params := map[string]interface{}{
+		"tbs_sha":           pr.Sha,
+		"tbs_pr":            strconv.Itoa(pr.Number),
+		"tbs_server_owner":  info.ServerOwner,
+		"tbs_server_branch": info.ServerBranch,
+		"tbs_webapp_owner":  info.WebappOwner,
+		"tbs_webapp_branch": info.WebappBranch,
+	}
+	pip, err := s.CircleCiClientV2.TriggerPipelineWithContext(ctx, circleci.VcsTypeGithub, s.Config.Org, s.Config.EnterpriseReponame, info.EEBranch, "", params)
+	if err != nil {
+		return nil, err
+	}
+
+	mlog.Debug("EE triggered",
+		mlog.Int("pr", pr.Number),
+		mlog.String("sha", pr.Sha),
+		mlog.String("EEBranch", info.EEBranch),
+		mlog.String("ServerOwner", info.ServerOwner),
+		mlog.String("ServerBranch", info.ServerBranch),
+		mlog.String("WebappOwner", info.WebappOwner),
+		mlog.String("WebappBranch", info.WebappBranch),
+	)
+
+	return pip, nil
 }
 
 type BlockPathValidationError struct {
@@ -162,60 +196,6 @@ func (s *Server) validateBlockPaths(repo string, prFiles []*github.CommitFile) e
 	return nil
 }
 
-func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
-	body := strings.NewReader(
-		`branch=` + info.EEBranch +
-			`&parameters[tbs_sha]=` + pr.Sha +
-			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number) +
-			`&parameters[tbs_server_owner]=` + info.ServerOwner +
-			`&parameters[tbs_server_branch]=` + info.ServerBranch +
-			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
-			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
-	if err != nil {
-		return nil, err
-	}
-	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
-	mlog.Debug("EE triggered",
-		mlog.Int("pr", pr.Number),
-		mlog.String("sha", pr.Sha),
-		mlog.String("EEBranch", info.EEBranch),
-		mlog.String("ServerOwner", info.ServerOwner),
-		mlog.String("ServerBranch", info.ServerBranch),
-		mlog.String("WebappOwner", info.WebappOwner),
-		mlog.String("WebappBranch", info.WebappBranch),
-	)
-	if err != nil {
-		return nil, err
-	}
-	r := PipelineTriggeredResponse{}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&r)
-	if err != nil {
-		return nil, err
-	}
-
-	return &r, err
-}
-
-type PipelineItem struct {
-	StoppedAt   time.Time `json:"stopped_at"`
-	Number      int       `json:"pipeline_number"`
-	Status      string    `json:"status"`
-	WorkflowID  string    `json:"id"`
-	Name        string    `json:"name"`
-	ProjectSlug string    `json:"project_slug"`
-	CreatedAt   time.Time `json:"created_at"`
-	ID          string    `json:"pipeline_id"`
-}
-
-type PipelineWorkflowResponse struct {
-	Pipelines     []PipelineItem `json:"items"`
-	NextPageToken string         `json:"next_page_token"`
-}
-
 func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName string) (string, error) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
@@ -224,29 +204,16 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 		case <-ctx.Done():
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
-			if err != nil {
-				return "", err
-			}
-			req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				continue
-			}
-			r := PipelineWorkflowResponse{}
-			err = json.NewDecoder(resp.Body).Decode(&r)
+			wfList, err := s.CircleCiClientV2.GetPipelineWorkflowWithContext(ctx, id, "")
 			if err != nil {
 				return "", err
 			}
 
 			workflowID := ""
-			for _, pip := range r.Pipelines {
-				if pip.Name == workflowName {
-					workflowID = pip.WorkflowID
+			for _, wf := range wfList.Items {
+				if wf.Name == workflowName {
+					workflowID = wf.ID
+					break
 				}
 			}
 
