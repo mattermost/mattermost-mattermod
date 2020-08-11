@@ -176,7 +176,7 @@ func (s *Server) getAssignee(ctx context.Context, newPRNumber int, pr *model.Pul
 			return ""
 		}
 
-		randomReviewer := rand.Intn(len(reviewersFromPR) - 1)
+		randomReviewer := rand.Intn(len(reviewersFromPR) - 1) // nolint
 		assignee = reviewersFromPR[randomReviewer].User.GetLogin()
 	}
 
