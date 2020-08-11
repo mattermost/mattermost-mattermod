@@ -143,7 +143,7 @@ func (s *Server) removeLabel(ctx context.Context, repoOwner, repoName string, nu
 	mlog.Info("Finished removing the label")
 }
 
-func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (comments []*github.IssueComment, err error) {
+func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
 	opts := &github.IssueListCommentsOptions{
 		ListOptions: github.ListOptions{
 			PerPage: 100,
@@ -151,7 +151,7 @@ func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (commen
 	}
 	var allComments []*github.IssueComment
 	for {
-		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opts)
+		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, repoOwner, repoName, number, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -165,6 +165,29 @@ func (s *Server) getComments(ctx context.Context, pr *model.PullRequest) (commen
 		opts.Page = r.NextPage
 	}
 	return allComments, nil
+}
+
+func (s *Server) getFiles(ctx context.Context, repoOwner, repoName string, number int) ([]*github.CommitFile, error) {
+	opts := &github.ListOptions{
+		PerPage: 100,
+	}
+	var allFiles []*github.CommitFile
+
+	for {
+		files, r, err := s.GithubClient.PullRequests.ListFiles(ctx, repoOwner, repoName, number, opts)
+		if err != nil {
+			return nil, err
+		}
+		allFiles = append(allFiles, files...)
+		if r != nil && r.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed fetching files: got http status: %s", r.Status)
+		}
+		if r.NextPage == 0 {
+			break
+		}
+		opts.Page = r.NextPage
+	}
+	return allFiles, nil
 }
 
 func (s *Server) GetUpdateChecks(ctx context.Context, owner, repoName string, prNumber int) (*model.PullRequest, error) {
