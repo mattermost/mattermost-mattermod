@@ -32,7 +32,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}()
 
 	if !s.IsOrgMember(commenter) {
-		msg = MsgCommenterPermission
+		msg = msgCommenterPermission
 		return nil
 	}
 
