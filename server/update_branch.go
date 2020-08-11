@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -34,24 +35,24 @@ func (e *updateError) Error() string {
 }
 
 func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *model.PullRequest) error {
-	var e *updateError
+	var uerr *updateError
 	defer func() {
-		if e != nil {
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e.source)
+		if uerr != nil {
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, uerr.source)
 		}
 	}()
 
 	// If the commenter is not the PR submitter, check if the PR submitter is an org member
 	if commenter != pr.Username && !s.IsOrgMember(commenter) {
-		e = &updateError{msgCommenterPermission}
-		return e
+		uerr = &updateError{source: msgCommenterPermission}
+		return uerr
 	}
 
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] != s.Config.Org {
 		if !pr.MaintainerCanModify.Valid || !pr.MaintainerCanModify.Bool {
-			e = &updateError{msgOrganizationPermission}
-			return e
+			uerr = &updateError{source: msgOrganizationPermission}
+			return uerr
 		}
 	}
 
@@ -61,12 +62,12 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 
 	_, resp, err := s.GithubClient.PullRequests.UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opt)
 	if resp != nil && resp.StatusCode != http.StatusAccepted {
-		e = &updateError{msgUpdatePullRequest}
-		return e
+		uerr = &updateError{source: msgUpdatePullRequest}
+		return uerr
 	}
 	if err != nil && !strings.Contains("job scheduled on GitHub side; try again later", err.Error()) {
-		e = &updateError{msgUpdatePullRequest}
-		return err
+		uerr = &updateError{source: msgUpdatePullRequest}
+		return fmt.Errorf("%s: %w", uerr, err)
 	}
 
 	return nil

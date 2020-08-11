@@ -55,7 +55,8 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, "someone", pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "commenter does not have permissions")
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("not org. member", func(t *testing.T) {
@@ -63,7 +64,8 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "commenter does not have permissions")
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("app does not have permissions", func(t *testing.T) {
@@ -74,7 +76,8 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "we don't have permissions")
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("err from github api", func(t *testing.T) {
@@ -83,14 +86,15 @@ func TestHandeUpdateBranch(t *testing.T) {
 		pr.FullName = organization + "/" + userHandle
 
 		*msg = msgUpdatePullRequest
+		expectedErr := errors.New("some-error")
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
-		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, errors.New("some-error"))
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, expectedErr)
 		s.GithubClient.PullRequests = prs
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "some-error")
+		require.True(t, errors.Is(err, expectedErr))
 	})
 
 	t.Run("non-OK status code from github", func(t *testing.T) {
@@ -112,7 +116,8 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "could not update pull request")
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("maintainer can modify and accepted by github", func(t *testing.T) {
