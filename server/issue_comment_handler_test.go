@@ -117,6 +117,23 @@ func TestIssueCommentEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
+	t.Run("Deletion event, should not fail", func(t *testing.T) {
+		b, err := json.Marshal(issueCommentEvent{
+			Action:     "deleted",
+			Issue:      &github.Issue{},
+			Repository: &github.Repository{},
+			Comment:    &github.PullRequestComment{},
+		})
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
 	t.Run("Should fail on getting the PR", func(t *testing.T) {
 		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), event.Repository.GetOwner().GetLogin(), event.Repository.GetName(), event.Issue.GetNumber()).
 			Times(1).
