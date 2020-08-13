@@ -23,6 +23,47 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	cherryPickScheduledMsg = "Cherry pick is scheduled."
+	tooManyCherryPickMsg   = "There are too many cherry picking requests. Please do this manually or try again later."
+)
+
+type cherryPickRequest struct {
+	pr        *model.PullRequest
+	version   string
+	milestone int
+}
+
+func (s *Server) listenCherryPickRequests() {
+	for {
+		select {
+		case job := <-s.cherryPickRequests:
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+			defer cancel()
+			pr := job.pr
+			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), &job.milestone, pr)
+			if err != nil {
+				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
+				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+				mlog.Error("Error while cherry picking", mlog.Err(err))
+			}
+		case <-s.stopChan:
+			close(s.cherryPickRequests)
+			s.drainCherryPickTasks()
+			close(s.stoppedChan)
+			return
+		}
+	}
+}
+
+func (s *Server) drainCherryPickTasks() {
+	for job := range s.cherryPickRequests {
+		pr := job.pr
+		msg := "Cherry picking canceled."
+		s.sendGitHubComment(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, msg)
+	}
+}
+
 func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
 	var msg string
 	defer func() {
@@ -41,10 +82,18 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	if !pr.Merged.Valid || !pr.Merged.Bool {
 		return nil
 	}
-	cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(args[1]), nil, pr)
-	if err != nil {
-		msg = fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-		return err
+
+	select {
+	case <-s.stopChan:
+		return fmt.Errorf("server is closing")
+	case s.cherryPickRequests <- &cherryPickRequest{
+		pr:      pr,
+		version: strings.TrimSpace(args[1]),
+	}:
+		msg = cherryPickScheduledMsg
+	default:
+		msg = tooManyCherryPickMsg
+		return errors.New("too many requests")
 	}
 
 	return nil
@@ -84,13 +133,21 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		if prLabel == "CherryPick/Approved" {
 			milestoneNumber := prMilestone.GetNumber()
 			milestone := getMilestone(prMilestone.GetTitle())
-			cmdOut, err := s.doCherryPick(ctx, milestone, &milestoneNumber, pr)
-			if err != nil {
-				mlog.Error("Error doing the cherry pick", mlog.Err(err))
-				errMsg := fmt.Sprintf("@%s\nError trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", pr.Username, cmdOut)
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+
+			var msg string
+			select {
+			case <-s.stopChan:
 				return
+			case s.cherryPickRequests <- &cherryPickRequest{
+				pr:        pr,
+				version:   strings.TrimSpace(milestone),
+				milestone: milestoneNumber,
+			}:
+				msg = cherryPickScheduledMsg
+			default:
+				msg = tooManyCherryPickMsg
 			}
+			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 		}
 	}
 }
@@ -119,12 +176,13 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
 
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-
+	fmt.Println(strings.Join([]string{cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA}, " "))
 	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),
 		os.Getenv("PATH"),
+		fmt.Sprintf("DRY_RUN=%t", false),
 		fmt.Sprintf("ORIGINAL_AUTHOR=%s", pr.Username),
 		fmt.Sprintf("GITHUB_USER=%s", s.Config.GithubUsername),
 		fmt.Sprintf("GITHUB_TOKEN=%s", s.Config.GithubAccessTokenCherryPick),
