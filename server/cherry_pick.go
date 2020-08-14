@@ -35,9 +35,12 @@ type cherryPickRequest struct {
 }
 
 func (s *Server) listenCherryPickRequests() {
-	for {
-		select {
-		case job := <-s.cherryPickRequests:
+	defer func() {
+		close(s.cherryPickStoppedChan)
+	}()
+
+	for job := range s.cherryPickRequests {
+		func() {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 			defer cancel()
 			pr := job.pr
@@ -47,20 +50,7 @@ func (s *Server) listenCherryPickRequests() {
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 				mlog.Error("Error while cherry picking", mlog.Err(err))
 			}
-		case <-s.stopChan:
-			close(s.cherryPickRequests)
-			s.drainCherryPickTasks()
-			close(s.stoppedChan)
-			return
-		}
-	}
-}
-
-func (s *Server) drainCherryPickTasks() {
-	for job := range s.cherryPickRequests {
-		pr := job.pr
-		msg := "Cherry picking canceled."
-		s.sendGitHubComment(context.Background(), pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		}()
 	}
 }
 
@@ -84,8 +74,6 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}
 
 	select {
-	case <-s.stopChan:
-		return fmt.Errorf("server is closing")
 	case s.cherryPickRequests <- &cherryPickRequest{
 		pr:      pr,
 		version: strings.TrimSpace(args[1]),
@@ -136,8 +124,6 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 
 			var msg string
 			select {
-			case <-s.stopChan:
-				return
 			case s.cherryPickRequests <- &cherryPickRequest{
 				pr:        pr,
 				version:   strings.TrimSpace(milestone),

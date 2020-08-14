@@ -31,20 +31,19 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config             *Config
-	Store              store.Store
-	GithubClient       *GithubClient
-	CircleCiClient     CircleCIService
-	CircleCiClientV2   CircleCIService
-	OrgMembers         []string
-	Builds             buildsInterface
-	commentLock        sync.Mutex
-	StartTime          time.Time
-	awsSession         *session.Session
-	Metrics            MetricsProvider
-	cherryPickRequests chan *cherryPickRequest
-	stopChan           chan struct{}
-	stoppedChan        chan struct{}
+	Config                *Config
+	Store                 store.Store
+	GithubClient          *GithubClient
+	CircleCiClient        CircleCIService
+	CircleCiClientV2      CircleCIService
+	OrgMembers            []string
+	Builds                buildsInterface
+	commentLock           sync.Mutex
+	StartTime             time.Time
+	awsSession            *session.Session
+	Metrics               MetricsProvider
+	cherryPickRequests    chan *cherryPickRequest
+	cherryPickStoppedChan chan struct{}
 
 	server *http.Server
 }
@@ -68,13 +67,12 @@ const (
 
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
-		Config:             config,
-		Store:              store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime:          time.Now(),
-		Metrics:            metrics,
-		cherryPickRequests: make(chan *cherryPickRequest, 20),
-		stopChan:           make(chan struct{}),
-		stoppedChan:        make(chan struct{}),
+		Config:                config,
+		Store:                 store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime:             time.Now(),
+		Metrics:               metrics,
+		cherryPickRequests:    make(chan *cherryPickRequest, 20),
+		cherryPickStoppedChan: make(chan struct{}),
 	}
 
 	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.Metrics)
@@ -142,8 +140,8 @@ func (s *Server) Start() {
 
 // Stop stops a server
 func (s *Server) Stop() error {
-	close(s.stopChan)
-	<-s.stoppedChan
+	close(s.cherryPickRequests)
+	<-s.cherryPickStoppedChan
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
