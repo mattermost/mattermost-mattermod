@@ -31,7 +31,7 @@ const (
 type cherryPickRequest struct {
 	pr        *model.PullRequest
 	version   string
-	milestone int
+	milestone *int
 }
 
 func (s *Server) listenCherryPickRequests() {
@@ -44,7 +44,7 @@ func (s *Server) listenCherryPickRequests() {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 			defer cancel()
 			pr := job.pr
-			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), &job.milestone, pr)
+			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
 			if err != nil {
 				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
 				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
@@ -55,11 +55,14 @@ func (s *Server) listenCherryPickRequests() {
 }
 
 func (s *Server) finishCherryPickRequests() {
+	close(s.cherryPickStopChan)
 	close(s.cherryPickRequests)
 	select {
-	case <-time.After(defaultRequestTimeout * time.Second):
+	case <-time.After(5 * time.Second):
 		ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 		defer cancel()
+		// While consuming requests here, listenCherryPickRequests routine will continue
+		// to listen as well. We're just trying to cancel requests as much as we can.
 		for job := range s.cherryPickRequests {
 			msg := "Cherry picking is canceled due to server shutdown."
 			s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg)
@@ -88,6 +91,8 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}
 
 	select {
+	case <-s.cherryPickStopChan:
+		return errors.New("server is closing")
 	case s.cherryPickRequests <- &cherryPickRequest{
 		pr:      pr,
 		version: strings.TrimSpace(args[1]),
@@ -138,10 +143,12 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 
 			var msg string
 			select {
+			case <-s.cherryPickStopChan:
+				return
 			case s.cherryPickRequests <- &cherryPickRequest{
 				pr:        pr,
 				version:   strings.TrimSpace(milestone),
-				milestone: milestoneNumber,
+				milestone: &milestoneNumber,
 			}:
 				msg = cherryPickScheduledMsg
 			default:
@@ -176,7 +183,6 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
 
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-	fmt.Println(strings.Join([]string{cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA}, " "))
 	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(

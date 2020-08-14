@@ -55,7 +55,17 @@ func TestHandleCherryPick(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("should ignore when server is closing", func(t *testing.T) {
+		s.cherryPickStopChan = make(chan struct{})
+		pr.Merged.Bool = true
+		close(s.cherryPickStopChan)
+
+		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		require.EqualError(t, err, "server is closing")
+	})
+
 	t.Run("should fail on too many cherry pick tasks", func(t *testing.T) {
+		s.cherryPickStopChan = make(chan struct{})
 		s.cherryPickRequests = make(chan *cherryPickRequest, 1)
 		pr.Merged.Bool = true
 

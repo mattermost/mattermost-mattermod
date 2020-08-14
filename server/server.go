@@ -43,6 +43,7 @@ type Server struct {
 	awsSession            *session.Session
 	Metrics               MetricsProvider
 	cherryPickRequests    chan *cherryPickRequest
+	cherryPickStopChan    chan struct{}
 	cherryPickStoppedChan chan struct{}
 
 	server *http.Server
@@ -72,6 +73,7 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		StartTime:             time.Now(),
 		Metrics:               metrics,
 		cherryPickRequests:    make(chan *cherryPickRequest, 20),
+		cherryPickStopChan:    make(chan struct{}),
 		cherryPickStoppedChan: make(chan struct{}),
 	}
 
