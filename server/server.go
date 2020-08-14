@@ -140,8 +140,7 @@ func (s *Server) Start() {
 
 // Stop stops a server
 func (s *Server) Stop() error {
-	close(s.cherryPickRequests)
-	<-s.cherryPickStoppedChan
+	s.finishCherryPickRequests()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

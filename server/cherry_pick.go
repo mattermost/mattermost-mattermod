@@ -54,6 +54,20 @@ func (s *Server) listenCherryPickRequests() {
 	}
 }
 
+func (s *Server) finishCherryPickRequests() {
+	close(s.cherryPickRequests)
+	select {
+	case <-time.After(defaultRequestTimeout * time.Second):
+		ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+		defer cancel()
+		for job := range s.cherryPickRequests {
+			msg := "Cherry picking is canceled due to server shutdown."
+			s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg)
+		}
+	case <-s.cherryPickStoppedChan:
+	}
+}
+
 func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
 	var msg string
 	defer func() {
