@@ -4,10 +4,15 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 // MetricsProvider is the interface that exposes the communication with the metrics system
@@ -29,6 +34,10 @@ type MetricsProvider interface {
 	// IncreaseGithubCacheMisses stores the number of cache misses when a github request
 	// is done. The information is stored using the HTTP method and the request handler
 	IncreaseGithubCacheMisses(method, handler string)
+
+	// IncreaseRateLimiterErrors stores the number of errors received when trying to
+	// rate limit the requests
+	IncreaseRateLimiterErrors()
 
 	// ObserverCronTaskDuration stores the elapsed time for a cron task
 	ObserveCronTaskDuration(name string, elapsed float64)
@@ -54,26 +63,67 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	start := time.Now()
 	resp, err = t.Base.RoundTrip(req)
 	elapsed := float64(time.Since(start)) / float64(time.Second)
-	// rate limit error
 	if resp == nil && err != nil {
 		return resp, err
 	}
-	splittedPath := strings.Split(req.URL.Path, "/")
-	path := req.URL.Path
+	statusCode := strconv.Itoa(resp.StatusCode)
+	requestPath := req.URL.Path
+	if strings.Contains(req.URL.Host, "github") {
+		requestPath = t.getGithubRequestPath(requestPath)
+		errMetrics := t.processGithubMetrics(req, resp, requestPath, statusCode)
+		if errMetrics != nil {
+			mlog.Warn("can't process github metrics", mlog.Err(errMetrics))
+		}
+	}
+	t.metrics.ObserveGithubRequestDuration(requestPath, req.Method, statusCode, elapsed)
+
+	return resp, err
+}
+
+func (t *MetricsTransport) getGithubRequestPath(requestPath string) string {
+	path := requestPath
+	splittedPath := strings.Split(path, "/")
 	if len(splittedPath) > 5 {
 		// This would leave path as "/repos/{user/org}/{repository}/issues"
 		path = strings.Join(splittedPath[:5], "/")
 	}
-	statusCode := strconv.Itoa(resp.StatusCode)
-	t.metrics.ObserveGithubRequestDuration(path, req.Method, statusCode, elapsed)
+	return path
+}
 
+func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Response, path, statusCode string) error {
 	if resp.Header.Get("X-From-Cache") == "1" {
 		t.metrics.IncreaseGithubCacheHits(req.Method, path)
 	} else {
 		t.metrics.IncreaseGithubCacheMisses(req.Method, path)
 	}
 
-	return resp, err
+	if resp.Body != nil {
+		msg := struct {
+			Message          string `json:"message"`
+			DocumentationURL string `json:"documentation_url"`
+		}{}
+		// Read body to check if there is an error message,
+		// then close it and re-assigning the body again for the
+		// next layer so it could read the body without problem
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		resp.Body.Close()
+		err = json.Unmarshal(bodyBytes, &msg)
+		if err == nil && statusCode == "403" && t.hasExceedRateLimit(msg.Message) {
+			t.metrics.IncreaseRateLimiterErrors()
+		} else if err != nil {
+			return err
+		}
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	}
+
+	return nil
+}
+
+func (t *MetricsTransport) hasExceedRateLimit(msg string) bool {
+	return strings.Contains(msg, "temporarily blocked") || strings.Contains(msg, "rate limit exceeded")
 }
 
 // Client returns a new http.Client using Transport
