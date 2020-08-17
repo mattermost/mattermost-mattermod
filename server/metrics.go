@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 // MetricsProvider is the interface that exposes the communication with the metrics system
@@ -68,7 +70,10 @@ func (t *MetricsTransport) RoundTrip(req *http.Request) (resp *http.Response, er
 	requestPath := req.URL.Path
 	if strings.Contains(req.URL.Host, "github") {
 		requestPath = t.getGithubRequestPath(requestPath)
-		t.processGithubMetrics(req, resp, requestPath, statusCode)
+		errMetrics := t.processGithubMetrics(req, resp, requestPath, statusCode)
+		if errMetrics != nil {
+			mlog.Warn("can't process github metrics", mlog.Err(errMetrics))
+		}
 	}
 	t.metrics.ObserveGithubRequestDuration(requestPath, req.Method, statusCode, elapsed)
 
@@ -85,7 +90,7 @@ func (t *MetricsTransport) getGithubRequestPath(requestPath string) string {
 	return path
 }
 
-func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Response, path, statusCode string) {
+func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Response, path, statusCode string) error {
 	if resp.Header.Get("X-From-Cache") == "1" {
 		t.metrics.IncreaseGithubCacheHits(req.Method, path)
 	} else {
@@ -98,16 +103,27 @@ func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Re
 			DocumentationURL string `json:"documentation_url"`
 		}{}
 		// Read body to check if there is an error message,
-		// then close it and reassing the body again for the
+		// then close it and re-assigning the body again for the
 		// next layer so it could read the body without problem
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 		resp.Body.Close()
-		err := json.Unmarshal(bodyBytes, &msg)
-		if err == nil && statusCode == "403" && strings.Contains(msg.Message, "temporarily blocked") {
+		err = json.Unmarshal(bodyBytes, &msg)
+		if err == nil && statusCode == "403" && t.hasExceedRateLimit(msg.Message) {
 			t.metrics.IncreaseRateLimiterErrors()
+		} else if err != nil {
+			return err
 		}
 		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
+
+	return nil
+}
+
+func (t *MetricsTransport) hasExceedRateLimit(msg string) bool {
+	return strings.Contains(msg, "temporarily blocked") || strings.Contains(msg, "rate limit exceeded")
 }
 
 // Client returns a new http.Client using Transport
