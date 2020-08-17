@@ -261,7 +261,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 		return
@@ -301,7 +301,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(ctx, pr)
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("failed fetching comments", mlog.Err(err))
 		return

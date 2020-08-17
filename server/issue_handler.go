@@ -100,7 +100,7 @@ func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, add
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	comments, err := s.getComments(ctx, issue.RepoOwner, issue.RepoName, issue.Number)
 	if err != nil {
 		return fmt.Errorf("could not get issue from GitHub: %w", err)
 	}

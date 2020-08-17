@@ -215,7 +215,7 @@ func TestIssueEventHandler(t *testing.T) {
 				},
 			}, nil, nil)
 
-		is.EXPECT().ListComments(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, nil).
+		is.EXPECT().ListComments(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, gomock.AssignableToTypeOf(&github.IssueListCommentsOptions{})).
 			Times(1).Return(
 			[]*github.IssueComment{
 				{
@@ -224,7 +224,9 @@ func TestIssueEventHandler(t *testing.T) {
 						Login: &login,
 					},
 				},
-			}, nil, nil)
+			}, &github.Response{
+				NextPage: 0,
+				Response: &http.Response{StatusCode: http.StatusOK}}, nil)
 
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{Body: &body}).
 			Times(1).Return(nil, nil, nil)
