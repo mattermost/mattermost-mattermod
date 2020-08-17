@@ -5,6 +5,7 @@ namespace: mattermod
 
 bases:
   - ../../base/app
+  - ../../base/jobserver
   - ../../base/config
 
 resources:
@@ -12,7 +13,7 @@ resources:
   - pvc.yaml
 
 patchesStrategicMerge:
-#  - patches/deployment-replicas.yaml
+  - patches/deployment-replicas.yaml
   - patches/deployment-data-pvc.yaml
   - patches/deployment-gitconfig.yaml
 
@@ -36,4 +37,7 @@ secretGenerator:
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
-    newTag: 0.2.8
+    newTag: 0.2.10
+  - name: mattermost/mattermod-jobserver
+    newName: mattermost/mattermod-jobserver
+    newTag: 0.2.10

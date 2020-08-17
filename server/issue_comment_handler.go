@@ -40,6 +40,11 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// We ignore deletion events for now.
+	if ev.Action == "deleted" {
+		return
+	}
+
 	pr, err := s.getPRFromIssueCommentEvent(ctx, ev)
 	if err != nil {
 		mlog.Error("Error getting PR from Comment", mlog.Err(err))

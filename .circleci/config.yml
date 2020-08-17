@@ -85,8 +85,7 @@ jobs:
               elif [ "<<parameters.target>>" == "latest" ]; then
                 export TAG_NAME=$(echo "${CIRCLE_TAG}" | tr -d 'v')
                 DOCKER_TAG=${TAG_NAME} make docker push
-                docker tag mattermost/mattermod:${TAG_NAME} mattermost/mattermod:latest
-                DOCKER_TAG=latest make push
+                DOCKER_TAG=latest make docker push
               fi
             fi
 

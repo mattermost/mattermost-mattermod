@@ -5,7 +5,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,7 +13,6 @@ import (
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
 )
 
@@ -66,45 +64,6 @@ func main() {
 			os.Exit(code)
 		}
 	}()
-
-	c := cron.New()
-
-	_, err = c.AddFunc("0 1 * * *", s.CheckPRActivity)
-	if err != nil {
-		mlog.Error("failed adding CheckPRActivity cron", mlog.Err(err))
-	}
-
-	_, err = c.AddFunc("0 2 * * *", s.RefreshMembers)
-	if err != nil {
-		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
-	}
-
-	_, err = c.AddFunc("0 3 * * *", s.CleanOutdatedPRs)
-	if err != nil {
-		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
-	}
-
-	_, err = c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
-	if err != nil {
-		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
-	}
-	_, err = c.AddFunc("@every 30m", func() {
-		err2 := s.AutoMergePR()
-		if err2 != nil {
-			mlog.Error("Error from AutoMergePR", mlog.Err(err2))
-		}
-	})
-	if err != nil {
-		mlog.Error("failed adding AutoMergePR cron", mlog.Err(err))
-	}
-
-	cronTicker := fmt.Sprintf("@every %dm", s.Config.TickRateMinutes)
-	_, err = c.AddFunc(cronTicker, s.Tick)
-	if err != nil {
-		mlog.Error("failed adding Ticker cron", mlog.Err(err))
-	}
-
-	c.Start()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

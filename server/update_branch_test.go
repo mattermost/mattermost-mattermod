@@ -51,30 +51,33 @@ func TestHandeUpdateBranch(t *testing.T) {
 	s.GithubClient.Issues = is
 
 	t.Run("random user", func(t *testing.T) {
-		*msg = MsgCommenterPermission
+		*msg = msgCommenterPermission
 
 		err := s.handleUpdateBranch(ctx, "someone", pr)
 		require.Error(t, err)
-		require.EqualError(t, ErrCommenterPermission, err.Error())
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("not org. member", func(t *testing.T) {
-		*msg = MsgCommenterPermission
+		*msg = msgCommenterPermission
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, ErrCommenterPermission, err.Error())
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("app does not have permissions", func(t *testing.T) {
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
 
-		*msg = MsgOrganizationPermission
+		*msg = msgOrganizationPermission
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, ErrOrganizationPermission, err.Error())
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("err from github api", func(t *testing.T) {
@@ -82,15 +85,16 @@ func TestHandeUpdateBranch(t *testing.T) {
 		s.OrgMembers[0] = userHandle
 		pr.FullName = organization + "/" + userHandle
 
-		*msg = MsgUpdatePullRequest
+		*msg = msgUpdatePullRequest
+		expectedErr := errors.New("some-error")
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
-		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, errors.New("some-error"))
+		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, nil, expectedErr)
 		s.GithubClient.PullRequests = prs
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, err, "some-error")
+		require.True(t, errors.Is(err, expectedErr))
 	})
 
 	t.Run("non-OK status code from github", func(t *testing.T) {
@@ -104,7 +108,7 @@ func TestHandeUpdateBranch(t *testing.T) {
 		s.OrgMembers[0] = userHandle
 		pr.FullName = organization + "/" + userHandle
 
-		*msg = MsgUpdatePullRequest
+		*msg = msgUpdatePullRequest
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
 		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
@@ -112,7 +116,8 @@ func TestHandeUpdateBranch(t *testing.T) {
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.EqualError(t, ErrUpdatePullRequest, err.Error())
+		require.IsType(t, &updateError{}, err)
+		require.Equal(t, err.(*updateError).source, *msg)
 	})
 
 	t.Run("maintainer can modify and accepted by github", func(t *testing.T) {
@@ -128,7 +133,7 @@ func TestHandeUpdateBranch(t *testing.T) {
 		s.GithubClient.PullRequests = prs
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 
 	t.Run("job scheduled on GitHub", func(t *testing.T) {
@@ -143,6 +148,6 @@ func TestHandeUpdateBranch(t *testing.T) {
 		s.GithubClient.PullRequests = prs
 
 		err := s.handleUpdateBranch(ctx, userHandle, pr)
-		require.NoError(t, err)
+		require.Nil(t, err)
 	})
 }

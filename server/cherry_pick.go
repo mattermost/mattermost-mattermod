@@ -32,7 +32,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}()
 
 	if !s.IsOrgMember(commenter) {
-		msg = MsgCommenterPermission
+		msg = msgCommenterPermission
 		return nil
 	}
 
@@ -176,7 +176,7 @@ func (s *Server) getAssignee(ctx context.Context, newPRNumber int, pr *model.Pul
 			return ""
 		}
 
-		randomReviewer := rand.Intn(len(reviewersFromPR) - 1)
+		randomReviewer := rand.Intn(len(reviewersFromPR) - 1) // nolint
 		assignee = reviewersFromPR[randomReviewer].User.GetLogin()
 	}
 

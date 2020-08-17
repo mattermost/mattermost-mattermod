@@ -5,7 +5,8 @@ kind: Kustomization
 configMapGenerator:
   - name: config
     files:
-      - config.json
+      - config-mattermod.json
+      - config-jobserver.json
 
 commonLabels:
   app: mattermod
