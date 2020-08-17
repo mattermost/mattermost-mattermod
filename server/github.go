@@ -143,7 +143,7 @@ func (s *Server) removeLabel(ctx context.Context, repoOwner, repoName string, nu
 	mlog.Info("Finished removing the label")
 }
 
-func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, number int) ([]*github.IssueComment, error) {
+func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, issueNumber int) ([]*github.IssueComment, error) {
 	opts := &github.IssueListCommentsOptions{
 		ListOptions: github.ListOptions{
 			PerPage: 100,
@@ -151,7 +151,7 @@ func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, nu
 	}
 	var allComments []*github.IssueComment
 	for {
-		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, repoOwner, repoName, number, opts)
+		commentsPerPage, r, err := s.GithubClient.Issues.ListComments(ctx, repoOwner, repoName, issueNumber, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -167,14 +167,14 @@ func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, nu
 	return allComments, nil
 }
 
-func (s *Server) getFiles(ctx context.Context, repoOwner, repoName string, number int) ([]*github.CommitFile, error) {
+func (s *Server) getFiles(ctx context.Context, repoOwner, repoName string, issueNumber int) ([]*github.CommitFile, error) {
 	opts := &github.ListOptions{
 		PerPage: 100,
 	}
 	var allFiles []*github.CommitFile
 
 	for {
-		files, r, err := s.GithubClient.PullRequests.ListFiles(ctx, repoOwner, repoName, number, opts)
+		files, r, err := s.GithubClient.PullRequests.ListFiles(ctx, repoOwner, repoName, issueNumber, opts)
 		if err != nil {
 			return nil, err
 		}
