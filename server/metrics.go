@@ -97,7 +97,7 @@ func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Re
 		t.metrics.IncreaseGithubCacheMisses(req.Method, path)
 	}
 
-	if resp.Body != nil {
+	if resp.Body != nil && statusCode == "403" {
 		msg := struct {
 			Message          string `json:"message"`
 			DocumentationURL string `json:"documentation_url"`
@@ -110,13 +110,16 @@ func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Re
 			return err
 		}
 		resp.Body.Close()
+		defer func() {
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		}()
+
 		err = json.Unmarshal(bodyBytes, &msg)
-		if err == nil && statusCode == "403" && t.hasExceedRateLimit(msg.Message) {
+		if err == nil && t.hasExceedRateLimit(msg.Message) {
 			t.metrics.IncreaseRateLimiterErrors()
 		} else if err != nil {
 			return err
 		}
-		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 
 	return nil
