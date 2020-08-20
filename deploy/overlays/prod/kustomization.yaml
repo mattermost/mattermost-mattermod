@@ -37,7 +37,7 @@ secretGenerator:
 images:
   - name: mattermost/mattermod
     newName: mattermost/mattermod
-    newTag: 0.3.1
+    newTag: 0.3.2
   - name: mattermost/mattermod-jobserver
     newName: mattermost/mattermod-jobserver
-    newTag: 0.3.1
+    newTag: 0.3.2
