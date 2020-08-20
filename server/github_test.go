@@ -341,6 +341,52 @@ func TestRateLimitTransport(t *testing.T) {
 		require.Equal(t, 403, errResponse.Response.StatusCode)
 	})
 
+	t.Run("Should not return error when an array is returned", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		listMembersResp := []byte(`[
+  {
+    "login": "octocat",
+    "id": 1,
+    "node_id": "MDQ6VXNlcjE=",
+    "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/octocat",
+    "html_url": "https://github.com/octocat",
+    "followers_url": "https://api.github.com/users/octocat/followers",
+    "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+    "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+    "organizations_url": "https://api.github.com/users/octocat/orgs",
+    "repos_url": "https://api.github.com/users/octocat/repos",
+    "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/octocat/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+]`)
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/orgs/ownerTest/members",
+			func(req *http.Request) (*http.Response, error) {
+				body := []*github.User{}
+				err := json.Unmarshal(listMembersResp, &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(http.StatusOK, body)
+			},
+		)
+
+		limit := rate.Every(time.Minute * 1)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
+		opts := &github.ListMembersOptions{
+			ListOptions: github.ListOptions{},
+		}
+		_, _, err := ghClient.Organizations.ListMembers(context.TODO(), "ownerTest", opts)
+		require.NoError(t, err)
+		// TODO: verify the mlog warning message by mocking the logger. MM-27987
+	})
+
 	t.Run("Should return context error when the rate limit wait is larger than the context timeout", func(t *testing.T) {
 		httpmock.Activate()
 		defer httpmock.DeactivateAndReset()
