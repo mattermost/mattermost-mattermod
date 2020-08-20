@@ -26,7 +26,7 @@ func (s *Server) triggerEnterpriseTests(pr *model.PullRequest) {
 
 	triggerInfo, err := s.getPRInfo(ctx, pr)
 	if err != nil {
-		mlog.Debug("error trying to get pr info", mlog.Err(err))
+		mlog.Warn("error trying to get pr info", mlog.Err(err))
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return
 	}
