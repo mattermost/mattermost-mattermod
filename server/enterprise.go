@@ -59,6 +59,11 @@ type EETriggerInfo struct {
 func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EETriggerInfo, err error) {
 	pullRequest, _, err := s.GithubClient.PullRequests.Get(ctx, s.Config.Org, pr.RepoName, pr.Number)
 	if err != nil {
+		mlog.Debug("Error trying to get pr",
+			mlog.String("org", s.Config.Org),
+			mlog.String("repo", pr.RepoName),
+			mlog.Int("number", pr.Number),
+			mlog.Err(err))
 		return nil, err
 	}
 	baseBranch := pullRequest.GetBase().GetRef()
@@ -105,6 +110,11 @@ func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo 
 	ghBranch, r, err := s.GithubClient.Repositories.GetBranch(ctx, remote, repo, ref)
 	if err != nil {
 		if r == nil || r.StatusCode != http.StatusNotFound {
+			mlog.Debug("Error trying to get branch",
+				mlog.String("remote", remote),
+				mlog.String("repo", repo),
+				mlog.String("ref", ref),
+				mlog.Err(err))
 			return "", err
 		}
 		return "", nil // do not err if branch is not found
