@@ -489,7 +489,7 @@ func (s *Server) CleanOutdatedPRs() {
 			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(200 * time.Millisecond)
 	}
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
 }
