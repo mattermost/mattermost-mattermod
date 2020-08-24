@@ -30,7 +30,7 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 		mlog.String("user", username),
 		mlog.String("repo", pr.RepoOwner),
 		mlog.String("reponame", pr.RepoName),
-		mlog.Int("pr n", pr.Number),
+		mlog.Int("pr number", pr.Number),
 	)
 
 	if s.IsBotUserFromCLAExclusionsList(username) {
@@ -50,7 +50,7 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 	}
 
 	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
-		comments, err := s.getComments(ctx, pr)
+		comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			return fmt.Errorf("failed fetching comments: %w", err)
 		}

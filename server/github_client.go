@@ -86,7 +86,7 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
 	tc := oauth2.NewClient(context.Background(), ts)
-	limiterTransport := NewRateLimitTransport(limit, burstTokens, tc.Transport)
+	limiterTransport := NewRateLimitTransport(limit, burstTokens, tc.Transport, metricsProvider)
 	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport

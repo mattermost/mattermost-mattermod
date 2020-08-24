@@ -264,6 +264,10 @@ func TestRateLimitTransport(t *testing.T) {
 	defer ctrl.Finish()
 
 	metricsMock := mocks.NewMockMetricsProvider(ctrl)
+	metricsMock.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
+	metricsMock.EXPECT().IncreaseRateLimiterErrors().Times(2)
 
 	t.Run("Should be able to perform a request without being hit by rate limiter", func(t *testing.T) {
 		httpmock.Activate()
@@ -279,10 +283,6 @@ func TestRateLimitTransport(t *testing.T) {
 				return httpmock.NewJsonResponse(http.StatusOK, body)
 			},
 		)
-
-		metricsMock.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
-		metricsMock.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
-		metricsMock.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
 
 		ghClient, _ := server.NewGithubClient("testtoken", 1, metricsMock)
 		_, resp, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
@@ -308,6 +308,83 @@ func TestRateLimitTransport(t *testing.T) {
 		_, _, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "exceeds limiter's burst 0")
+	})
+
+	t.Run("Should keep working even if a rate limit error is received", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		metricsMockRun := mocks.NewMockMetricsProvider(ctrl)
+		metricsMockRun.EXPECT().ObserveGithubRequestDuration(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMockRun.EXPECT().IncreaseGithubCacheMisses(gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMockRun.EXPECT().IncreaseGithubCacheHits(gomock.Any(), gomock.Any()).AnyTimes()
+		metricsMockRun.EXPECT().IncreaseRateLimiterErrors().Times(1)
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/repos/ownerTest/repoTest/git/ref/refTest",
+			func(req *http.Request) (*http.Response, error) {
+				body := struct {
+					Message          string `json:"message"`
+					DocumentationURL string `json:"documentation_url"`
+				}{
+					Message: "You have triggered an abuse detection mechanism and have been temporarily blocked " +
+						"from content creation. Please retry your request again later.",
+					DocumentationURL: "https://developer.github.com/v3/#rate-limiting",
+				}
+				return httpmock.NewJsonResponse(http.StatusForbidden, body)
+			},
+		)
+
+		ghClient, _ := server.NewGithubClient("testtoken", 1, metricsMockRun)
+		_, _, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+		errResponse, ok := err.(*github.ErrorResponse)
+		require.True(t, ok)
+		require.Equal(t, 403, errResponse.Response.StatusCode)
+	})
+
+	t.Run("Should not return error when an array is returned", func(t *testing.T) {
+		httpmock.Activate()
+		defer httpmock.DeactivateAndReset()
+
+		listMembersResp := []byte(`[
+  {
+    "login": "octocat",
+    "id": 1,
+    "node_id": "MDQ6VXNlcjE=",
+    "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/octocat",
+    "html_url": "https://github.com/octocat",
+    "followers_url": "https://api.github.com/users/octocat/followers",
+    "following_url": "https://api.github.com/users/octocat/following{/other_user}",
+    "gists_url": "https://api.github.com/users/octocat/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/octocat/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/octocat/subscriptions",
+    "organizations_url": "https://api.github.com/users/octocat/orgs",
+    "repos_url": "https://api.github.com/users/octocat/repos",
+    "events_url": "https://api.github.com/users/octocat/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/octocat/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+]`)
+
+		httpmock.RegisterResponder("GET", "https://api.github.com/orgs/ownerTest/members",
+			func(req *http.Request) (*http.Response, error) {
+				body := []*github.User{}
+				err := json.Unmarshal(listMembersResp, &body)
+				require.NoError(t, err)
+				return httpmock.NewJsonResponse(http.StatusOK, body)
+			},
+		)
+
+		limit := rate.Every(time.Minute * 1)
+		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
+		opts := &github.ListMembersOptions{
+			ListOptions: github.ListOptions{},
+		}
+		_, _, err := ghClient.Organizations.ListMembers(context.TODO(), "ownerTest", opts)
+		require.NoError(t, err)
+		// TODO: verify the mlog warning message by mocking the logger. MM-27987
 	})
 
 	t.Run("Should return context error when the rate limit wait is larger than the context timeout", func(t *testing.T) {

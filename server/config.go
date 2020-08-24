@@ -18,7 +18,7 @@ const (
 	// In seconds
 	defaultRequestTimeout       = 60
 	defaultEETaskTimeout        = 300
-	defaultCronTaskTimeout      = 300
+	defaultCronTaskTimeout      = 600
 	defaultBuildMobileTimeout   = 7200
 	defaultBuildSpinmintTimeout = 2700
 )

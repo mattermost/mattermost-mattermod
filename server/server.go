@@ -204,55 +204,72 @@ func (s *Server) Tick() {
 	}()
 
 	for _, repository := range s.Config.Repositories {
-		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
-			State: "open",
-		})
-		if err != nil {
-			mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.Metrics.IncreaseCronTaskErrors("tick")
-			continue
+		prListOpts := &github.PullRequestListOptions{
+			State:       "open",
+			ListOptions: github.ListOptions{PerPage: 50},
 		}
-
-		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
-			if errPR != nil {
-				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
-				s.Metrics.IncreaseCronTaskErrors("tick")
-				continue
-			}
-
-			changed, err2 := s.checkPullRequestForChanges(ctx, pullRequest)
-			if err2 != nil {
-				mlog.Error("Could not check changes for PR", mlog.Err(err2))
-			} else if changed {
-				mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
-			}
-		}
-
-		issues, _, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, &github.IssueListByRepoOptions{
-			State: "open",
-		})
-		if err != nil {
-			mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.Metrics.IncreaseCronTaskErrors("tick")
-			continue
-		}
-
-		for _, ghIssue := range issues {
-			if ghIssue.PullRequestLinks != nil {
-				// This is a PR so we've already checked it
-				continue
-			}
-
-			issue, err := s.GetIssueFromGithub(ctx, ghIssue)
+		for {
+			ghPullRequests, resp, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, prListOpts)
 			if err != nil {
-				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
+				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
+			if resp.NextPage == 0 {
+				break
+			}
+			prListOpts.Page = resp.NextPage
 
-			if err := s.checkIssueForChanges(ctx, issue); err != nil {
-				mlog.Error("could not check issue for changes", mlog.Err(err))
+			for _, ghPullRequest := range ghPullRequests {
+				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
+				if errPR != nil {
+					mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
+					s.Metrics.IncreaseCronTaskErrors("tick")
+					continue
+				}
+
+				changed, err2 := s.checkPullRequestForChanges(ctx, pullRequest)
+				if err2 != nil {
+					mlog.Error("Could not check changes for PR", mlog.Err(err2))
+				} else if changed {
+					mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
+				}
+			}
+		}
+
+		issueListOpts := &github.IssueListByRepoOptions{
+			State:       "open",
+			ListOptions: github.ListOptions{PerPage: 50},
+		}
+
+		for {
+			issues, resp, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, issueListOpts)
+			if err != nil {
+				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+				s.Metrics.IncreaseCronTaskErrors("tick")
+				continue
+			}
+			if resp.NextPage == 0 {
+				break
+			}
+			issueListOpts.Page = resp.NextPage
+
+			for _, ghIssue := range issues {
+				if ghIssue.PullRequestLinks != nil {
+					// This is a PR so we've already checked it
+					continue
+				}
+
+				issue, err := s.GetIssueFromGithub(ctx, ghIssue)
+				if err != nil {
+					mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
+					s.Metrics.IncreaseCronTaskErrors("tick")
+					continue
+				}
+
+				if err := s.checkIssueForChanges(ctx, issue); err != nil {
+					mlog.Error("could not check issue for changes", mlog.Err(err))
+				}
 			}
 		}
 	}

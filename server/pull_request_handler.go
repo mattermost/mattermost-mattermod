@@ -291,7 +291,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, _, err := s.GithubClient.Issues.ListComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		return fmt.Errorf("unable to list comments for PR: %w", err)
 	}
@@ -332,7 +332,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(ctx, pr)
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		return fmt.Errorf("failed fetching comments: %w", err)
 	}
@@ -520,7 +520,7 @@ func (s *Server) CleanOutdatedPRs() {
 			mlog.Info("Nothing to do", mlog.String("RepoOwner", pr.RepoOwner), mlog.String("RepoName", pr.RepoName), mlog.Int("PRNumber", pr.Number))
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(200 * time.Millisecond)
 	}
 	mlog.Info("Finished update the outdated prs in the mattermod database....")
 }
