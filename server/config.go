@@ -56,6 +56,11 @@ type BuildMobileAppJob struct {
 	ExpectedArtifacts int
 }
 
+type TranslationsRepo struct {
+	RepoName     string
+	BaseFilePath string
+}
+
 type Config struct {
 	ListenAddress               string
 	MattermodURL                string
@@ -112,6 +117,7 @@ type Config struct {
 	TranslationsMattermostWebhookURL string
 	TranslationsMattermostMessage    string
 	TranslationsBot                  string
+	TranslationsRepos                []*TranslationsRepo
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

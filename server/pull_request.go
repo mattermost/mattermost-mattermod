@@ -32,6 +32,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
@@ -46,6 +47,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
@@ -125,6 +127,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
+		s.handleModificationOfLanguageFiles(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
