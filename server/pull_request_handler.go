@@ -5,7 +5,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -15,18 +18,39 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestEvent) {
-	mlog.Info("PR-Event", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
+type pullRequestEvent struct {
+	Action        string              `json:"action"`
+	PRNumber      int                 `json:"number"`
+	PullRequest   *github.PullRequest `json:"pull_request"`
+	Issue         *github.Issue       `json:"issue"`
+	Label         *github.Label       `json:"label"`
+	Repo          *github.Repository  `json:"repository"`
+	RepositoryURL string              `json:"repository_url"`
+}
+
+func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+
+	event, err := pullRequestEventFromJSON(r.Body)
+	if err != nil {
+		mlog.Error("could not parse pr event", mlog.Err(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
+
 	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest)
 	if err != nil {
 		mlog.Error("Unable to get PR from GitHub", mlog.Int("pr", event.PRNumber), mlog.Err(err))
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
+		if err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
@@ -41,7 +65,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		s.setBlockStatusForPR(ctx, pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
+		if err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
@@ -81,7 +105,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
-			if err := s.unblockPRMerge(ctx, pr); err != nil {
+			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
 		}
@@ -96,16 +120,16 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			if err := s.unblockPRMerge(ctx, pr); err != nil {
+			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
 		}
 
 		// TODO: remove the old test server code
 		if s.isSpinMintLabel(*event.Label.Name) {
-			spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-			if err != nil {
-				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err.Error()))
+			spinmint, err2 := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+			if err2 != nil {
+				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err2.Error()))
 				break
 			}
 
@@ -121,7 +145,7 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
+		if err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 		s.triggerCircleCiIfNeeded(ctx, pr)
@@ -137,9 +161,9 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		go s.checkIfNeedCherryPick(pr)
 		go s.CleanUpLabels(pr)
 
-		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-		if err != nil {
-			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", err.Error()))
+		spinmint, err2 := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
+		if err2 != nil {
+			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", err2.Error()))
 			break
 		}
 
@@ -157,61 +181,66 @@ func (s *Server) handlePullRequestEvent(ctx context.Context, event *PullRequestE
 		}
 	}
 
-	s.checkPullRequestForChanges(ctx, pr)
+	changed, err := s.checkPullRequestForChanges(ctx, pr)
+	if err != nil {
+		mlog.Error("Could not check changes for PR", mlog.Err(err))
+	} else if changed {
+		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
+	}
 }
 
-func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullRequest) {
+func pullRequestEventFromJSON(data io.Reader) (*pullRequestEvent, error) {
+	decoder := json.NewDecoder(data)
+	var event pullRequestEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil, err
+	}
+
+	return &event, nil
+}
+
+func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullRequest) (bool, error) {
 	oldPr, err := s.Store.PullRequest().Get(pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
-		mlog.Error(err.Error())
-		return
+		return false, err
 	}
 
 	if oldPr == nil {
 		if _, err := s.Store.PullRequest().Save(pr); err != nil {
-			mlog.Error(err.Error())
+			mlog.Error("could not save PR", mlog.Err(err))
 		}
 
 		for _, label := range pr.Labels {
-			s.handlePRLabeled(ctx, pr, label)
-		}
-
-		return
-	}
-
-	prHasChanges := false
-
-	for _, label := range pr.Labels {
-		hadLabel := false
-
-		for _, oldLabel := range oldPr.Labels {
-			if label == oldLabel {
-				hadLabel = true
-				break
+			if err := s.handlePRLabeled(ctx, pr, label); err != nil {
+				mlog.Error("could not handle labeled event", mlog.Err(err))
 			}
 		}
 
-		if !hadLabel {
-			s.handlePRLabeled(ctx, pr, label)
-			prHasChanges = true
-		}
+		return false, nil
 	}
 
-	for _, oldLabel := range oldPr.Labels {
-		hasLabel := false
+	compare := func(src, dst []string, f func(context.Context, *model.PullRequest, string) error) bool {
+		for _, label := range src {
+			hadLabel := false
 
-		for _, label := range pr.Labels {
-			if label == oldLabel {
-				hasLabel = true
-				break
+			for _, oldLabel := range dst {
+				if label == oldLabel {
+					hadLabel = true
+					break
+				}
+			}
+
+			if !hadLabel {
+				if err := f(ctx, pr, label); err != nil {
+					mlog.Error("Could not handle PR labeled event", mlog.Err(err))
+				}
+				return true
 			}
 		}
-
-		if !hasLabel {
-			s.handlePRUnlabeled(ctx, pr, oldLabel)
-			prHasChanges = true
-		}
+		return false
 	}
+
+	prHasChanges := compare(pr.Labels, oldPr.Labels, s.handlePRLabeled) || compare(oldPr.Labels, pr.Labels, s.handlePRUnlabeled)
 
 	if oldPr.Ref != pr.Ref {
 		prHasChanges = true
@@ -246,15 +275,16 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 	}
 
 	if prHasChanges {
-		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
 		if _, err := s.Store.PullRequest().Save(pr); err != nil {
-			mlog.Error(err.Error())
-			return
+			return true, fmt.Errorf("could not save PR: %w", err)
 		}
+		return true, nil
 	}
+
+	return prHasChanges, nil
 }
 
-func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, addedLabel string) {
+func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, addedLabel string) error {
 	mlog.Info("New PR label detected", mlog.Int("pr", pr.Number), mlog.String("label", addedLabel))
 
 	// Must be sure the comment is created before we let another request test
@@ -263,8 +293,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 
 	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
-		mlog.Error("Unable to list comments for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-		return
+		return fmt.Errorf("unable to list comments for PR: %w", err)
 	}
 
 	// Old comment created by Mattermod user for test server deletion will be deleted here
@@ -295,16 +324,17 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 			}
 		}
 	}
+
+	return nil
 }
 
-func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, removedLabel string) {
+func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, removedLabel string) error {
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
 	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
-		mlog.Error("failed fetching comments", mlog.Err(err))
-		return
+		return fmt.Errorf("failed fetching comments: %w", err)
 	}
 
 	if s.isSpinMintLabel(removedLabel) &&
@@ -316,13 +346,12 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 
 		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
 		if err != nil {
-			mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err.Error()))
-			return
+			return fmt.Errorf("unable to get the test server information: %w", err)
 		}
 
 		if spinmint == nil {
 			mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
-			return
+			return nil
 		}
 
 		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
@@ -331,6 +360,8 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
 		go s.destroySpinmint(pr, spinmint.InstanceID)
 	}
+
+	return nil
 }
 
 func (s *Server) removeOldComments(ctx context.Context, comments []*github.IssueComment, pr *model.PullRequest) {
