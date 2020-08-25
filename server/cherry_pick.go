@@ -63,8 +63,8 @@ func (s *Server) finishCherryPickRequests() {
 		defer cancel()
 		// While consuming requests here, listenCherryPickRequests routine will continue
 		// to listen as well. We're just trying to cancel requests as much as we can.
+		msg := "Cherry picking is canceled due to server shutdown."
 		for job := range s.cherryPickRequests {
-			msg := "Cherry picking is canceled due to server shutdown."
 			s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg)
 		}
 	case <-s.cherryPickStoppedChan:
@@ -93,6 +93,10 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	select {
 	case <-s.cherryPickStopChan:
 		return errors.New("server is closing")
+	default:
+	}
+
+	select {
 	case s.cherryPickRequests <- &cherryPickRequest{
 		pr:      pr,
 		version: strings.TrimSpace(args[1]),
@@ -141,10 +145,14 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			milestoneNumber := prMilestone.GetNumber()
 			milestone := getMilestone(prMilestone.GetTitle())
 
-			var msg string
 			select {
 			case <-s.cherryPickStopChan:
 				return
+			default:
+			}
+
+			var msg string
+			select {
 			case s.cherryPickRequests <- &cherryPickRequest{
 				pr:        pr,
 				version:   strings.TrimSpace(milestone),
