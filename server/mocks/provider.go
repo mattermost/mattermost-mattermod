@@ -68,6 +68,18 @@ func (mr *MockMetricsProviderMockRecorder) IncreaseGithubCacheMisses(arg0, arg1 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncreaseGithubCacheMisses", reflect.TypeOf((*MockMetricsProvider)(nil).IncreaseGithubCacheMisses), arg0, arg1)
 }
 
+// IncreaseRateLimiterErrors mocks base method
+func (m *MockMetricsProvider) IncreaseRateLimiterErrors() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "IncreaseRateLimiterErrors")
+}
+
+// IncreaseRateLimiterErrors indicates an expected call of IncreaseRateLimiterErrors
+func (mr *MockMetricsProviderMockRecorder) IncreaseRateLimiterErrors() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncreaseRateLimiterErrors", reflect.TypeOf((*MockMetricsProvider)(nil).IncreaseRateLimiterErrors))
+}
+
 // IncreaseWebhookErrors mocks base method
 func (m *MockMetricsProvider) IncreaseWebhookErrors(arg0 string) {
 	m.ctrl.T.Helper()

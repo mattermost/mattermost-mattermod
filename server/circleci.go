@@ -36,33 +36,30 @@ type CircleCIService interface {
 	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
 }
 
-func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequest) {
-	mlog.Info("Checking if need trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequest) error {
+	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
 		// It is from upstream mattermost repo don't need to trigger the circleci because org members
 		// have permissions
-		mlog.Info("Don't need to trigger circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-		return
+		return nil
 	}
 
-	// Checking if the repo have circleci setup
+	// Checking if the repo have CircleCI setup
 	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
-		mlog.Error("listing the circleci project", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return
+		return fmt.Errorf("could not list the CircleCI builds for project: %w", err)
 	}
+
 	// If builds are 0 means no build ran for master and most probably this is not setup, so skipping.
 	if len(builds) == 0 {
-		mlog.Debug("looks like there is not circleci setup or master never ran. Skipping")
-		return
+		return nil
 	}
 
 	// List the files that was modified or added in the PullRequest
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	prFiles, err := s.getFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
-		mlog.Error("Error listing the files from a PR", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return
+		return fmt.Errorf("could not list the files for the #%d: %w", pr.Number, err)
 	}
 
 	err = s.validateBlockPaths(pr.RepoName, prFiles)
@@ -70,7 +67,7 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 	if err != nil && errors.As(err, &blockError) {
 		mlog.Info("Files found in the block list", mlog.Err(err))
 		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles())
-		return
+		return err
 	}
 
 	opts := map[string]interface{}{
@@ -80,10 +77,10 @@ func (s *Server) triggerCircleCiIfNeeded(ctx context.Context, pr *model.PullRequ
 
 	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
-		mlog.Error("Error triggering circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("Fullname", pr.FullName), mlog.Err(err))
-		return
+		return fmt.Errorf("could not trigger circleci: %w", err)
 	}
-	mlog.Info("Triggered circleci", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+
+	return nil
 }
 
 func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) error {
