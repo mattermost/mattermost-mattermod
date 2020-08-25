@@ -30,17 +30,20 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config           *Config
-	Store            store.Store
-	GithubClient     *GithubClient
-	CircleCiClient   CircleCIService
-	CircleCiClientV2 CircleCIService
-	OrgMembers       []string
-	Builds           buildsInterface
-	commentLock      sync.Mutex
-	StartTime        time.Time
-	awsSession       *session.Session
-	Metrics          MetricsProvider
+	Config                *Config
+	Store                 store.Store
+	GithubClient          *GithubClient
+	CircleCiClient        CircleCIService
+	CircleCiClientV2      CircleCIService
+	OrgMembers            []string
+	Builds                buildsInterface
+	commentLock           sync.Mutex
+	StartTime             time.Time
+	awsSession            *session.Session
+	Metrics               MetricsProvider
+	cherryPickRequests    chan *cherryPickRequest
+	cherryPickStopChan    chan struct{}
+	cherryPickStoppedChan chan struct{}
 
 	server *http.Server
 }
@@ -64,10 +67,13 @@ const (
 
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
-		Config:    config,
-		Store:     store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime: time.Now(),
-		Metrics:   metrics,
+		Config:                config,
+		Store:                 store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime:             time.Now(),
+		Metrics:               metrics,
+		cherryPickRequests:    make(chan *cherryPickRequest, 20),
+		cherryPickStopChan:    make(chan struct{}),
+		cherryPickStoppedChan: make(chan struct{}),
 	}
 
 	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.Metrics)
@@ -129,10 +135,14 @@ func (s *Server) Start() {
 		mlog.Error("Server exited with error", mlog.Err(err))
 		os.Exit(1)
 	}()
+
+	go s.listenCherryPickRequests()
 }
 
 // Stop stops a server
 func (s *Server) Stop() error {
+	s.finishCherryPickRequests()
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	return s.server.Shutdown(ctx)
