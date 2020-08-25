@@ -18,7 +18,7 @@ const (
 	// In seconds
 	defaultRequestTimeout       = 60
 	defaultEETaskTimeout        = 300
-	defaultCronTaskTimeout      = 300
+	defaultCronTaskTimeout      = 600
 	defaultBuildMobileTimeout   = 7200
 	defaultBuildSpinmintTimeout = 2700
 )
@@ -133,7 +133,8 @@ type Config struct {
 	DockerUsername    string
 	DockerPassword    string
 
-	BlacklistPaths []string
+	BlockListPathsGlobal  []string
+	BlockListPathsPerRepo map[string][]string // BlockListPathsPerRepo is a per repository list of blocked files
 
 	AWSCredentials struct {
 		ID     string
@@ -170,6 +171,9 @@ type Config struct {
 	StaleComment      string
 
 	MetricsServerPort string
+
+	RepoFolder    string // folder containing local checkouts of repositories for cherry-picking
+	ScriptsFolder string // folder containing the cherry-pick.sh script
 }
 
 func findConfigFile(fileName string) string {

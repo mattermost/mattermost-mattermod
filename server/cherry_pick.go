@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}()
 
 	if !s.IsOrgMember(commenter) {
-		msg = MsgCommenterPermission
+		msg = msgCommenterPermission
 		return nil
 	}
 
@@ -56,14 +57,14 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-	if err != nil {
-		mlog.Error("Error getting the PR info", mlog.Err(err))
+	if !pr.Merged.Valid || !pr.Merged.Bool {
+		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
-	if !prCherryCandidate.GetMerged() {
-		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", prCherryCandidate.GetNumber()), mlog.String("Repo", pr.RepoName))
+	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+	if err != nil {
+		mlog.Error("Error getting the PR info", mlog.Err(err))
 		return
 	}
 
@@ -106,9 +107,20 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	if pr.MergeCommitSHA == "" {
 		return "", errors.Errorf("can't get merge commit SHA for PR: %d", pr.Number)
 	}
+
+	if s.Config.RepoFolder == "" {
+		return "", errors.Errorf("path to folder containing local checkout of repositories is not set in the config")
+	}
+	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
+
+	if s.Config.ScriptsFolder == "" {
+		return "", errors.Errorf("path to folder containing the cherry-pick.sh script is not set in the config")
+	}
+	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
+
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-	repoFolder := fmt.Sprintf("/app/repos/%s", pr.RepoName)
-	cmd := exec.Command("/app/scripts/cherry-pick.sh", releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
+
+	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),
@@ -164,7 +176,7 @@ func (s *Server) getAssignee(ctx context.Context, newPRNumber int, pr *model.Pul
 			return ""
 		}
 
-		randomReviewer := rand.Intn(len(reviewersFromPR) - 1)
+		randomReviewer := rand.Intn(len(reviewersFromPR) - 1) // nolint
 		assignee = reviewersFromPR[randomReviewer].User.GetLogin()
 	}
 

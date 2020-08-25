@@ -1,19 +1,251 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-mattermod/model"
-	srvmock "github.com/mattermost/mattermost-mattermod/server/mocks"
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 )
+
+func TestPullRequestEventHandler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	s := &Server{
+		GithubClient: &GithubClient{},
+		Config: &Config{
+			Repositories: []*Repository{
+				{
+					Name:               "mattermod",
+					Owner:              "mattertest",
+					BuildStatusContext: "something",
+				},
+			},
+		},
+	}
+	rs := mocks.NewMockRepositoriesService(ctrl)
+	s.GithubClient.Repositories = rs
+
+	cs := mocks.NewMockChecksService(ctrl)
+	s.GithubClient.Checks = cs
+
+	is := mocks.NewMockIssuesService(ctrl)
+	s.GithubClient.Issues = is
+
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
+	prStoreMock := stmock.NewMockPullRequestStore(ctrl)
+	ss := stmock.NewMockStore(ctrl)
+	ss.EXPECT().
+		PullRequest().
+		Return(prStoreMock).
+		AnyTimes()
+
+	s.Store = ss
+
+	event := pullRequestEvent{
+		Action:   "",
+		PRNumber: 1,
+		PullRequest: &github.PullRequest{
+			Number: github.Int(1),
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{
+						Login: github.String("mattertest"),
+					},
+					Name: github.String("mattermod"),
+				},
+			},
+			Head: &github.PullRequestBranch{
+				SHA: github.String("sha"),
+			},
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(s.pullRequestEventHandler))
+	defer ts.Close()
+
+	t.Run("Should fail with no body", func(t *testing.T) {
+		req, err := http.NewRequest("POST", ts.URL, nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	})
+
+	t.Run("Should fail on not finding the PR from GitHub", func(t *testing.T) {
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(nil, nil, errors.New("some-error"))
+
+		b, err := json.Marshal(event)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+
+	t.Run("Should be able to get PR from GitHub (new PR)", func(t *testing.T) {
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				Statuses: []*github.RepoStatus{
+					{
+						Context: github.String("something"),
+					},
+				},
+			}, nil, nil)
+
+		cs.EXPECT().
+			ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.ListCheckRunsResults{}, nil, nil)
+
+		is.EXPECT().
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			Times(1).
+			Return([]*github.Label{}, nil, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(1).Return(nil, nil)
+
+		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
+			Times(1).Return(nil, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(1).Return(nil, nil)
+
+		b, err := json.Marshal(event)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("Error when checking PR for changes", func(t *testing.T) {
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				Statuses: []*github.RepoStatus{
+					{
+						Context: github.String("something"),
+					},
+				},
+			}, nil, nil)
+
+		cs.EXPECT().
+			ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.ListCheckRunsResults{}, nil, nil)
+
+		is.EXPECT().
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			Times(1).
+			Return([]*github.Label{}, nil, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(1).Return(nil, nil)
+
+		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
+			Times(1).Return(nil, errors.New("some-error"))
+
+		b, err := json.Marshal(event)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("PR has changes", func(t *testing.T) {
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				Statuses: []*github.RepoStatus{
+					{
+						Context: github.String("something"),
+					},
+				},
+			}, nil, nil)
+
+		cs.EXPECT().
+			ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.ListCheckRunsResults{}, nil, nil)
+
+		is.EXPECT().
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			Times(1).
+			Return([]*github.Label{}, nil, nil)
+
+		is.EXPECT().
+			ListComments(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, gomock.AssignableToTypeOf(&github.IssueListCommentsOptions{})).
+			Times(1).
+			Return([]*github.IssueComment{}, &github.Response{
+				NextPage: 0,
+				Response: &http.Response{
+					StatusCode: http.StatusOK,
+				},
+			}, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(1).Return(nil, nil)
+
+		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
+			Times(1).Return(&model.PullRequest{
+			RepoOwner:           "mattertest",
+			RepoName:            "mattermod",
+			CreatedAt:           time.Time{},
+			Labels:              []string{"old-label"},
+			Sha:                 "sha",
+			MaintainerCanModify: sql.NullBool{Valid: true},
+			Merged:              sql.NullBool{Valid: true},
+		}, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(1).Return(nil, nil)
+
+		b, err := json.Marshal(event)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+}
 
 func TestCleanUpLabels(t *testing.T) {
 	pr := &model.PullRequest{
@@ -29,7 +261,7 @@ func TestCleanUpLabels(t *testing.T) {
 	}{
 		"no label has to be removed": {
 			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
-				issueMocks := srvmock.NewMockIssuesService(ctrl)
+				issueMocks := mocks.NewMockIssuesService(ctrl)
 				client := &GithubClient{
 					Issues: issueMocks,
 				}
@@ -49,7 +281,7 @@ func TestCleanUpLabels(t *testing.T) {
 		},
 		"all labels have to be removed": {
 			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
-				issueMocks := srvmock.NewMockIssuesService(ctrl)
+				issueMocks := mocks.NewMockIssuesService(ctrl)
 				client := &GithubClient{
 					Issues: issueMocks,
 				}
@@ -72,7 +304,7 @@ func TestCleanUpLabels(t *testing.T) {
 		},
 		"some labels have to be removed": {
 			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
-				issueMocks := srvmock.NewMockIssuesService(ctrl)
+				issueMocks := mocks.NewMockIssuesService(ctrl)
 				client := &GithubClient{
 					Issues: issueMocks,
 				}
@@ -141,7 +373,7 @@ func TestCheckPRActivity(t *testing.T) {
 		PullRequest().
 		Return(prStoreMock).
 		AnyTimes()
-	metricsMock := srvmock.NewMockMetricsProvider(ctrl)
+	metricsMock := mocks.NewMockMetricsProvider(ctrl)
 	metricsMock.EXPECT().ObserveCronTaskDuration(gomock.Any(), gomock.Any()).AnyTimes()
 	metricsMock.EXPECT().IncreaseCronTaskErrors(gomock.Any()).AnyTimes()
 	cfg := &Config{
@@ -149,8 +381,8 @@ func TestCheckPRActivity(t *testing.T) {
 	}
 
 	t.Run("should check for activity but not mark PRs as stale", func(t *testing.T) {
-		prServiceMock := srvmock.NewMockPullRequestsService(ctrl)
-		issuesServiceMock := srvmock.NewMockIssuesService(ctrl)
+		prServiceMock := mocks.NewMockPullRequestsService(ctrl)
+		issuesServiceMock := mocks.NewMockIssuesService(ctrl)
 		client := &GithubClient{
 			PullRequests: prServiceMock,
 			Issues:       issuesServiceMock,
@@ -178,8 +410,8 @@ func TestCheckPRActivity(t *testing.T) {
 	})
 
 	t.Run("should continue with the other PRs if one of them fails", func(t *testing.T) {
-		prServiceMock := srvmock.NewMockPullRequestsService(ctrl)
-		issuesServiceMock := srvmock.NewMockIssuesService(ctrl)
+		prServiceMock := mocks.NewMockPullRequestsService(ctrl)
+		issuesServiceMock := mocks.NewMockIssuesService(ctrl)
 		client := &GithubClient{
 			PullRequests: prServiceMock,
 			Issues:       issuesServiceMock,
@@ -207,8 +439,8 @@ func TestCheckPRActivity(t *testing.T) {
 	})
 
 	t.Run("should set the stale label ever if one PR fails", func(t *testing.T) {
-		prServiceMock := srvmock.NewMockPullRequestsService(ctrl)
-		issuesServiceMock := srvmock.NewMockIssuesService(ctrl)
+		prServiceMock := mocks.NewMockPullRequestsService(ctrl)
+		issuesServiceMock := mocks.NewMockIssuesService(ctrl)
 		client := &GithubClient{
 			PullRequests: prServiceMock,
 			Issues:       issuesServiceMock,
@@ -254,8 +486,8 @@ func TestCheckPRActivity(t *testing.T) {
 	})
 
 	t.Run("should not mark as stale if the exempt stale label is set", func(t *testing.T) {
-		prServiceMock := srvmock.NewMockPullRequestsService(ctrl)
-		issuesServiceMock := srvmock.NewMockIssuesService(ctrl)
+		prServiceMock := mocks.NewMockPullRequestsService(ctrl)
+		issuesServiceMock := mocks.NewMockIssuesService(ctrl)
 		client := &GithubClient{
 			PullRequests: prServiceMock,
 			Issues:       issuesServiceMock,

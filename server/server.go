@@ -4,7 +4,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,16 +30,17 @@ import (
 
 // Server is the mattermod server.
 type Server struct {
-	Config         *Config
-	Store          store.Store
-	GithubClient   *GithubClient
-	CircleCIClient *circleci.Client
-	OrgMembers     []string
-	Builds         buildsInterface
-	commentLock    sync.Mutex
-	StartTime      time.Time
-	awsSession     *session.Session
-	Metrics        MetricsProvider
+	Config           *Config
+	Store            store.Store
+	GithubClient     *GithubClient
+	CircleCiClient   CircleCIService
+	CircleCiClientV2 CircleCIService
+	OrgMembers       []string
+	Builds           buildsInterface
+	commentLock      sync.Mutex
+	StartTime        time.Time
+	awsSession       *session.Session
+	Metrics          MetricsProvider
 
 	server *http.Server
 }
@@ -75,7 +75,14 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
-	s.CircleCIClient = &circleci.Client{Token: s.Config.CircleCIToken}
+	s.CircleCiClient, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion11)
+	if err != nil {
+		return nil, err
+	}
+	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
+	if err != nil {
+		return nil, err
+	}
 	awsSession, err := session.NewSession()
 	if err != nil {
 		return nil, err
@@ -92,9 +99,6 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", s.ping).Methods(http.MethodGet)
-
-	webhooks := r.PathPrefix("/webhooks").Subrouter()
-	webhooks.HandleFunc("/issue", s.issueEventHandler).Methods(http.MethodPost)
 
 	r.HandleFunc("/healthz", s.ping).Methods(http.MethodGet)
 	r.HandleFunc("/pr_event", s.githubEvent).Methods(http.MethodPost)
@@ -200,50 +204,72 @@ func (s *Server) Tick() {
 	}()
 
 	for _, repository := range s.Config.Repositories {
-		ghPullRequests, _, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, &github.PullRequestListOptions{
-			State: "open",
-		})
-		if err != nil {
-			mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.Metrics.IncreaseCronTaskErrors("tick")
-			continue
+		prListOpts := &github.PullRequestListOptions{
+			State:       "open",
+			ListOptions: github.ListOptions{PerPage: 50},
 		}
-
-		for _, ghPullRequest := range ghPullRequests {
-			pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
-			if errPR != nil {
-				mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
-				s.Metrics.IncreaseCronTaskErrors("tick")
-				continue
-			}
-
-			s.checkPullRequestForChanges(ctx, pullRequest)
-		}
-
-		issues, _, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, &github.IssueListByRepoOptions{
-			State: "open",
-		})
-		if err != nil {
-			mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
-			s.Metrics.IncreaseCronTaskErrors("tick")
-			continue
-		}
-
-		for _, ghIssue := range issues {
-			if ghIssue.PullRequestLinks != nil {
-				// This is a PR so we've already checked it
-				continue
-			}
-
-			issue, err := s.GetIssueFromGithub(ctx, ghIssue)
+		for {
+			ghPullRequests, resp, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, prListOpts)
 			if err != nil {
-				mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
+				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
 				continue
 			}
+			if resp.NextPage == 0 {
+				break
+			}
+			prListOpts.Page = resp.NextPage
 
-			if err := s.checkIssueForChanges(ctx, issue); err != nil {
-				mlog.Error("could not check issue for changes", mlog.Err(err))
+			for _, ghPullRequest := range ghPullRequests {
+				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
+				if errPR != nil {
+					mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
+					s.Metrics.IncreaseCronTaskErrors("tick")
+					continue
+				}
+
+				changed, err2 := s.checkPullRequestForChanges(ctx, pullRequest)
+				if err2 != nil {
+					mlog.Error("Could not check changes for PR", mlog.Err(err2))
+				} else if changed {
+					mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
+				}
+			}
+		}
+
+		issueListOpts := &github.IssueListByRepoOptions{
+			State:       "open",
+			ListOptions: github.ListOptions{PerPage: 50},
+		}
+
+		for {
+			issues, resp, err := s.GithubClient.Issues.ListByRepo(ctx, repository.Owner, repository.Name, issueListOpts)
+			if err != nil {
+				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+				s.Metrics.IncreaseCronTaskErrors("tick")
+				continue
+			}
+			if resp.NextPage == 0 {
+				break
+			}
+			issueListOpts.Page = resp.NextPage
+
+			for _, ghIssue := range issues {
+				if ghIssue.PullRequestLinks != nil {
+					// This is a PR so we've already checked it
+					continue
+				}
+
+				issue, err := s.GetIssueFromGithub(ctx, ghIssue)
+				if err != nil {
+					mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
+					s.Metrics.IncreaseCronTaskErrors("tick")
+					continue
+				}
+
+				if err := s.checkIssueForChanges(ctx, issue); err != nil {
+					mlog.Error("could not check issue for changes", mlog.Err(err))
+				}
 			}
 		}
 	}
@@ -260,89 +286,22 @@ func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
-	defer cancel()
-
-	buf, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		mlog.Error("Failed to read body", mlog.Err(err))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if r.Header.Get("X-GitHub-Event") == "ping" {
-		if pingEvent := PingEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf))); pingEvent != nil {
-			mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+	switch event := r.Header.Get("X-GitHub-Event"); event {
+	case "ping":
+		pingEvent := PingEventFromJSON(r.Body)
+		if pingEvent == nil {
+			http.Error(w, "could not parse ping event", http.StatusBadRequest)
 			return
 		}
-	}
-
-	// TODO: remove this after migration complete; MM-27283
-	event := PullRequestEventFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if event != nil && event.PRNumber != 0 {
-		mlog.Info("pr event", mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
-		s.handlePullRequestEvent(ctx, event)
-		return
-	}
-
-	eventData := EventDataFromJSON(ioutil.NopCloser(bytes.NewBuffer(buf)))
-	if eventData == nil || eventData.Action != "created" {
-		if err = s.handleIssueEvent(ctx, event); err != nil {
-			mlog.Error(err.Error())
-		}
-		return
-	}
-
-	// We ignore comments from issues.
-	if !eventData.Issue.IsPullRequest() {
-		return
-	}
-
-	pr, err := s.getPRFromEvent(ctx, *eventData)
-	if err != nil {
-		mlog.Error("Error getting PR from Comment", mlog.Err(err))
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	var commenter string
-	if eventData.Comment != nil && eventData.Comment.User != nil {
-		commenter = eventData.Comment.User.GetLogin()
-	}
-
-	if eventData.HasCheckCLA() {
-		s.Metrics.IncreaseWebhookRequest("check_cla")
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("check_cla")
-			mlog.Error("Error checking CLA", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if eventData.HasCherryPick() {
-		s.Metrics.IncreaseWebhookRequest("cherry_pick")
-		if err := s.handleCherryPick(ctx, commenter, *eventData.Comment.Body, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("cherry_pick")
-			mlog.Error("Error cherry picking", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if eventData.HasAutoAssign() {
-		s.Metrics.IncreaseWebhookRequest("auto_assign")
-		if err := s.handleAutoAssign(ctx, eventData.Comment.GetHTMLURL(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("auto_assign")
-			mlog.Error("Error auto assigning", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
-	if eventData.HasUpdateBranch() {
-		s.Metrics.IncreaseWebhookRequest("update_branch")
-		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("update_branch")
-			mlog.Error("Error updating branch", mlog.Err(err))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+	case "issues":
+		s.issueEventHandler(w, r)
+	case "issue_comment":
+		s.issueCommentEventHandler(w, r)
+	case "pull_request":
+		s.pullRequestEventHandler(w, r)
+	default:
+		http.Error(w, "unhandled event type", http.StatusNotImplemented)
 	}
 }
 
@@ -393,4 +352,14 @@ func closeBody(r *http.Response) {
 		_, _ = io.Copy(ioutil.Discard, r.Body)
 		_ = r.Body.Close()
 	}
+}
+
+func PingEventFromJSON(data io.Reader) *github.PingEvent {
+	decoder := json.NewDecoder(data)
+	var event github.PingEvent
+	if err := decoder.Decode(&event); err != nil {
+		return nil
+	}
+
+	return &event
 }

@@ -82,7 +82,8 @@
     "CLAGithubStatusContext": "",
     "SignedCLAURL": "",
     "NeedsToSignCLAMessage": "",
-    "BlacklistPaths": [],
+    "BlockListPathsGlobal": [],
+    "BlockListPathsPerRepo": {},
     "PrLabels": [
     ],
     "IssueLabels": [
@@ -131,5 +132,8 @@
         "FileJson": true,
         "FileFormat": "",
         "FileLocation": ""
-    }
+    },
+
+    "RepoFolder": "",
+    "ScriptsFolder": ""
 }

@@ -5,20 +5,36 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/go-circleci"
 )
+
+// CircleCIService exposes an interface of CircleCI client.
+// Useful to mock in tests.
+type CircleCIService interface {
+	// ListRecentBuildsForProject fetches the list of recent builds for the given repository
+	// The status and branch parameters are used to further filter results if non-empty
+	// If limit is -1, fetches all builds.
+	ListRecentBuildsForProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, status string, limit, offset int) ([]*circleci.Build, error)
+	// BuildByProjectWithContext triggers a build by project.
+	BuildByProjectWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, opts map[string]interface{}) error
+	// ListBuildArtifactsWithContext fetches the build artifacts for the given build.
+	ListBuildArtifactsWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo string, buildNum int) ([]*circleci.Artifact, error)
+	// TriggerPipeline triggers a new pipeline for the given project for the given branch or tag.
+	TriggerPipelineWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, tag string, params map[string]interface{}) (*circleci.Pipeline, error)
+	// GetPipelineWorkflowWithContext returns a list of paginated workflows by pipeline ID
+	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
+}
 
 func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequest) error {
 	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
@@ -30,7 +46,7 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	// Checking if the repo have CircleCI setup
-	builds, err := s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
+	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
 	if err != nil {
 		return fmt.Errorf("could not list the CircleCI builds for project: %w", err)
 	}
@@ -41,19 +57,17 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	// List the files that was modified or added in the PullRequest
-	prFiles, _, err := s.GithubClient.PullRequests.ListFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	prFiles, err := s.getFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		return fmt.Errorf("could not list the files for the #%d: %w", pr.Number, err)
 	}
 
-	for _, prFile := range prFiles {
-		for _, blockListPath := range s.Config.BlacklistPaths {
-			if prFile.GetFilename() == blockListPath {
-				msg := fmt.Sprintf("The file `%s` is in the blocklist and should not be modified from external contributors, please if you are part of the Mattermost Org submit this PR in the upstream.\n /cc @mattermost/core-security @mattermost/core-build-engineers", prFile.GetFilename())
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
-				return errors.New("file is on the blocklist and will not retrigger CircleCI to give the contexts")
-			}
-		}
+	err = s.validateBlockPaths(pr.RepoName, prFiles)
+	var blockError *BlockPathValidationError
+	if err != nil && errors.As(err, &blockError) {
+		mlog.Info("Files found in the block list", mlog.Err(err))
+		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles())
+		return err
 	}
 
 	opts := map[string]interface{}{
@@ -61,7 +75,7 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = s.CircleCIClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
+	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		return fmt.Errorf("could not trigger circleci: %w", err)
 	}
@@ -93,29 +107,20 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 	return nil
 }
 
-type PipelineTriggeredResponse struct {
-	Number    int       `json:"number"`
-	State     string    `json:"state"`
-	ID        string    `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*PipelineTriggeredResponse, error) {
-	body := strings.NewReader(
-		`branch=` + info.EEBranch +
-			`&parameters[tbs_sha]=` + pr.Sha +
-			`&parameters[tbs_pr]=` + strconv.Itoa(pr.Number) +
-			`&parameters[tbs_server_owner]=` + info.ServerOwner +
-			`&parameters[tbs_server_branch]=` + info.ServerBranch +
-			`&parameters[tbs_webapp_owner]=` + info.WebappOwner +
-			`&parameters[tbs_webapp_branch]=` + info.WebappBranch)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://circleci.com/api/v2/project/gh/"+s.Config.Org+"/"+s.Config.EnterpriseReponame+"/pipeline", body)
+func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*circleci.Pipeline, error) {
+	params := map[string]interface{}{
+		"tbs_sha":           pr.Sha,
+		"tbs_pr":            strconv.Itoa(pr.Number),
+		"tbs_server_owner":  info.ServerOwner,
+		"tbs_server_branch": info.ServerBranch,
+		"tbs_webapp_owner":  info.WebappOwner,
+		"tbs_webapp_branch": info.WebappBranch,
+	}
+	pip, err := s.CircleCiClientV2.TriggerPipelineWithContext(ctx, circleci.VcsTypeGithub, s.Config.Org, s.Config.EnterpriseReponame, info.EEBranch, "", params)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
+
 	mlog.Debug("EE triggered",
 		mlog.Int("pr", pr.Number),
 		mlog.String("sha", pr.Sha),
@@ -125,33 +130,67 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 		mlog.String("WebappOwner", info.WebappOwner),
 		mlog.String("WebappBranch", info.WebappBranch),
 	)
-	if err != nil {
-		return nil, err
-	}
-	r := PipelineTriggeredResponse{}
-	defer resp.Body.Close()
-	err = json.NewDecoder(resp.Body).Decode(&r)
-	if err != nil {
-		return nil, err
-	}
 
-	return &r, err
+	return pip, nil
 }
 
-type PipelineItem struct {
-	StoppedAt   time.Time `json:"stopped_at"`
-	Number      int       `json:"pipeline_number"`
-	Status      string    `json:"status"`
-	WorkflowID  string    `json:"id"`
-	Name        string    `json:"name"`
-	ProjectSlug string    `json:"project_slug"`
-	CreatedAt   time.Time `json:"created_at"`
-	ID          string    `json:"pipeline_id"`
+type BlockPathValidationError struct {
+	files []string
 }
 
-type PipelineWorkflowResponse struct {
-	Pipelines     []PipelineItem `json:"items"`
-	NextPageToken string         `json:"next_page_token"`
+// Error implements the error interface.
+func (e *BlockPathValidationError) Error() string {
+	return "files in the Block List " + strings.Join(e.files, ",")
+}
+
+// BlockListFiles return an array of block files
+func (e *BlockPathValidationError) BlockListFiles() []string {
+	return e.files
+}
+
+// ReportBlockFiles return a message based on how many files are in the block list
+// to be send out
+func (e *BlockPathValidationError) ReportBlockFiles() string {
+	var msg string
+	if len(e.files) > 1 {
+		msg = fmt.Sprintf("The files `%s` are in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", strings.Join(e.files, ", "))
+	} else {
+		msg = fmt.Sprintf("The file `%s` is in the blocklist for external contributors. Hence, these changes are not tested by the CI pipeline active until the build is re-triggered by a core committer or the PR is merged. Please be careful when reviewing it.\n/cc @mattermost/core-security @mattermost/core-build-engineers", e.files[0])
+	}
+	return msg
+}
+
+func newBlockPathValidationError(files []string) *BlockPathValidationError {
+	return &BlockPathValidationError{
+		files: files,
+	}
+}
+
+func (s *Server) validateBlockPaths(repo string, prFiles []*github.CommitFile) error {
+	blockList := s.Config.BlockListPathsGlobal
+	repoBlockList, ok := s.Config.BlockListPathsPerRepo[repo]
+	if ok {
+		blockList = append(blockList, repoBlockList...)
+	}
+
+	var matches []string
+	for _, prFile := range prFiles {
+		for _, blockListPath := range blockList {
+			if matched, err := filepath.Match(blockListPath, prFile.GetFilename()); err != nil {
+				mlog.Error("failed to match the file", mlog.String("blockPathPattern", blockListPath), mlog.String("filename", prFile.GetFilename()), mlog.Err(err))
+
+				continue
+			} else if matched {
+				matches = append(matches, prFile.GetFilename())
+			}
+		}
+	}
+
+	if len(matches) > 0 {
+		return newBlockPathValidationError(matches)
+	}
+
+	return nil
 }
 
 func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName string) (string, error) {
@@ -162,29 +201,16 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 		case <-ctx.Done():
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://circleci.com/api/v2/pipeline/"+id+"/workflow", nil)
-			if err != nil {
-				return "", err
-			}
-			req.SetBasicAuth(os.ExpandEnv(s.Config.CircleCIToken), "")
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				continue
-			}
-			r := PipelineWorkflowResponse{}
-			err = json.NewDecoder(resp.Body).Decode(&r)
+			wfList, err := s.CircleCiClientV2.GetPipelineWorkflowWithContext(ctx, id, "")
 			if err != nil {
 				return "", err
 			}
 
 			workflowID := ""
-			for _, pip := range r.Pipelines {
-				if pip.Name == workflowName {
-					workflowID = pip.WorkflowID
+			for _, wf := range wfList.Items {
+				if wf.Name == workflowName {
+					workflowID = wf.ID
+					break
 				}
 			}
 
@@ -208,13 +234,13 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
 			var builds []*circleci.Build
 			var err error
-			builds, err = s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
+			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
 			if err != nil {
 				return nil, err
 			}
 
 			if len(builds) == 0 {
-				builds, err = s.CircleCIClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
+				builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
 				if err != nil {
 					return nil, err
 				}
@@ -239,7 +265,7 @@ func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, or
 			return nil, errors.New("timed out waiting for links to artifacts")
 		case <-ticker.C:
 			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
-			artifacts, err := s.CircleCIClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
+			artifacts, err := s.CircleCiClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
 			if err != nil {
 				return nil, err
 			}

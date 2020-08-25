@@ -48,3 +48,5 @@ deploy/base/config/*
 deploy/overlays/prod/config/
 deploy/overlays/prod/ssh/
 out/
+
+dist/
