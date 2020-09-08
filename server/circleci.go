@@ -66,7 +66,9 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	var blockError *BlockPathValidationError
 	if err != nil && errors.As(err, &blockError) {
 		mlog.Info("Files found in the block list", mlog.Err(err))
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles())
+		if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles()); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 		return err
 	}
 

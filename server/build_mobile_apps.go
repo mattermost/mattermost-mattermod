@@ -5,6 +5,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -23,40 +24,52 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 
 	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(ctx, pr, s.Config.Org)
 	if err != nil {
-		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-			"Failed to retrieve the status of the PR. Error:  \n```"+err.Error()+"```")
+		msg := fmt.Sprintf("Failed to retrieve the status of the PR. Error:  \n```%s```", err.Error())
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 		return
 	}
 
 	if isReadyToBeBuilt {
 		exists, err := s.checkIfRefExists(ctx, pr, s.Config.Org, ref)
 		if err != nil {
-			s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-				"Failed to check ref. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+			msg := fmt.Sprintf("Failed to check ref. @mattermost/core-build-engineers have been notified. Error \n```%s```", err.Error())
+			if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+				mlog.Warn("Error while commenting", mlog.Err(cErr))
+			}
 			return
 		}
 
 		if exists {
 			err = s.deleteRef(ctx, s.Config.Org, prRepoName, ref)
 			if err != nil {
-				s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-					"Failed to delete already existing build branch. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+				msg := fmt.Sprintf("Failed to delete already existing build branch. @mattermost/core-build-engineers have been notified. Error \n```%s```", err.Error())
+				if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+					mlog.Warn("Error while commenting", mlog.Err(cErr))
+				}
 				return
 			}
 		}
 
 		s.createRef(ctx, pr, ref)
-		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage)
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 		s.build(ctx, pr, s.Config.Org)
 
 		err = s.deleteRefWhereCombinedStateEqualsSuccess(ctx, s.Config.Org, prRepoName, ref)
 		if err != nil {
-			s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-				"Failed to delete ref. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+			msg := fmt.Sprintf("Failed to delete ref. @mattermost/core-build-engineers have been notified. Error \n```%s```", err.Error())
+			if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+				mlog.Warn("Error while commenting", mlog.Err(cErr))
+			}
 		}
 	} else {
-		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-			"Not triggering the mobile app build workflow, because PR checks are failing. ")
+		msg := "Not triggering the mobile app build workflow, because PR checks are failing. "
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 	}
 }
 
@@ -69,8 +82,10 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	builds, err := s.waitForJobs(ctx, pr, org, branch, expectedJobNames)
 	if err != nil {
 		mlog.Err(err)
-		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-			"Failed retrieving build links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+		msg := fmt.Sprintf("Failed retrieving build links. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 		return
 	}
 
@@ -78,30 +93,39 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	for _, build := range builds {
 		linksBuilds += build.BuildURL + "  \n"
 	}
-	s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, "Successfully building:  \n"+linksBuilds)
+	comment := fmt.Sprintf("Successfully building:  \n%s", linksBuilds)
+	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, comment); cErr != nil {
+		mlog.Warn("Error while commenting", mlog.Err(cErr))
+	}
 
 	var artifacts []*circleci.Artifact
 	for _, build := range builds {
 		expectedArtifacts := getExpectedArtifacts(s.Config.BuildMobileAppJobs, build.Workflows.JobName)
 		buildArtifacts, err := s.waitForArtifacts(ctx, pr, s.Config.Org, build.BuildNum, expectedArtifacts)
 		if err != nil {
-			s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-				"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
-			return
+			msg := fmt.Sprintf("Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
+			if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+				mlog.Warn("Error while commenting", mlog.Err(cErr))
+			}
 		}
 		artifacts = append(artifacts, buildArtifacts...)
 	}
 
 	if len(artifacts) < len(expectedJobNames) {
-		s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber,
-			"Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. ")
+		msg := "Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. "
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
+			mlog.Warn("Error while commenting", mlog.Err(cErr))
+		}
 	}
 
 	linksArtifacts := ""
 	for _, artifact := range artifacts {
 		linksArtifacts += artifact.URL + "  \n"
 	}
-	s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, "Artifact links:  \n"+linksArtifacts)
+	comment = fmt.Sprintf("Artifact links:  \n%s", linksArtifacts)
+	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, comment); cErr != nil {
+		mlog.Warn("Error while commenting", mlog.Err(cErr))
+	}
 }
 
 func getExpectedArtifacts(jobs []*BuildMobileAppJob, buildJobName string) int {
