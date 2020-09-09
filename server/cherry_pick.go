@@ -211,7 +211,6 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	cmd.Env = append(
 		os.Environ(),
 		os.Getenv("PATH"),
-		fmt.Sprintf("DRY_RUN=%t", false),
 		fmt.Sprintf("ORIGINAL_AUTHOR=%s", pr.Username),
 		fmt.Sprintf("GITHUB_USER=%s", s.Config.GithubUsername),
 		fmt.Sprintf("GITHUB_TOKEN=%s", s.Config.GithubAccessTokenCherryPick),
