@@ -185,8 +185,8 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	}
 	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
 
-	if _, err := os.Stat(repoFolder); os.IsNotExist(err) {
-		err := cloneRepo(s.Config.RepoFolder, s.Config.Org+"/"+pr.RepoName, s.Config.GithubUsername+"/"+pr.RepoName, pr.RepoName)
+	if _, err = os.Stat(repoFolder); os.IsNotExist(err) {
+		err = cloneRepo(s.Config.RepoFolder, s.Config.Org+"/"+pr.RepoName, s.Config.GithubUsername+"/"+pr.RepoName, pr.RepoName)
 		if err != nil {
 			return "", fmt.Errorf("error while cloning repo: %s, %v", s.Config.Org+"/"+pr.RepoName, err)
 		}
