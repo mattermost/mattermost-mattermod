@@ -185,6 +185,13 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	}
 	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
 
+	if _, err := os.Stat(repoFolder); os.IsNotExist(err) {
+		err := cloneRepo(s.Config.RepoFolder, s.Config.Org+"/"+pr.RepoName, s.Config.GithubUsername+"/"+pr.RepoName, pr.RepoName)
+		if err != nil {
+			return "", fmt.Errorf("error while cloning repo: %s, %v", s.Config.Org+"/"+pr.RepoName, err)
+		}
+	}
+
 	if s.Config.ScriptsFolder == "" {
 		return "", errors.Errorf("path to folder containing the cherry-pick.sh script is not set in the config")
 	}
@@ -201,7 +208,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 		fmt.Sprintf("GITHUB_USER=%s", s.Config.GithubUsername),
 		fmt.Sprintf("GITHUB_TOKEN=%s", s.Config.GithubAccessTokenCherryPick),
 	)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		mlog.Error("cmd.Run() failed",
 			mlog.Err(err),
@@ -209,7 +216,10 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 			mlog.String("repo", pr.RepoName),
 			mlog.Int("PR", pr.Number),
 		)
-		returnToMaster(repoFolder)
+		err2 := returnToMaster(repoFolder)
+		if err2 != nil {
+			return string(out), fmt.Errorf("failed to return to master: %w", err2)
+		}
 		return string(out), err
 	}
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
@@ -224,7 +234,10 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	s.updateCherryPickLabels(ctx, newPRNumber, pr)
 	s.addReviewers(ctx, newPRNumber, pr, []string{assignee})
 	s.addAssignee(ctx, newPRNumber, pr, []string{assignee})
-	returnToMaster(repoFolder)
+	err = returnToMaster(repoFolder)
+	if err != nil {
+		return "", fmt.Errorf("failed to return to master: %w", err)
+	}
 	return "", nil
 }
 
@@ -308,15 +321,34 @@ func (s *Server) addAssignee(ctx context.Context, newPRNumber int, pr *model.Pul
 	}
 }
 
-func returnToMaster(dir string) {
+func returnToMaster(dir string) error {
 	cmd := exec.Command("git", "checkout", "master")
+	if err := runCommand(cmd, dir); err != nil {
+		return err
+	}
+	return nil
+}
+
+func cloneRepo(dir, upstreamSlug, originSlug, repoName string) error {
+	// Clone repo
+	cmd := exec.Command("git", "clone", "--depth=1", "git@github.com:"+originSlug+".git")
+	if err := runCommand(cmd, dir); err != nil {
+		return err
+	}
+
+	// Set upstream
+	cmd = exec.Command("git", "remote", "add", "upstream", "git@github.com:"+upstreamSlug+".git")
+	if err := runCommand(cmd, filepath.Join(dir, repoName)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runCommand(cmd *exec.Cmd, dir string) error {
 	cmd.Dir = dir
 	cmd.Env = append(
 		os.Environ(),
 		os.Getenv("PATH"),
 	)
-	err := cmd.Run()
-	if err != nil {
-		mlog.Error("Failed to return to master", mlog.Err(err))
-	}
+	return cmd.Run()
 }
