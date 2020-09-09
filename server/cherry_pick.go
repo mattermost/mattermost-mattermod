@@ -341,24 +341,20 @@ func cloneRepo(ctx context.Context, dir, upstreamSlug, originSlug, repoName stri
 	cmd := exec.CommandContext(ctx, "git", "config", "user.name")
 	if out, err := runCommandWithOutput(cmd, dir); err != nil {
 		return err
-	} else {
-		if out == "" { // this means username is not set
-			cmd = exec.CommandContext(ctx, "git", "config", "--global", "user.name", "mattermost-build")
-			if err = runCommand(cmd, dir); err != nil {
-				return err
-			}
+	} else if out == "" { // this means username is not set
+		cmd = exec.CommandContext(ctx, "git", "config", "--global", "user.name", "mattermost-build")
+		if err = runCommand(cmd, dir); err != nil {
+			return err
 		}
 	}
 
 	cmd = exec.CommandContext(ctx, "git", "config", "user.email")
 	if out, err := runCommandWithOutput(cmd, dir); err != nil {
 		return err
-	} else {
-		if out == "" { // this means email is not set
-			cmd = exec.CommandContext(ctx, "git", "config", "--global", "user.email", "build@mattermost.com")
-			if err = runCommand(cmd, dir); err != nil {
-				return err
-			}
+	} else if out == "" { // this means email is not set
+		cmd = exec.CommandContext(ctx, "git", "config", "--global", "user.email", "build@mattermost.com")
+		if err = runCommand(cmd, dir); err != nil {
+			return err
 		}
 	}
 
