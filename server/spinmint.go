@@ -27,7 +27,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	repo, client, err := s.Builds.buildJenkinsClient(s, pr)
 	if err != nil {
 		mlog.Error("Error building Jenkins client", mlog.Err(err))
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		return
 	}
 
@@ -36,7 +38,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	pr, err = s.Builds.waitForBuild(ctx, s, client, pr)
 	if err != nil {
 		mlog.Error("Error waiting for PR build to finish", mlog.Err(err))
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		return
 	}
 
@@ -53,7 +57,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 		instance, errInstance = s.setupSpinmint(ctx, pr, repo, upgradeServer)
 		if errInstance != nil {
 			s.logToMattermost(ctx, "Unable to set up spinmint for PR %v in %v/%v: %v", pr.Number, pr.RepoOwner, pr.RepoName, errInstance.Error())
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 			return
 		}
 		spinmint = &model.Spinmint{
@@ -74,9 +80,11 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	time.Sleep(time.Minute * 2)
 	publicDNS, internalIP := s.getIPsForInstance(ctx, *instance.InstanceId)
 
-	if err := s.updateRoute53Subdomain(ctx, *instance.InstanceId, publicDNS, "CREATE"); err != nil {
+	if err = s.updateRoute53Subdomain(ctx, *instance.InstanceId, publicDNS, "CREATE"); err != nil {
 		s.logToMattermost(ctx, "Unable to set up S3 subdomain for PR %v in %v/%v with instance %v: %v", pr.Number, pr.RepoOwner, pr.RepoName, *instance.InstanceId, err.Error())
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintFailedMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		return
 	}
 
@@ -98,7 +106,9 @@ func (s *Server) waitForBuildAndSetupSpinmint(pr *model.PullRequest, upgradeServ
 	message = strings.Replace(message, templateInstanceID, instanceIDMessage+*instance.InstanceId, 1)
 	message = strings.Replace(message, templateInternalIP, internalIP, 1)
 
-	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, message)
+	if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, message); err != nil {
+		mlog.Warn("Error while commenting", mlog.Err(err))
+	}
 }
 
 // Returns instance ID of instance created
@@ -288,7 +298,9 @@ func (s *Server) CheckTestServerLifeTime() {
 			}
 			go s.destroySpinmint(pr, testServer.InstanceID)
 			s.removeTestServerFromDB(testServer.InstanceID)
-			s.sendGitHubComment(ctx, testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage)
+			if err = s.sendGitHubComment(ctx, testServer.RepoOwner, testServer.RepoName, testServer.Number, s.Config.DestroyedExpirationSpinmintMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}
 

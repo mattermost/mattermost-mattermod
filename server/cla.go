@@ -59,7 +59,9 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) erro
 			go func() {
 				ctx2, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 				defer cancel()
-				s.sendGitHubComment(ctx2, pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1))
+				if err = s.sendGitHubComment(ctx2, pr.RepoOwner, pr.RepoName, pr.Number, strings.Replace(s.Config.NeedsToSignCLAMessage, "USERNAME", "@"+username, 1)); err != nil {
+					mlog.Warn("Error while commenting", mlog.Err(err))
+				}
 			}()
 		}
 		status := &github.RepoStatus{

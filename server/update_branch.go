@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 
 	"github.com/google/go-github/v32/github"
 )
@@ -38,7 +39,9 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 	var uerr *updateError
 	defer func() {
 		if uerr != nil {
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, uerr.source)
+			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, uerr.source); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}()
 

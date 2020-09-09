@@ -95,7 +95,9 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		msg := "Trying to auto merge this PR."
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 
 		// All good to merge
 		opt := &github.PullRequestOptions{
@@ -106,12 +108,16 @@ func (s *Server) AutoMergePR() error {
 		merged, _, err := s.GithubClient.PullRequests.Merge(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 			continue
 		}
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 	}
 
 	mlog.Info("Done with the process to auto merge PRs")

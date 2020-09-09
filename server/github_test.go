@@ -406,7 +406,7 @@ func TestRateLimitTransport(t *testing.T) {
 		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 10, metricsMock)
 		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "would exceed context deadline")
+		require.Contains(t, err.Error(), "context deadline")
 	})
 
 	t.Run("Should delay the request execution until the rate limiter have room", func(t *testing.T) {

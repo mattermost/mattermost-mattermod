@@ -157,8 +157,10 @@ func (s *Server) createEnterpriseTestsErrorStatus(ctx context.Context, pr *model
 		Description: github.String("Enterprise tests error"),
 		TargetURL:   github.String(""),
 	}
-	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number,
-		"Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```"+err.Error()+"```")
+	msg := fmt.Sprintf("Failed running enterprise tests. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
+	if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); cErr != nil {
+		mlog.Warn("Error while commenting", mlog.Err(cErr))
+	}
 	_ = s.createRepoStatus(ctx, pr, enterpriseErrorStatus)
 }
 

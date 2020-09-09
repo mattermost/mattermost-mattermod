@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 
 	"github.com/google/go-github/v32/github"
 )
@@ -33,7 +34,9 @@ func (s *Server) handleAutoAssign(ctx context.Context, url string, pr *model.Pul
 
 	if !repoConfigured {
 		msg := fmt.Sprintf("In response to [this](%s)\n\n The auto assigner is not configured for this repository. Please talk with a Mattermost Github admin. thanks!", url)
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		return nil
 	}
 
@@ -46,12 +49,16 @@ func (s *Server) handleAutoAssign(ctx context.Context, url string, pr *model.Pul
 	}
 
 	msg := fmt.Sprintf("In response to [this](%s)\n\n I'm requesting the Pull Panda autoassigner to add reviewers to this PR.", url)
-	s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+	if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+		mlog.Warn("Error while commenting", mlog.Err(err))
+	}
 
 	return nil
 }
 
 func (s *Server) autoAssignerPostError(ctx context.Context, repoOwner, repoName string, number int, requestCommentURL string) {
 	msg := fmt.Sprintf("In response to [this](%s)\n\n I'm not able to request Pull Panda to add reviewers", requestCommentURL)
-	s.sendGitHubComment(ctx, repoOwner, repoName, number, msg)
+	if err := s.sendGitHubComment(ctx, repoOwner, repoName, number, msg); err != nil {
+		mlog.Warn("Error while commenting", mlog.Err(err))
+	}
 }

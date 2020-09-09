@@ -109,7 +109,9 @@ func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, add
 		finalMessage := strings.Replace(label.Message, "USERNAME", issue.Username, -1)
 		if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 			mlog.Info("Posted message for label on PR", mlog.String("label", label.Label), mlog.Int("issue", issue.Number))
-			s.sendGitHubComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, finalMessage)
+			if err = s.sendGitHubComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, finalMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}
 	return nil
