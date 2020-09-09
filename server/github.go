@@ -125,12 +125,10 @@ func labelsToStringArray(labels []*github.Label) []string {
 	return out
 }
 
-func (s *Server) sendGitHubComment(ctx context.Context, repoOwner, repoName string, number int, comment string) {
+func (s *Server) sendGitHubComment(ctx context.Context, repoOwner, repoName string, number int, comment string) error {
 	mlog.Debug("Sending GitHub comment", mlog.Int("issue", number), mlog.String("comment", comment))
 	_, _, err := s.GithubClient.Issues.CreateComment(ctx, repoOwner, repoName, number, &github.IssueComment{Body: &comment})
-	if err != nil {
-		mlog.Error("Error commenting", mlog.Err(err))
-	}
+	return err
 }
 
 func (s *Server) removeLabel(ctx context.Context, repoOwner, repoName string, number int, label string) {

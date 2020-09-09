@@ -47,7 +47,9 @@ func (s *Server) listenCherryPickRequests() {
 			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
 			if err != nil {
 				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+				if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); cErr != nil {
+					mlog.Warn("Error while commenting", mlog.Err(cErr))
+				}
 				mlog.Error("Error while cherry picking", mlog.Err(err))
 			}
 		}()
@@ -65,7 +67,9 @@ func (s *Server) finishCherryPickRequests() {
 		// to listen as well. We're just trying to cancel requests as much as we can.
 		msg := "Cherry picking is canceled due to server shutdown."
 		for job := range s.cherryPickRequests {
-			s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg)
+			if err := s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	case <-s.cherryPickStoppedChan:
 	}
@@ -75,7 +79,9 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	var msg string
 	defer func() {
 		if msg != "" {
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}()
 
@@ -162,7 +168,9 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			default:
 				msg = tooManyCherryPickMsg
 			}
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}
 }

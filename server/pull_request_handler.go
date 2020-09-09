@@ -113,7 +113,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		// TODO: remove the old test server code
 		if event.Label.GetName() == s.Config.SetupSpinmintTag {
 			mlog.Info("Label to spin a old test server")
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
 		if s.isBlockPRMerge(*event.Label.Name) {
@@ -123,7 +125,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 		if event.Label.GetName() == s.Config.AutoPRMergeLabel {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	case "unlabeled":
 		if event.Label == nil {
@@ -152,7 +156,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 
 			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 			mlog.Info("Will destroy the test server for a merged/closed PR.")
-			s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
@@ -192,7 +198,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceID))
 		mlog.Info("Will destroy the spinmint for a merged/closed PR.")
 
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		if strings.Contains(spinmint.InstanceID, "i-") {
 			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
@@ -318,7 +326,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 		if *comment.User.Login == s.Config.Username &&
 			strings.Contains(*comment.Body, s.Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, s.Config.DestroyedExpirationSpinmintMessage) {
 			mlog.Info("Removing old server deletion comment with ID", mlog.Int64("ID", *comment.ID))
-			_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
+			_, err = s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
 			if err != nil {
 				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
 			}
@@ -327,7 +335,9 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 
 	if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
 		mlog.Info("Label to spin a test server for upgrade")
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		go s.waitForBuildAndSetupSpinmint(pr, true)
 	} else {
 		mlog.Info("looking for other labels")
@@ -337,7 +347,9 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
 			if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage)
+				if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage); err != nil {
+					mlog.Warn("Error while commenting", mlog.Err(err))
+				}
 			}
 		}
 	}
@@ -374,7 +386,9 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
 		mlog.Info("Will destroy the test server for a merged/closed PR.")
 
-		s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage)
+		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
+			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
 		go s.destroySpinmint(pr, spinmint.InstanceID)
 	}
 
@@ -491,7 +505,9 @@ func (s *Server) CheckPRActivity() {
 					s.Metrics.IncreaseCronTaskErrors("check_pr_activity")
 					continue
 				}
-				s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment)
+				if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.StaleComment); err != nil {
+					mlog.Warn("Error while commenting", mlog.Err(err))
+				}
 			}
 		}
 	}
