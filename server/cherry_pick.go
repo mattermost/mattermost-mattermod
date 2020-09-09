@@ -338,13 +338,13 @@ func returnToMaster(ctx context.Context, dir string) error {
 
 func cloneRepo(ctx context.Context, dir, upstreamSlug, originSlug, repoName string) error {
 	// Clone repo
-	cmd = exec.CommandContext(ctx, "git", "clone", "--depth=1", "git@github.com:"+originSlug+".git")
+	cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", "git@github.com:"+originSlug+".git")
 	if err := runCommand(cmd, dir); err != nil {
 		return err
 	}
 
 	// Set username and email.
-	cmd := exec.CommandContext(ctx, "git", "config", "user.name")
+	cmd = exec.CommandContext(ctx, "git", "config", "user.name")
 	if out, err := runCommandWithOutput(cmd, filepath.Join(dir, repoName)); err != nil {
 		return err
 	} else if out == "" { // this means username is not set
