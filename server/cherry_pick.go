@@ -41,7 +41,7 @@ func (s *Server) listenCherryPickRequests() {
 
 	for job := range s.cherryPickRequests {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*2*time.Second)
 			defer cancel()
 			pr := job.pr
 			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
@@ -194,7 +194,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
 
 	if _, err = os.Stat(repoFolder); os.IsNotExist(err) {
-		err = cloneRepo(ctx, s.Config.RepoFolder, s.Config.Org+"/"+pr.RepoName, s.Config.GithubUsername+"/"+pr.RepoName, pr.RepoName)
+		err = cloneRepo(ctx, s.Config, pr.RepoName)
 		if err != nil {
 			return "", fmt.Errorf("error while cloning repo: %s, %v", s.Config.Org+"/"+pr.RepoName, err)
 		}
@@ -336,37 +336,40 @@ func returnToMaster(ctx context.Context, dir string) error {
 	return nil
 }
 
-func cloneRepo(ctx context.Context, dir, upstreamSlug, originSlug, repoName string) error {
+func cloneRepo(ctx context.Context, cfg *Config, repoName string) error {
+	originSlug := cfg.Org + "/" + repoName
+	upstreamSlug := cfg.GithubUsername + "/" + repoName
+
 	// Clone repo
-	cmd := exec.CommandContext(ctx, "git", "clone", "--depth=1", "git@github.com:"+originSlug+".git")
-	if err := runCommand(cmd, dir); err != nil {
+	cmd := exec.CommandContext(ctx, "git", "clone", "git@github.com:"+originSlug+".git")
+	if err := runCommand(cmd, cfg.RepoFolder); err != nil {
 		return err
 	}
 
 	// Set username and email.
 	cmd = exec.CommandContext(ctx, "git", "config", "user.name")
-	if out, err := runCommandWithOutput(cmd, filepath.Join(dir, repoName)); err != nil {
+	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
 		return err
 	} else if out == "" { // this means username is not set
-		cmd = exec.CommandContext(ctx, "git", "config", "user.name", "mattermost-build")
-		if err = runCommand(cmd, filepath.Join(dir, repoName)); err != nil {
+		cmd = exec.CommandContext(ctx, "git", "config", "user.name", cfg.GithubUsername)
+		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
 			return err
 		}
 	}
 
 	cmd = exec.CommandContext(ctx, "git", "config", "user.email")
-	if out, err := runCommandWithOutput(cmd, filepath.Join(dir, repoName)); err != nil {
+	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
 		return err
 	} else if out == "" { // this means email is not set
-		cmd = exec.CommandContext(ctx, "git", "config", "user.email", "build@mattermost.com")
-		if err = runCommand(cmd, filepath.Join(dir, repoName)); err != nil {
+		cmd = exec.CommandContext(ctx, "git", "config", "user.email", cfg.GithubEmail)
+		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
 			return err
 		}
 	}
 
 	// Set upstream
 	cmd = exec.CommandContext(ctx, "git", "remote", "add", "upstream", "git@github.com:"+upstreamSlug+".git")
-	if err := runCommand(cmd, filepath.Join(dir, repoName)); err != nil {
+	if err := runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
 		return err
 	}
 	return nil
