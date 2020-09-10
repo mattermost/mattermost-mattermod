@@ -223,6 +223,13 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
+				if resp.NextPage == 0 {
+					break
+				}
+				// It is likely that we have hit a rate-limit error,
+				// so we sleep a bit to let some time go by.
+				time.Sleep(200 * time.Millisecond)
+				prListOpts.Page = resp.NextPage
 				continue
 			}
 			if resp.NextPage == 0 {
@@ -247,6 +254,8 @@ func (s *Server) Tick() {
 			}
 		}
 
+		time.Sleep(time.Second)
+
 		issueListOpts := &github.IssueListByRepoOptions{
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
@@ -257,6 +266,13 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
+				if resp.NextPage == 0 {
+					break
+				}
+				// It is likely that we have hit a rate-limit error,
+				// so we sleep a bit to let some time go by.
+				time.Sleep(200 * time.Millisecond)
+				issueListOpts.Page = resp.NextPage
 				continue
 			}
 			if resp.NextPage == 0 {
