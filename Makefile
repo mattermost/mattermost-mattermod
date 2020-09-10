@@ -1,4 +1,22 @@
-GO ?= $(shell command -v go 2> /dev/null)
+# Project variables
+NAME        := mattermost-mattermod
+AUTHOR      := mattermost
+URL         := https://github.com/$(AUTHOR)/$(NAME)
+
+# Build variables
+COMMIT_HASH  ?= $(shell git rev-parse --short HEAD 2>/dev/null)
+BUILD_DATE   ?= $(shell date +%FT%T%z)
+CUR_VERSION  ?= $(shell git describe --tags --exact-match 2>/dev/null || git describe --tags 2>/dev/null || echo "v0.0.0-$(COMMIT_HASH)")
+
+# Go variables
+GOLDFLAGS   :="
+GOLDFLAGS   += -X github.com/$(AUTHOR)/$(NAME)/version.version=$(CUR_VERSION)
+GOLDFLAGS   += -X github.com/$(AUTHOR)/$(NAME)/version.commitHash=$(COMMIT_HASH)
+GOLDFLAGS   += -X github.com/$(AUTHOR)/$(NAME)/version.buildDate=$(BUILD_DATE)
+GOLDFLAGS   +="
+
+GO       ?= $(shell command -v go 2> /dev/null)
+GOBUILD  ?= $(GO) build -ldflags $(GOLDFLAGS)
 
 PACKAGES=$(shell go list ./...)
 
@@ -56,11 +74,11 @@ build: build-mattermod build-jobserver
 
 build-mattermod: clean
 	@echo Building mattermod
-	$(GO) build -o dist/mattermod ./cmd/mattermost-mattermod
+	$(GOBUILD) -o dist/mattermod ./cmd/mattermost-mattermod
 
 build-jobserver: clean
 	@echo Building mattermod
-	$(GO) build -o dist/jobserver ./cmd/jobserver
+	$(GOBUILD) -o dist/jobserver ./cmd/jobserver
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)

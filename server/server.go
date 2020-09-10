@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
+	"github.com/mattermost/mattermost-mattermod/version"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
 )
@@ -49,7 +50,8 @@ type Server struct {
 }
 
 type pingResponse struct {
-	Uptime string `json:"uptime"`
+	Uptime string        `json:"uptime"`
+	Info   *version.Info `json:"info"`
 }
 
 const (
@@ -287,7 +289,7 @@ func (s *Server) Tick() {
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
-	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime})
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime, Info: version.Full()})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)
