@@ -227,11 +227,10 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 					return workflowID, nil
 				}
 
-				if wfList.NextPageToken != "" {
-					token = wfList.NextPageToken
-				} else {
+				if wfList.NextPageToken == "" {
 					break
 				}
+				token = wfList.NextPageToken
 			}
 
 			if workflowID == "" {
