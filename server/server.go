@@ -218,6 +218,10 @@ func (s *Server) Tick() {
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
 		}
+		// We sleep in between requests to remain within rate limits.
+		// While we do have a rate limiter in the HTTP transport itself, that's a general limit for the entire application.
+		// In this scenario, just during listing issues and PRs,
+		// we need to throttle the rate a bit more.
 		for {
 			ghPullRequests, resp, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, prListOpts)
 			if err != nil {
@@ -226,9 +230,6 @@ func (s *Server) Tick() {
 				if resp.NextPage == 0 {
 					break
 				}
-				// It is likely that we have hit a rate-limit error,
-				// so we sleep a bit to let some time go by.
-				time.Sleep(200 * time.Millisecond)
 				prListOpts.Page = resp.NextPage
 				continue
 			}
@@ -236,6 +237,7 @@ func (s *Server) Tick() {
 				break
 			}
 			prListOpts.Page = resp.NextPage
+			time.Sleep(200 * time.Millisecond)
 
 			for _, ghPullRequest := range ghPullRequests {
 				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
@@ -269,9 +271,6 @@ func (s *Server) Tick() {
 				if resp.NextPage == 0 {
 					break
 				}
-				// It is likely that we have hit a rate-limit error,
-				// so we sleep a bit to let some time go by.
-				time.Sleep(200 * time.Millisecond)
 				issueListOpts.Page = resp.NextPage
 				continue
 			}
@@ -279,6 +278,8 @@ func (s *Server) Tick() {
 				break
 			}
 			issueListOpts.Page = resp.NextPage
+
+			time.Sleep(200 * time.Millisecond)
 
 			for _, ghIssue := range issues {
 				if ghIssue.PullRequestLinks != nil {
