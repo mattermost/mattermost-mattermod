@@ -15,8 +15,7 @@ GOLDFLAGS   += -X github.com/$(AUTHOR)/$(NAME)/version.commitHash=$(COMMIT_HASH)
 GOLDFLAGS   += -X github.com/$(AUTHOR)/$(NAME)/version.buildDate=$(BUILD_DATE)
 GOLDFLAGS   +="
 
-GO       ?= $(shell command -v go 2> /dev/null)
-GOBUILD  ?= $(GO) build -ldflags $(GOLDFLAGS)
+GO ?= $(shell command -v go 2> /dev/null)
 
 PACKAGES=$(shell go list ./...)
 
@@ -74,11 +73,11 @@ build: build-mattermod build-jobserver
 
 build-mattermod: clean
 	@echo Building mattermod
-	$(GOBUILD) -o dist/mattermod ./cmd/mattermost-mattermod
+	$(GO) build -ldflags $(GOLDFLAGS) -o dist/mattermod ./cmd/mattermost-mattermod
 
 build-jobserver: clean
 	@echo Building mattermod
-	$(GOBUILD) -o dist/jobserver ./cmd/jobserver
+	$(GO) build -ldflags $(GOLDFLAGS) -o dist/jobserver ./cmd/jobserver
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
