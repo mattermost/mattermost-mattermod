@@ -1,6 +1,8 @@
 GO ?= $(shell command -v go 2> /dev/null)
 
 PACKAGES=$(shell go list ./...)
+GOBIN=$(PWD)/bin
+PATH=$(shell printenv PATH):$(GOBIN)
 
 ## Checks the code style, tests and builds.
 .PHONY: all
@@ -43,6 +45,11 @@ endif
 
 run-jobserver:
 	go run ./cmd/jobserver --config=config/config-mattermod.json
+
+## Generate assets
+assets:
+	go get -modfile=go.tools.mod github.com/kevinburke/go-bindata/go-bindata/...
+	go generate ./...
 
 ## Runs tests.
 test:

@@ -39,17 +39,6 @@ func NewSQLPullRequestStore(sqlStore *SQLStore) PullRequestStore {
 	return s
 }
 
-func (s SQLPullRequestStore) CreateIndexesIfNotExists() {
-	s.CreateColumnIfNotExists("PullRequests", "Ref", "varchar(128)", "varchar(128)", "")
-	s.CreateColumnIfNotExists("PullRequests", "Sha", "varchar(48)", "varchar(48)", "")
-	s.CreateColumnIfNotExists("PullRequests", "State", "varchar(8)", "varchar(8)", "")
-	s.CreateColumnIfNotExists("PullRequests", "BuildStatus", "varchar(20)", "varchar(20)", "")
-	s.CreateColumnIfNotExists("PullRequests", "BuildConclusion", "varchar(20)", "varchar(20)", "")
-	s.CreateColumnIfNotExists("PullRequests", "URL", "varchar(20)", "varchar(2083)", "")
-	s.CreateColumnIfNotExists("PullRequests", "FullName", "varchar(2083)", "varchar(2083)", "")
-	s.CreateColumnIfNotExists("PullRequests", "CreatedAt", "timestamp", "timestamp", "")
-}
-
 func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, error) {
 	if err := s.GetMaster().Insert(pr); err != nil {
 		if _, err := s.GetMaster().Update(pr); err != nil {

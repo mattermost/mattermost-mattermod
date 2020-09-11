@@ -109,3 +109,69 @@ docker run --name mattermod-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mattermod 
 6. For cherry-picking to work, [hub](https://github.com/github/hub) needs to be installed in the system, and the script from `hacks/cherry-pick.sh` should be placed at `/app/scripts/cherry-pick.sh`.
 
 7. Start up Mattermod server.
+
+## Migrations
+
+We use the [golang-migrate](https://github.com/golang-migrate/migrate) library combined with code generation to handle migrations. To add a new migration in your code:
+
+1. **Create files:** Go to the `store/migrations` directory and create 2 files by incrementing the latest sequence number of the files in that directory. For example, if the last number is 000004, then please 2 files with names `000005_{migration_name}.up.sql` and `000005_{migration_name}.down.sql`.
+
+The `migration_name` should be a friendly name for the migration. The number can be any 64 bit unsigned integer. The up and down refers to the forward and reverse migration commands.
+
+For example, if the migration adds a column, then the up file can be `ALTER TABLE <> ADD COLUMN IF NOT EXISTS ...`, and the down file can be `ALTER TABLE users DROP COLUMN IF EXISTS ...`. Give special attention to the idempotence of the commands and confirm that the same migration command can be applied more than once without any issues.
+
+2. **Generate code:** Now generate the code with `make assets`.
+
+3. **Commit changes**.
+
+4. **Test idempotency manually:** Download the migrate [tool](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate#download-pre-built-binary-windows-macos-or-linux) and test that your migration is working correctly by doing a series of up-up-down-down-up commands, and running the mattermod server with it.
+
+If we are going from version 1 to 2:
+
+```
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ up 1
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ force 1
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ up 1
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ down 1
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ force 2
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ down 1
+migrate -database "mysql://<user>:<pass>@tcp(<host>:3306)/<db>?parseTime=true&multiStatements=true" -path store/migrations/ up 1
+```
+
+**Special note on existing columns**: MySQL does not have a native way to check if a column exists or not (yay MySQL). So if a migration adds a new column, it has to use the `information_schema.columns` table to check whether a column exists or not. You can use the following hack to do such a thing:
+
+```sql
+SET @dbname = DATABASE();
+SET @tablename = "PullRequests";
+SET @columnname = "test";
+SET @preparedStatement = (SELECT IF(
+  (
+    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE
+      (table_name = @tablename)
+      AND (table_schema = @dbname)
+      AND (column_name = @columnname)
+  ) > 0,
+  "SELECT 1",
+  CONCAT("ALTER TABLE ", @tablename, " ADD ", @columnname, " text;")
+));
+PREPARE alterIfNotExists FROM @preparedStatement;
+EXECUTE alterIfNotExists;
+DEALLOCATE PREPARE alterIfNotExists;
+```
+
+And invert the condition if you want to modify if the column exists.
+
+Other solutions include using a stored procedure, but the mysql driver doesn't support it well.
+
+### Rolling back schema versions
+
+If we need to roll back mattermod to an earlier version, then we also need to check if there have been any schema changes in between. If there is, then a CLI tool is provided that can be used to manually run forward or reverse migrations as necessary.
+
+For example, if we have migrated to version 3 (available from `select version from schema_migrations order by version desc limit 1;`), and want to roll back to 2, then we can enter:
+
+```
+go run ./cmd/mattermost-mattermod/ -config config/config-mattermod.json -migration_version 2
+```
+
+After this, we are free to start mattermod from that version.

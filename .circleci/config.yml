@@ -23,6 +23,11 @@ jobs:
       name: default
     steps:
       - checkout
+      - run:
+        command: |
+          make assets
+          echo "Checking if 'make assets' was ran after adding files..."
+          git diff --exit-code
       - run: make build
 
   check-dependencies:
