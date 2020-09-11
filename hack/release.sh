@@ -59,12 +59,10 @@ CLOSEST_VERSION=$(getClosestVersion)
 
 # Bump the released version
 sed -i -E 's|'${CLOSEST_VERSION}'|'${RELEASE_VERSION}'|g' deploy/overlays/prod/kustomization.yaml
-sed -i -E 's|v'${RELEASE_VERSION}'-alpha|v'${RELEASE_VERSION}'|g' version/version.go
 
 # Commit changes
 printf "\033[36m==> %s\033[0m\n" "Commit changes for release version v${RELEASE_VERSION}"
 git add deploy/overlays/prod/kustomization.yaml
-git add version/version.go
 git commit -m "Release version v${RELEASE_VERSION}"
 
 printf "\033[36m==> %s\033[0m\n" "Push commits for v${RELEASE_VERSION}"
@@ -76,15 +74,3 @@ git tag --annotate --message "v${RELEASE_VERSION} Release" "v${RELEASE_VERSION}"
 
 printf "\033[36m==> %s\033[0m\n" "Push tag release v${RELEASE_VERSION}"
 git push origin v${RELEASE_VERSION}
-
-# Bump the next version in version.go
-NEXT_VERSION=$(echo "${RELEASE_VERSION}" | sed 's/^v//' | awk -F'[ .]' '{print $1"."$2+1".0"}')
-sed -i -E 's|v'${RELEASE_VERSION}'|v'${NEXT_VERSION}'-alpha|g' version/version.go
-
-# Commit changes
-printf "\033[36m==> %s\033[0m\n" "Bump version to v${NEXT_VERSION}-alpha"
-git add version/version.go
-git commit -m "Bump version to v${NEXT_VERSION}-alpha"
-
-printf "\033[36m==> %s\033[0m\n" "Push commits for v${NEXT_VERSION}-alpha"
-git push origin master

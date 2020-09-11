@@ -4,9 +4,6 @@ import (
 	"time"
 )
 
-// current version
-const dev = "v0.3.5-alpha"
-
 // Provisioned by ldflags
 var (
 	version    string
@@ -23,10 +20,10 @@ type Info struct {
 func init() {
 	// Load defaults for info variables
 	if version == "" {
-		version = dev
+		version = "dev"
 	}
 	if commitHash == "" {
-		commitHash = dev
+		commitHash = "dev"
 	}
 	if buildDate == "" {
 		buildDate = time.Now().Format(time.RFC3339)
