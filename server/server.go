@@ -4,6 +4,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -305,7 +306,33 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
 	case "issues":
-		s.issueEventHandler(w, r)
+		buf, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			mlog.Error("Failed to read body", mlog.Err(err))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = r.Body.Close()
+		if err != nil {
+			mlog.Error("Error closing body", mlog.Err(err))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		event, err := issueEventFromJSON(bytes.NewReader(buf))
+		if err != nil {
+			mlog.Error("Could not parse issue event", mlog.Err(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		// An issue can be both an issue or a PR. So we need to differentiate between the two.
+		if event.Issue.IsPullRequest() {
+			mlog.Info("A PR event is found from an issue. Updating DB.", mlog.String("link", event.Issue.GetPullRequestLinks().GetHTMLURL()))
+			s.prFromIssueHandler(event, w)
+		} else {
+			s.issueEventHandler(w, r)
+		}
 	case "issue_comment":
 		s.issueCommentEventHandler(w, r)
 	case "pull_request":

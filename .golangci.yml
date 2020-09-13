@@ -52,3 +52,10 @@ issues:
     - "ST1003: method FromDb should be FromD"
     # For executing git commands.
     - "G204: Subprocess launched with function call as argument or cmd arguments"
+
+  exclude-rules:
+    - linters:
+      - goconst
+      # Ignore warnings trying to change variables to constants.
+      # We can't do that because we are taking the address of those variables.
+      path: "issue_handler_test.go"

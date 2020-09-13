@@ -19,8 +19,10 @@ import (
 )
 
 type issueEvent struct {
-	Action string        `json:"action"`
-	Issue  *github.Issue `json:"issue"`
+	Action string             `json:"action"`
+	Label  *github.Label      `json:"label"`
+	Repo   *github.Repository `json:"repository"`
+	Issue  *github.Issue      `json:"issue"`
 }
 
 func (s *Server) issueEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +128,9 @@ func issueEventFromJSON(data io.Reader) (*issueEvent, error) {
 
 	if event.Issue == nil {
 		return nil, errors.New("github issue is missing from body")
+	}
+	if event.Repo == nil {
+		return nil, errors.New("github repo is missing from body")
 	}
 
 	return &event, nil
