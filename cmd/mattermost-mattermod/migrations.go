@@ -31,9 +31,7 @@ func runMigrations(driverName, dataSource string, migrateVersion int) error {
 		return fmt.Errorf("failed to create migration driver: %v", err)
 	}
 	// Create source driver
-	s := bindata.Resource(migrations.AssetNames(), func(name string) ([]byte, error) {
-		return migrations.Asset(name)
-	})
+	s := bindata.Resource(migrations.AssetNames(), migrations.Asset)
 
 	srcDriver, err := bindata.WithInstance(s)
 	if err != nil {

@@ -17,9 +17,8 @@ import (
 )
 
 var (
-	configFile       string
-	migrateDirection string
-	migrateVersion   int
+	configFile     string
+	migrateVersion int
 )
 
 func init() {
@@ -41,7 +40,7 @@ func main() {
 	}
 
 	if migrateVersion != -1 {
-		err := runMigrations(config.DriverName, config.DataSource, migrateVersion)
+		err = runMigrations(config.DriverName, config.DataSource, migrateVersion)
 		if err != nil {
 			mlog.Error("Failed to run migrations", mlog.Err(err))
 			os.Exit(1)
