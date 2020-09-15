@@ -14,6 +14,7 @@ var (
 	buildDate  string
 )
 
+// Info represents full version information, including commit hash and build date
 type Info struct {
 	Version string `json:"version"`
 	Hash    string `json:"hash"`
