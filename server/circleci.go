@@ -203,17 +203,34 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 		case <-ctx.Done():
 			return "", errors.New("timed out trying to fetch workflow")
 		case <-ticker.C:
-			wfList, err := s.CircleCiClientV2.GetPipelineWorkflowWithContext(ctx, id, "")
-			if err != nil {
-				return "", err
-			}
-
+			token := ""
 			workflowID := ""
-			for _, wf := range wfList.Items {
-				if wf.Name == workflowName {
-					workflowID = wf.ID
+			for {
+				wfList, err := s.CircleCiClientV2.GetPipelineWorkflowWithContext(ctx, id, token)
+				if err != nil {
+					var apiError *circleci.APIError
+					if errors.As(err, &apiError) && apiError.HTTPStatusCode >= 400 && apiError.HTTPStatusCode < 500 {
+						// We retry if it's a client side issue
+						continue
+					}
+					return "", err
+				}
+
+				for _, wf := range wfList.Items {
+					if wf.Name == workflowName {
+						workflowID = wf.ID
+						break
+					}
+				}
+
+				if workflowID != "" {
+					return workflowID, nil
+				}
+
+				if wfList.NextPageToken == "" {
 					break
 				}
+				token = wfList.NextPageToken
 			}
 
 			if workflowID == "" {

@@ -1,12 +1,18 @@
 package server
 
 import (
+	"context"
 	"errors"
+	"reflect"
 	"testing"
 
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
+
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/go-circleci"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAreAllExpectedJobs(t *testing.T) {
@@ -155,4 +161,44 @@ func TestBlockPaths(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestWaitForWorkflowID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	wfList1 := &circleci.WorkflowList{
+		Items: []circleci.WorkflowItem{
+			{
+				ID:          "id",
+				CanceledBy:  "someone",
+				WorkflowID:  "foo",
+				Name:        "CI",
+				ProjectSlug: "github/mattermost/mattermod",
+			},
+		},
+		NextPageToken: "token",
+	}
+	wfList2 := &circleci.WorkflowList{
+		Items: []circleci.WorkflowItem{
+			{
+				ID:          "targetID",
+				CanceledBy:  "someone",
+				WorkflowID:  "foo",
+				Name:        "targetName",
+				ProjectSlug: "github/mattermost/mattermod",
+			},
+		},
+		NextPageToken: "",
+	}
+	circleCIService := mocks.NewMockCircleCIService(ctrl)
+	circleCIService.EXPECT().GetPipelineWorkflowWithContext(gomock.AssignableToTypeOf(ctxInterface), "pipelineID", "").Return(wfList1, nil)
+	circleCIService.EXPECT().GetPipelineWorkflowWithContext(gomock.AssignableToTypeOf(ctxInterface), "pipelineID", "token").Return(wfList2, nil)
+
+	s := Server{
+		CircleCiClientV2: circleCIService,
+	}
+
+	res, err := s.waitForWorkflowID(context.Background(), "pipelineID", "targetName")
+	require.NoError(t, err)
+	assert.Equal(t, "targetID", res)
 }
