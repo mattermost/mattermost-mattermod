@@ -41,7 +41,7 @@ func (s *Server) listenCherryPickRequests() {
 
 	for job := range s.cherryPickRequests {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*2*time.Second)
 			defer cancel()
 			pr := job.pr
 			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
@@ -193,6 +193,13 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	}
 	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
 
+	if _, err = os.Stat(repoFolder); os.IsNotExist(err) {
+		err = cloneRepo(ctx, s.Config, pr.RepoName)
+		if err != nil {
+			return "", fmt.Errorf("error while cloning repo: %s, %v", s.Config.Org+"/"+pr.RepoName, err)
+		}
+	}
+
 	if s.Config.ScriptsFolder == "" {
 		return "", errors.Errorf("path to folder containing the cherry-pick.sh script is not set in the config")
 	}
@@ -204,12 +211,11 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	cmd.Env = append(
 		os.Environ(),
 		os.Getenv("PATH"),
-		fmt.Sprintf("DRY_RUN=%t", false),
 		fmt.Sprintf("ORIGINAL_AUTHOR=%s", pr.Username),
 		fmt.Sprintf("GITHUB_USER=%s", s.Config.GithubUsername),
 		fmt.Sprintf("GITHUB_TOKEN=%s", s.Config.GithubAccessTokenCherryPick),
 	)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		mlog.Error("cmd.Run() failed",
 			mlog.Err(err),
@@ -217,7 +223,10 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 			mlog.String("repo", pr.RepoName),
 			mlog.Int("PR", pr.Number),
 		)
-		returnToMaster(repoFolder)
+		err2 := returnToMaster(ctx, repoFolder)
+		if err2 != nil {
+			mlog.Error("Failed to return to master", mlog.Err(err2))
+		}
 		return string(out), err
 	}
 	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
@@ -232,7 +241,10 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	s.updateCherryPickLabels(ctx, newPRNumber, pr)
 	s.addReviewers(ctx, newPRNumber, pr, []string{assignee})
 	s.addAssignee(ctx, newPRNumber, pr, []string{assignee})
-	returnToMaster(repoFolder)
+	err = returnToMaster(ctx, repoFolder)
+	if err != nil {
+		mlog.Error("Failed to return to master", mlog.Err(err))
+	}
 	return "", nil
 }
 
@@ -316,15 +328,68 @@ func (s *Server) addAssignee(ctx context.Context, newPRNumber int, pr *model.Pul
 	}
 }
 
-func returnToMaster(dir string) {
-	cmd := exec.Command("git", "checkout", "master")
+func returnToMaster(ctx context.Context, dir string) error {
+	cmd := exec.CommandContext(ctx, "git", "checkout", "master")
+	if err := runCommand(cmd, dir); err != nil {
+		return err
+	}
+	return nil
+}
+
+func cloneRepo(ctx context.Context, cfg *Config, repoName string) error {
+	originSlug := cfg.Org + "/" + repoName
+	upstreamSlug := cfg.GithubUsername + "/" + repoName
+
+	// Clone repo
+	cmd := exec.CommandContext(ctx, "git", "clone", "git@github.com:"+originSlug+".git")
+	if err := runCommand(cmd, cfg.RepoFolder); err != nil {
+		return err
+	}
+
+	// Set username and email.
+	cmd = exec.CommandContext(ctx, "git", "config", "user.name")
+	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
+		return err
+	} else if out == "" { // this means username is not set
+		cmd = exec.CommandContext(ctx, "git", "config", "user.name", cfg.GithubUsername)
+		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
+			return err
+		}
+	}
+
+	cmd = exec.CommandContext(ctx, "git", "config", "user.email")
+	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
+		return err
+	} else if out == "" { // this means email is not set
+		cmd = exec.CommandContext(ctx, "git", "config", "user.email", cfg.GithubEmail)
+		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
+			return err
+		}
+	}
+
+	// Set upstream
+	cmd = exec.CommandContext(ctx, "git", "remote", "add", "upstream", "git@github.com:"+upstreamSlug+".git")
+	if err := runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func runCommand(cmd *exec.Cmd, dir string) error {
 	cmd.Dir = dir
 	cmd.Env = append(
 		os.Environ(),
 		os.Getenv("PATH"),
 	)
-	err := cmd.Run()
-	if err != nil {
-		mlog.Error("Failed to return to master", mlog.Err(err))
-	}
+	return cmd.Run()
+}
+
+func runCommandWithOutput(cmd *exec.Cmd, dir string) (string, error) {
+	cmd.Dir = dir
+	cmd.Env = append(
+		os.Environ(),
+		os.Getenv("PATH"),
+	)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
 }
