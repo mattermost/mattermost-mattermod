@@ -4,6 +4,7 @@
     "GithubAccessToken": "",
     "GitHubTokenReserve": 10,
     "GithubUsername": "",
+    "GithubEmail": "",
     "GithubAccessTokenCherryPick": "",
     "GithubWebhookSecret": "",
     "Org": "",
