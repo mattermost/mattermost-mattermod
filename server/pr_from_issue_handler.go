@@ -4,37 +4,30 @@
 package server
 
 import (
-	"context"
+	"database/sql"
 	"net/http"
-	"time"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 func (s *Server) prFromIssueHandler(event *issueEvent, w http.ResponseWriter) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
-	defer cancel()
-
-	prGitHub, _, err := s.GithubClient.PullRequests.Get(ctx,
-		event.Repo.GetOwner().GetLogin(),
+	oldPR, err := s.Store.PullRequest().Get(event.Repo.GetOwner().GetLogin(),
 		event.Repo.GetName(),
 		event.Issue.GetNumber())
 	if err != nil {
-		mlog.Error("Error in getting PR from GitHub", mlog.Err(err),
-			mlog.String("owner", event.Repo.GetOwner().GetLogin()),
-			mlog.String("repoName", event.Repo.GetName()),
-			mlog.Int("prNumber", event.Issue.GetNumber()),
-		)
+		mlog.Error("Error in getting PR from DB", mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	// We update the milestone that we have from the issue event and merge it with the PR.
 	// This is necessary to work around caching issues with GitHub.
-	prGitHub.Milestone = event.Issue.GetMilestone()
+	oldPR.MilestoneNumber = sql.NullInt64{Int64: int64(event.Issue.GetMilestone().GetNumber()), Valid: true}
+	oldPR.MilestoneTitle = sql.NullString{String: event.Issue.GetMilestone().GetTitle(), Valid: true}
 
-	_, err = s.GetPullRequestFromGithub(ctx, prGitHub)
+	_, err = s.Store.PullRequest().Save(oldPR)
 	if err != nil {
-		mlog.Error("Error in saving the PR", mlog.Err(err))
+		mlog.Error("Error in saving PR to DB", mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

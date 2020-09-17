@@ -5,18 +5,15 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v32/github"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +21,7 @@ import (
 func TestPRFromIssueHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	// ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
 
 	url := "https://github.com/mattermost/mmctl/pull/3"
 	number := 3
@@ -49,7 +46,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 			},
 			Milestone: &github.Milestone{
 				Number: github.Int(2),
-				Title:  github.String("release-5.26"),
+				Title:  github.String("release-5.28"),
 			},
 		},
 		Repo: &github.Repository{
@@ -59,46 +56,6 @@ func TestPRFromIssueHandler(t *testing.T) {
 			Name: &name,
 		},
 	}
-
-	ghPR := &github.PullRequest{
-		State:          github.String("closed"),
-		MergeableState: github.String("clean"),
-		Head: &github.PullRequestBranch{
-			SHA: github.String("sha"),
-		},
-		Number: &number,
-		Base: &github.PullRequestBranch{
-			Repo: &github.Repository{
-				Owner: &github.User{
-					Login: &login,
-				},
-				Name:     &name,
-				FullName: &name,
-			},
-		},
-		Milestone: &github.Milestone{
-			Number: github.Int(2),
-			Title:  github.String("release-5.26"),
-		},
-	}
-
-	is := mocks.NewMockIssuesService(ctrl)
-	is.EXPECT().
-		ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface),
-			gomock.Eq(event.Repo.GetOwner().GetLogin()),
-			gomock.Eq(event.Repo.GetName()),
-			gomock.Eq(event.Issue.GetNumber()),
-			nil).
-		Times(1).
-		Return([]*github.Label{}, nil, nil)
-
-	prs := mocks.NewMockPullRequestsService(ctrl)
-	prs.EXPECT().
-		Get(gomock.AssignableToTypeOf(ctxInterface),
-			gomock.Eq(event.Repo.GetOwner().GetLogin()),
-			gomock.Eq(event.Repo.GetName()),
-			gomock.Eq(event.Issue.GetNumber())).
-		Return(ghPR, &github.Response{}, nil)
 
 	ss := stmock.NewMockStore(ctrl)
 
@@ -112,20 +69,34 @@ func TestPRFromIssueHandler(t *testing.T) {
 		State:               "closed",
 		Merged:              sql.NullBool{Bool: false, Valid: true},
 		MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
-		MilestoneNumber:     sql.NullInt64{Int64: int64(ghPR.Milestone.GetNumber()), Valid: true},
-		MilestoneTitle:      sql.NullString{String: ghPR.Milestone.GetTitle(), Valid: true},
+		MilestoneNumber:     sql.NullInt64{Int64: int64(event.Issue.Milestone.GetNumber()), Valid: true},
+		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
 	})).
 		Times(1).Return(nil, nil)
+	prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
+		gomock.Eq(event.Repo.GetName()),
+		gomock.Eq(event.Issue.GetNumber())).
+		Times(1).
+		Return(&model.PullRequest{
+			RepoOwner:           event.Repo.GetOwner().GetLogin(),
+			RepoName:            event.Repo.GetName(),
+			Number:              event.Issue.GetNumber(),
+			Sha:                 "sha",
+			Labels:              []string{},
+			State:               "closed",
+			Merged:              sql.NullBool{Bool: false, Valid: true},
+			MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
+			MilestoneNumber:     sql.NullInt64{Int64: int64(0), Valid: true},
+			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
+		}, nil)
+
 	ss.EXPECT().
 		PullRequest().
 		Return(prStoreMock).
 		AnyTimes()
 
 	s := &Server{
-		GithubClient: &GithubClient{
-			Issues:       is,
-			PullRequests: prs,
-		},
+		GithubClient: &GithubClient{},
 		Config: &Config{
 			IssueLabels: []LabelResponse{},
 			Username:    "mattermost",
