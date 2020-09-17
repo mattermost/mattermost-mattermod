@@ -59,7 +59,7 @@ test:
 
 ## Builds mattermod binaries
 .PHONY: build
-build: build-mattermod build-jobserver
+build: build-mattermod build-jobserver build-migrator
 
 build-mattermod: clean
 	@echo Building mattermod
@@ -68,6 +68,10 @@ build-mattermod: clean
 build-jobserver: clean
 	@echo Building mattermod
 	$(GO) build -o dist/jobserver ./cmd/jobserver
+
+build-migrator: clean
+	@echo Building migrator
+	$(GO) build -o dist/migrator ./cmd/migrator
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)

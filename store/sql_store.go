@@ -139,7 +139,7 @@ func runMigrations(db *sql.DB) {
 	// We ignore if there is no change and if file does not exist.
 	// The latter occurs if we have rolled back to older code without running down migrations.
 	// This is not ideal, but not critical enough to bail execution.
-	if err != nil && err != migrate.ErrNoChange && err != os.ErrNotExist {
+	if err != nil && err != migrate.ErrNoChange && !errors.Is(err, os.ErrNotExist) {
 		mlog.Critical("Failed to migrate DB", mlog.Err(err))
 		os.Exit(1)
 	}

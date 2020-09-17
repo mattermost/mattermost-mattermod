@@ -114,7 +114,7 @@ docker run --name mattermod-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mattermod 
 
 We use the [golang-migrate](https://github.com/golang-migrate/migrate) library combined with code generation to handle migrations. To add a new migration in your code:
 
-1. **Create files:** Go to the `store/migrations` directory and create 2 files by incrementing the latest sequence number of the files in that directory. For example, if the last number is 000004, then please 2 files with names `000005_{migration_name}.up.sql` and `000005_{migration_name}.down.sql`.
+1. **Create files:** Go to the `store/migrations` directory and create 2 files by incrementing the latest sequence number of the files in that directory. For example, if the last number is 000004, then please create 2 files with names `000005_{migration_name}.up.sql` and `000005_{migration_name}.down.sql`.
 
 The `migration_name` should be a friendly name for the migration. The number can be any 64 bit unsigned integer. The up and down refers to the forward and reverse migration commands.
 
@@ -168,7 +168,7 @@ Other solutions include using a stored procedure, but the mysql driver doesn't s
 
 If we need to roll back mattermod to an earlier version, then we also need to check if there have been any schema changes in between. If there is, then a CLI tool is provided that can be used to manually run forward or reverse migrations as necessary.
 
-For example, if we have migrated to version 3 (available from `select version from schema_migrations order by version desc limit 1;`), and want to roll back to 2, then we can enter:
+For example, if we have migrated to version 3 (available from `SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;`), and want to roll back to 2, then we can enter:
 
 ```
 go run ./cmd/mattermost-mattermod/ -config config/config-mattermod.json -migration_version 2
