@@ -21,8 +21,6 @@ import (
 func TestPRFromIssueHandler(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	// ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
-
 	url := "https://github.com/mattermost/mmctl/pull/3"
 	number := 3
 	login := "mattermost"
