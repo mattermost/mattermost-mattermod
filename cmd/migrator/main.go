@@ -34,11 +34,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if migrateVersion != -1 {
-		err = runMigrations(config.DriverName, config.DataSource, migrateVersion)
-		if err != nil {
-			mlog.Error("Failed to run migrations", mlog.Err(err))
-			os.Exit(1)
-		}
+	if migrateVersion == -1 {
+		mlog.Error("Please set \"-migration_version\" flag to the target version")
+		os.Exit(1)
+	}
+
+	err = runMigrations(config.DriverName, config.DataSource, migrateVersion)
+	if err != nil {
+		mlog.Error("Failed to run migrations", mlog.Err(err))
+		os.Exit(1)
 	}
 }

@@ -118,7 +118,7 @@ We use the [golang-migrate](https://github.com/golang-migrate/migrate) library c
 
 The `migration_name` should be a friendly name for the migration. The number can be any 64 bit unsigned integer. The up and down refers to the forward and reverse migration commands.
 
-For example, if the migration adds a column, then the up file can be `ALTER TABLE <> ADD COLUMN IF NOT EXISTS ...`, and the down file can be `ALTER TABLE users DROP COLUMN IF EXISTS ...`. Give special attention to the idempotence of the commands and confirm that the same migration command can be applied more than once without any issues.
+For example, if the migration adds a column, then the up file can be `ALTER TABLE users ADD COLUMN IF NOT EXISTS ...`, and the down file can be `ALTER TABLE users DROP COLUMN IF EXISTS ...`. Give special attention to the idempotence of the commands and confirm that the same migration command can be applied more than once without any issues.
 
 2. **Generate code:** Now generate the code with `make assets`.
 
