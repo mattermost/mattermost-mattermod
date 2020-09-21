@@ -81,6 +81,17 @@ func TestHandleCherryPick(t *testing.T) {
 		err = s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "too many requests")
 	})
+
+	t.Run("should not panic on empty requests", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				require.Failf(t, "recovered from panic", "%v", r)
+			}
+		}()
+
+		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
+		require.NoError(t, err)
+	})
 }
 
 func TestGetMilestone(t *testing.T) {
