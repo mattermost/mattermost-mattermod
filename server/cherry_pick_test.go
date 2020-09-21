@@ -83,14 +83,10 @@ func TestHandleCherryPick(t *testing.T) {
 	})
 
 	t.Run("should not panic on empty requests", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r != nil {
-				require.Failf(t, "recovered from panic", "%v", r)
-			}
-		}()
-
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
-		require.NoError(t, err)
+		require.NotPanics(t, func() {
+			err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
+			require.NoError(t, err)
+		})
 	})
 }
 
