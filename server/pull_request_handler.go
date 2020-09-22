@@ -54,12 +54,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-		}
-
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
@@ -73,12 +67,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		if err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
-		}
-
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
 		s.handleTranslationPR(ctx, pr)
@@ -165,12 +153,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 		if err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
-		}
-
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
