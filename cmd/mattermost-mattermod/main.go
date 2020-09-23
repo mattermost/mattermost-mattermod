@@ -17,13 +17,11 @@ import (
 )
 
 var (
-	configFile     string
-	migrateVersion int
+	configFile string
 )
 
 func init() {
 	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
-	flag.IntVar(&migrateVersion, "migration_version", -1, "Specify the target version to migrate to. Only to be used as a CLI tool")
 }
 
 func main() {
@@ -37,15 +35,6 @@ func main() {
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("unable to configure logging", mlog.Err(err))
 		os.Exit(1)
-	}
-
-	if migrateVersion != -1 {
-		err = runMigrations(config.DriverName, config.DataSource, migrateVersion)
-		if err != nil {
-			mlog.Error("Failed to run migrations", mlog.Err(err))
-			os.Exit(1)
-		}
-		return
 	}
 
 	// Metrics system

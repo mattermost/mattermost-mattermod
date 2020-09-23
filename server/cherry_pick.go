@@ -96,6 +96,10 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 		return nil
 	}
 
+	if len(args) < 2 {
+		return nil
+	}
+
 	select {
 	case <-s.cherryPickStopChan:
 		return errors.New("server is closing")

@@ -25,6 +25,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
+	"github.com/mattermost/mattermost-mattermod/version"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
 )
@@ -50,7 +51,8 @@ type Server struct {
 }
 
 type pingResponse struct {
-	Uptime string `json:"uptime"`
+	Uptime string        `json:"uptime"`
+	Info   *version.Info `json:"info"`
 }
 
 const (
@@ -219,17 +221,26 @@ func (s *Server) Tick() {
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
 		}
+		// We sleep in between requests to remain within rate limits.
+		// While we do have a rate limiter in the HTTP transport itself, that's a general limit for the entire application.
+		// In this scenario, just during listing issues and PRs,
+		// we need to throttle the rate a bit more.
 		for {
 			ghPullRequests, resp, err := s.GithubClient.PullRequests.List(ctx, repository.Owner, repository.Name, prListOpts)
 			if err != nil {
 				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
+				if resp.NextPage == 0 {
+					break
+				}
+				prListOpts.Page = resp.NextPage
 				continue
 			}
 			if resp.NextPage == 0 {
 				break
 			}
 			prListOpts.Page = resp.NextPage
+			time.Sleep(200 * time.Millisecond)
 
 			for _, ghPullRequest := range ghPullRequests {
 				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
@@ -248,6 +259,8 @@ func (s *Server) Tick() {
 			}
 		}
 
+		time.Sleep(time.Second)
+
 		issueListOpts := &github.IssueListByRepoOptions{
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
@@ -258,12 +271,18 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
+				if resp.NextPage == 0 {
+					break
+				}
+				issueListOpts.Page = resp.NextPage
 				continue
 			}
 			if resp.NextPage == 0 {
 				break
 			}
 			issueListOpts.Page = resp.NextPage
+
+			time.Sleep(200 * time.Millisecond)
 
 			for _, ghIssue := range issues {
 				if ghIssue.PullRequestLinks != nil {
@@ -288,7 +307,7 @@ func (s *Server) Tick() {
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
 	uptime := fmt.Sprintf("%v", time.Since(s.StartTime))
-	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime})
+	err := json.NewEncoder(w).Encode(pingResponse{Uptime: uptime, Info: version.Full()})
 	if err != nil {
 		mlog.Error("Failed to write ping", mlog.Err(err))
 		w.WriteHeader(http.StatusInternalServerError)

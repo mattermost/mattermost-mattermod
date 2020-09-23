@@ -15,15 +15,9 @@ if [ -n "$(git status --short)" ]; then
     exit 1
 fi
 
-CURRENT_VERSION=$(git describe --tags --exact-match 2>/dev/null || git describe --tags 2>/dev/null)
-
-if [ -z "${CURRENT_VERSION}" ]; then
-    echo "Error: current version not found."
-    exit 1
-fi
-
 RELEASE_VERSION=$1
-FROM_MAKEFILE=$2
+CURRENT_VERSION=$2
+FROM_MAKEFILE=$3
 
 if [ -z "${RELEASE_VERSION}" ]; then
     if [ -z "${FROM_MAKEFILE}" ]; then
@@ -32,6 +26,10 @@ if [ -z "${RELEASE_VERSION}" ]; then
         echo "Error: missing value for 'version'. e.g. 'make release VERSION=x.y.z'"
     fi
     exit 1
+fi
+
+if [ -z "${CURRENT_VERSION}" ]; then
+    CURRENT_VERSION=$(git describe --tags --exact-match 2>/dev/null || git describe --tags 2>/dev/null || echo "v0.0.1-$(COMMIT_HASH)")
 fi
 
 if [ "v${RELEASE_VERSION}" = "${CURRENT_VERSION}" ]; then
@@ -55,9 +53,9 @@ function getClosestVersion() {
         fi
         break
     done
-    echo "$tag"
+    echo "$tag" | sed 's/^v//'
 }
-CLOSEST_VERSION=$(getClosestVersion | sed 's/^v//')
+CLOSEST_VERSION=$(getClosestVersion)
 
 # Bump the released version
 sed -i -E 's|'${CLOSEST_VERSION}'|'${RELEASE_VERSION}'|g' deploy/overlays/prod/kustomization.yaml
