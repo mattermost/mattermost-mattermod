@@ -299,6 +299,14 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
+	if !oldPr.MilestoneNumber.Valid || (oldPr.MilestoneNumber.Int64 != pr.MilestoneNumber.Int64) {
+		prHasChanges = true
+	}
+
+	if !oldPr.MilestoneTitle.Valid || (oldPr.MilestoneTitle.String != pr.MilestoneTitle.String) {
+		prHasChanges = true
+	}
+
 	if prHasChanges {
 		if _, err := s.Store.PullRequest().Save(pr); err != nil {
 			return true, fmt.Errorf("could not save PR: %w", err)

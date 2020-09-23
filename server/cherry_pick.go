@@ -132,15 +132,11 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		return
 	}
 
-	prCherryCandidate, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-	if err != nil {
-		mlog.Error("Error getting the PR info", mlog.Err(err))
-		return
-	}
-
-	prMilestone := prCherryCandidate.GetMilestone()
-	if prMilestone == nil {
-		mlog.Info("PR does not have milestone, not cherry picking", mlog.Int("PR Number", prCherryCandidate.GetNumber()), mlog.String("Repo", pr.RepoName))
+	if !pr.MilestoneNumber.Valid ||
+		!pr.MilestoneTitle.Valid ||
+		pr.MilestoneNumber.Int64 == 0 ||
+		pr.MilestoneTitle.String == "" {
+		mlog.Info("PR milestone number not available", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
@@ -152,8 +148,8 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			milestoneNumber := prMilestone.GetNumber()
-			milestone := getMilestone(prMilestone.GetTitle())
+			milestoneNumber := int(pr.MilestoneNumber.Int64)
+			milestone := getMilestone(pr.MilestoneTitle.String)
 
 			select {
 			case <-s.cherryPickStopChan:

@@ -71,6 +71,12 @@ func TestIssueEventHandler(t *testing.T) {
 				Login: &login,
 			},
 		},
+		Repo: &github.Repository{
+			Owner: &github.User{
+				Login: &login,
+			},
+			Name: &name,
+		},
 	}
 
 	issue := &model.Issue{
@@ -103,6 +109,12 @@ func TestIssueEventHandler(t *testing.T) {
 			Issue: &github.Issue{
 				HTMLURL: &url,
 			},
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: &login,
+				},
+				Name: &name,
+			},
 		})
 		require.NoError(t, err)
 
@@ -124,6 +136,12 @@ func TestIssueEventHandler(t *testing.T) {
 		b, err := json.Marshal(&issueEvent{
 			Issue: &github.Issue{
 				HTMLURL: &url,
+			},
+			Repo: &github.Repository{
+				Owner: &github.User{
+					Login: &login,
+				},
+				Name: &name,
 			},
 		})
 		require.NoError(t, err)
