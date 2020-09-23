@@ -14,6 +14,7 @@ require (
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/jarcoal/httpmock v1.0.5
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
 	github.com/mattermost/go-circleci v0.5.1
 	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7
