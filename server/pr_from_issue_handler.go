@@ -11,12 +11,22 @@ import (
 )
 
 func (s *Server) prFromIssueHandler(event *issueEvent, w http.ResponseWriter) {
+	// Happens if the PR is new _and_ has a milestone. So sometimes the milestone info
+	// is not up to date.
+	if event.Issue.GetMilestone() == nil {
+		return
+	}
+
 	oldPR, err := s.Store.PullRequest().Get(event.Repo.GetOwner().GetLogin(),
 		event.Repo.GetName(),
 		event.Issue.GetNumber())
 	if err != nil {
 		mlog.Error("Error in getting PR from DB", mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// PR does not exist in DB.
+	if oldPR == nil {
 		return
 	}
 

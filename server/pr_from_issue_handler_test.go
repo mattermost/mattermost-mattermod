@@ -116,3 +116,74 @@ func TestPRFromIssueHandler(t *testing.T) {
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
+
+func TestPRFromIssueHandlerNoMilestone(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	url := "https://github.com/mattermost/mmctl/pull/3"
+	number := 3
+	login := "mattermost"
+	name := "mmctl"
+
+	event := issueEvent{
+		Issue: &github.Issue{
+			Repository: &github.Repository{
+				Owner: &github.User{
+					Login: &login,
+				},
+				Name: &name,
+			},
+			Number:  &number,
+			HTMLURL: &url,
+			User: &github.User{
+				Login: &login,
+			},
+			PullRequestLinks: &github.PullRequestLinks{
+				HTMLURL: &url,
+			},
+		},
+		Repo: &github.Repository{
+			Owner: &github.User{
+				Login: &login,
+			},
+			Name: &name,
+		},
+	}
+
+	ss := stmock.NewMockStore(ctrl)
+
+	prStoreMock := stmock.NewMockPullRequestStore(ctrl)
+	prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
+		gomock.Eq(event.Repo.GetName()),
+		gomock.Eq(event.Issue.GetNumber())).
+		Times(1).
+		Return(nil, nil)
+
+	ss.EXPECT().
+		PullRequest().
+		Return(prStoreMock).
+		AnyTimes()
+
+	s := &Server{
+		GithubClient: &GithubClient{},
+		Config: &Config{
+			IssueLabels: []LabelResponse{},
+			Username:    "mattermost",
+		},
+		Store: ss,
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(s.githubEvent))
+	defer ts.Close()
+
+	b, err := json.Marshal(&event)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+	req.Header.Set("X-GitHub-Event", "issues")
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
