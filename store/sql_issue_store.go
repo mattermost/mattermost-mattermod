@@ -29,10 +29,6 @@ func NewSQLIssueStore(sqlStore *SQLStore) IssueStore {
 	return s
 }
 
-func (s SQLIssueStore) CreateIndexesIfNotExists() {
-	s.CreateColumnIfNotExists("Issues", "State", "varchar(8)", "varchar(8)", "")
-}
-
 func (s SQLIssueStore) Save(issue *model.Issue) (*model.Issue, error) {
 	if err := s.GetMaster().Insert(issue); err != nil {
 		if _, err := s.GetMaster().Update(issue); err != nil {

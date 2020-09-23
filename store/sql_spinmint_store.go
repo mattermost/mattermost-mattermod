@@ -25,10 +25,6 @@ func NewSQLSpinmintStore(sqlStore *SQLStore) SpinmintStore {
 	return s
 }
 
-func (s SQLSpinmintStore) CreateIndexesIfNotExists() {
-	s.CreateColumnIfNotExists("Spinmint", "InstanceId", "varchar(128)", "varchar(128)", "")
-}
-
 func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error) {
 	if err := s.GetMaster().Insert(spinmint); err != nil {
 		if _, err := s.GetMaster().Update(spinmint); err != nil {

@@ -8,6 +8,7 @@ require (
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
+	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3
 	github.com/google/go-github/v32 v32.0.0
 	github.com/gorilla/mux v1.7.4
@@ -21,7 +22,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/net v0.0.0-20200625001655-4c5254603344
+	golang.org/x/net v0.0.0-20200707034311-ab3426394381
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 )

@@ -16,9 +16,15 @@ import (
 	"golang.org/x/net/context"
 )
 
-func main() {
-	var configFile string
+var (
+	configFile string
+)
+
+func init() {
 	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
+}
+
+func main() {
 	flag.Parse()
 
 	config, err := server.GetConfig(configFile)

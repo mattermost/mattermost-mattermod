@@ -12,7 +12,7 @@
     "CircleCIToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true",
+    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
 
     "TickRateMinutes": 15,
     "SpinmintExpirationHour": 72,

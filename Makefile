@@ -18,6 +18,8 @@ LDFLAGS +="
 GO ?= $(shell command -v go 2> /dev/null)
 
 PACKAGES=$(shell go list ./...)
+GOBIN=$(PWD)/bin
+PATH=$(shell printenv PATH):$(GOBIN)
 
 ## Checks the code style, tests and builds.
 .PHONY: all
@@ -61,6 +63,11 @@ endif
 run-jobserver:
 	go run ./cmd/jobserver --config=config/config-mattermod.json
 
+## Generate assets
+assets:
+	go get -modfile=go.tools.mod github.com/kevinburke/go-bindata/go-bindata/...
+	go generate ./...
+
 ## Runs tests.
 test:
 	@echo Running Go tests
@@ -69,7 +76,7 @@ test:
 
 ## Builds mattermod binaries
 .PHONY: build
-build: build-mattermod build-jobserver
+build: build-mattermod build-jobserver build-migrator
 
 build-mattermod: clean
 	@echo Building mattermod
@@ -78,6 +85,10 @@ build-mattermod: clean
 build-jobserver: clean
 	@echo Building mattermod
 	$(GO) build -ldflags $(LDFLAGS) -o dist/jobserver ./cmd/jobserver
+
+build-migrator: clean
+	@echo Building migrator
+	$(GO) build -o dist/migrator ./cmd/migrator
 
 # Docker variables
 DEFAULT_TAG  ?= $(shell git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)

@@ -1,0 +1,7 @@
+BEGIN;
+
+DROP TABLE IF EXISTS `Issues`;
+DROP TABLE IF EXISTS `PullRequests`;
+DROP TABLE IF EXISTS `Spinmint`;
+
+COMMIT;
