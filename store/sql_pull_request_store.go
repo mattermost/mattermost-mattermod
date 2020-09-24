@@ -38,8 +38,10 @@ func NewSQLPullRequestStore(sqlStore *SQLStore) PullRequestStore {
 func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, error) {
 	if _, err := s.dbx.Exec(s.insertQuery, pr.RepoOwner, pr.RepoName, pr.FullName, pr.Number, pr.Username, pr.Ref, pr.Sha, pr.Labels, pr.State,
 		pr.BuildStatus, pr.BuildConclusion, pr.BuildLink, pr.URL, pr.CreatedAt, pr.Merged, pr.MaintainerCanModify); err != nil {
+
 		if _, err := s.dbx.Exec(s.updateQuery, pr.FullName, pr.Username, pr.Ref, pr.Sha, pr.Labels, pr.State, pr.BuildStatus, pr.BuildConclusion,
 			pr.BuildLink, pr.URL, pr.CreatedAt, pr.Merged, pr.MaintainerCanModify, pr.RepoOwner, pr.RepoName, pr.Number); err != nil {
+
 			return nil, fmt.Errorf("could not insert or update PR: owner=%v, name=%v, number=%v, err=%w", pr.RepoOwner, pr.RepoName, pr.Number, err)
 		}
 	}
