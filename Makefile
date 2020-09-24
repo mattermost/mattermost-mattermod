@@ -164,6 +164,21 @@ minor: release
 major: PATTERN = '\$$1+1\".0.0\"'
 major: release
 
+## Build and publish release using Goreleaser.
+.PHONY: publish-release
+publish-release:
+	@if ! [ -x "$$(command -v goreleaser)" ]; then \
+		echo "goreleaser is not installed, do you want to download it? [y/N] " && read ans && [ $${ans:-N} = y ]; \
+		if [ $$ans = y ] || [ $$ans = Y ]  ; then \
+			curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh; \
+		else \
+			echo "aborting make publish-release."; \
+			exit -1; \
+		fi; \
+	else \
+		goreleaser --rm-dist; \
+	fi; \
+
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
 	@cat Makefile | grep -v '\.PHONY' |  grep -v '\help:' | grep -B1 -E '^[a-zA-Z_.-]+:.*' | sed -e "s/:.*//" | sed -e "s/^## //" |  grep -v '\-\-' | uniq | sed '1!G;h;$$!d' | awk 'NR%2{printf "\033[36m%-30s\033[0m",$$0;next;}1' | sort

@@ -1,0 +1,70 @@
+before:
+  hooks:
+    - go mod download
+    - go mod verify
+builds:
+  - main: ./cmd/mattermost-mattermod
+    id: "mattermod"
+    binary: bin/mattermod
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -X github.com/mattermost/mattermost-mattermod/version.version=v{{.Version}}
+      - -X github.com/mattermost/mattermost-mattermod/version.commitHash={{.FullCommit}}
+      - -X github.com/mattermost/mattermost-mattermod/version.buildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+  - main: ./cmd/jobserver
+    id: "jobserver"
+    binary: bin/jobserver
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -X github.com/mattermost/mattermost-mattermod/version.version=v{{.Version}}
+      - -X github.com/mattermost/mattermost-mattermod/version.commitHash={{.FullCommit}}
+      - -X github.com/mattermost/mattermost-mattermod/version.buildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+  - main: ./cmd/migrator
+    id: "migrator"
+    binary: bin/migrator
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -mod=readonly
+      - -trimpath
+    ldflags:
+      - -X github.com/mattermost/mattermost-mattermod/version.version=v{{.Version}}
+      - -X github.com/mattermost/mattermost-mattermod/version.commitHash={{.FullCommit}}
+      - -X github.com/mattermost/mattermost-mattermod/version.buildDate={{.Date}}
+    env:
+      - CGO_ENABLED=0
+archives:
+  -
+    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    wrap_in_directory: true
+    format: tar.gz
+    files:
+      - LICENSE
+      - README.md
+      - config/config-mattermod.default.json
+changelog:
+  sort: desc
+release:
+  github:
+    owner: mattermost
+    name: mattermost-mattermod
+  name_template: "{{ .ProjectName }}-v{{ .Version }}"
+  disable: false
