@@ -171,7 +171,7 @@ If we need to roll back mattermod to an earlier version, then we also need to ch
 For example, if we have migrated to version 3 (available from `SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;`), and want to roll back to 2, then we can enter:
 
 ```
-go run ./cmd/mattermost-mattermod/ -config config/config-mattermod.json -migration_version 2
+go run ./cmd/migrator/ -config config/config-mattermod.json -migration_version 2
 ```
 
 After this, we are free to start mattermod from that version.
