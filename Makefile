@@ -152,17 +152,17 @@ release:
 ## Prepare Patch release
 .PHONY: patch
 patch: PATTERN = '\$$1\".\"\$$2\".\"\$$3+1'
-patch: release
+patch: release publish-release
 
 ## Prepare Minor release
 .PHONY: minor
 minor: PATTERN = '\$$1\".\"\$$2+1\".0\"'
-minor: release
+minor: release publish-release
 
 ## Prepare Major release
 .PHONY: major
 major: PATTERN = '\$$1+1\".0.0\"'
-major: release
+major: release publish-release
 
 ## Build and publish release using Goreleaser.
 .PHONY: publish-release
