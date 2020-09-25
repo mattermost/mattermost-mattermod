@@ -175,9 +175,8 @@ publish-release:
 			echo "aborting make publish-release."; \
 			exit -1; \
 		fi; \
-	else \
-		goreleaser --rm-dist; \
 	fi; \
+	goreleaser --rm-dist; \
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
