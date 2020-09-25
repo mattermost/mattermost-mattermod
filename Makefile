@@ -152,17 +152,31 @@ release:
 ## Prepare Patch release
 .PHONY: patch
 patch: PATTERN = '\$$1\".\"\$$2\".\"\$$3+1'
-patch: release
+patch: release publish-release
 
 ## Prepare Minor release
 .PHONY: minor
 minor: PATTERN = '\$$1\".\"\$$2+1\".0\"'
-minor: release
+minor: release publish-release
 
 ## Prepare Major release
 .PHONY: major
 major: PATTERN = '\$$1+1\".0.0\"'
-major: release
+major: release publish-release
+
+## Build and publish release using Goreleaser.
+.PHONY: publish-release
+publish-release:
+	@if ! [ -x "$$(command -v goreleaser)" ]; then \
+		echo "goreleaser is not installed, do you want to download it? [y/N] " && read ans && [ $${ans:-N} = y ]; \
+		if [ $$ans = y ] || [ $$ans = Y ]  ; then \
+			curl -sfL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | sh; \
+		else \
+			echo "aborting make publish-release."; \
+			exit -1; \
+		fi; \
+	fi; \
+	goreleaser --rm-dist; \
 
 # Help documentation à la https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 help:
