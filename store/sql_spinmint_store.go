@@ -15,14 +15,7 @@ type SQLSpinmintStore struct {
 }
 
 func NewSQLSpinmintStore(sqlStore *SQLStore) SpinmintStore {
-	s := &SQLSpinmintStore{sqlStore}
-
-	for _, db := range sqlStore.GetAllConns() {
-		table := db.AddTableWithName(model.Spinmint{}, "Spinmint").SetKeys(false, "InstanceId")
-		table.ColMap("InstanceId").SetMaxSize(128)
-	}
-
-	return s
+	return &SQLSpinmintStore{sqlStore}
 }
 
 func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error) {
