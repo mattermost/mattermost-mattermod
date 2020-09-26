@@ -10,6 +10,7 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/google/go-github/v32 v32.0.0
 	github.com/gorilla/mux v1.7.4
 	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5

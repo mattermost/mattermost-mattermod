@@ -26,8 +26,13 @@ func NewSQLSpinmintStore(sqlStore *SQLStore) SpinmintStore {
 }
 
 func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error) {
-	if err := s.GetMaster().Insert(spinmint); err != nil {
-		if _, err := s.GetMaster().Update(spinmint); err != nil {
+	insertQuery := `INSERT INTO Spinmint (InstanceId, RepoOwner, RepoName, Number, CreatedAt)
+        VALUES (:InstanceId, :RepoOwner, :RepoName, :Number, :CreatedAt)`
+	if _, err := s.dbx.NamedExec(insertQuery, spinmint); err != nil {
+		updateQuery := `UPDATE Spinmint
+			SET RepoOwner = :RepoOwner, RepoName = :RepoName, Number = :Number, CreatedAt = :CreatedAt
+			WHERE InstanceId = :InstanceId`
+		if _, err := s.dbx.NamedExec(updateQuery, spinmint); err != nil {
 			return nil, fmt.Errorf("could not insert or update spinmint: instanceid=%v, owner=%v, name=%v, number=%v, err=%w",
 				spinmint.InstanceID, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err)
 		}
@@ -36,8 +41,8 @@ func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error
 }
 
 func (s SQLSpinmintStore) List() ([]*model.Spinmint, error) {
-	var spinmints []*model.Spinmint
-	_, err := s.GetReplica().Select(&spinmints,
+	spinmints := []*model.Spinmint{}
+	err := s.dbx.Select(&spinmints,
 		`SELECT
         *
       FROM
@@ -50,11 +55,11 @@ func (s SQLSpinmintStore) List() ([]*model.Spinmint, error) {
 
 func (s SQLSpinmintStore) Get(prNumber int, repoName string) (*model.Spinmint, error) {
 	var spinmint model.Spinmint
-	if err := s.GetReplica().SelectOne(&spinmint,
+	if err := s.dbx.Get(&spinmint,
 		`SELECT * FROM
         Spinmint
       WHERE
-        Number = :prNumber AND RepoName = :repoName`, map[string]interface{}{"prNumber": prNumber, "repoName": repoName}); err != nil {
+        Number = ? AND RepoName = ?`, prNumber, repoName); err != nil {
 		if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("could not get the spinmint: owner=%v, name=%v, number=%v, instanceid=%v, err=%w", spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, spinmint.InstanceID, err)
 		}
@@ -64,7 +69,7 @@ func (s SQLSpinmintStore) Get(prNumber int, repoName string) (*model.Spinmint, e
 }
 
 func (s SQLSpinmintStore) Delete(instanceID string) error {
-	if _, err := s.GetReplica().Exec(`DELETE FROM
+	if _, err := s.dbx.NamedExec(`DELETE FROM
         Spinmint
       WHERE
         InstanceId = :InstanceID`, map[string]interface{}{"InstanceID": instanceID}); err != nil {

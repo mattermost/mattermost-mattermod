@@ -5,8 +5,8 @@ package model
 
 type Spinmint struct {
 	InstanceID string `db:"InstanceId"`
-	RepoOwner  string
-	RepoName   string
-	Number     int
-	CreatedAt  int64
+	RepoOwner  string `db:"RepoOwner"`
+	RepoName   string `db:"RepoName"`
+	Number     int	  `db:"Number"`
+	CreatedAt  int64  `db:"CreatedAt"`
 }

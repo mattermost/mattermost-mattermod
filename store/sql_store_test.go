@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-gorp/gorp"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -40,6 +41,8 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 	}
 
 	store := &SQLStore{
+		dbx: sqlx.NewDb(db, "mysql"),
+		db:  db,
 		master: &gorp.DbMap{
 			Db:            db,
 			TypeConverter: mattermConverter{},
