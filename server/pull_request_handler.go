@@ -60,8 +60,11 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
-		go s.postPRWelcomeMessage(ctx, pr)
-		go s.addHacktoberfestLabel(ctx, pr)
+		if err = s.PostPRWelcomeMessage(ctx, pr); err != nil {
+			mlog.Error("Error while commenting PR welcome message", mlog.Err(err))
+		}
+
+		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
