@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
+	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s&parseTime=true&multiStatements=true"
 	defaultMysqlRootUser    = "root"
 	defaultMysqlRootUserPWD = "mattermod"
 	defaultMysqlUser        = "mattermod"
@@ -52,6 +52,9 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 			},
 		},
 	}
+	store.dbx.MapperFunc(func(s string) string { return s })
+	runMigrations(db)
+
 	t.Cleanup(func() {
 		if err := db.Close(); err != nil {
 			t.Fatal(err)

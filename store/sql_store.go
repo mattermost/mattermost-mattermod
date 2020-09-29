@@ -64,6 +64,7 @@ func initConnection(driverName, dataSource string) *SQLStore {
 			},
 		},
 	}
+	sqlStore.dbx.MapperFunc(func(s string) string { return s })
 
 	return sqlStore
 }

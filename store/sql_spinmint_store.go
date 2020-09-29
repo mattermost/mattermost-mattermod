@@ -19,13 +19,15 @@ func NewSQLSpinmintStore(sqlStore *SQLStore) SpinmintStore {
 }
 
 func (s SQLSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error) {
-	insertQuery := `INSERT INTO Spinmint (InstanceId, RepoOwner, RepoName, Number, CreatedAt)
-        VALUES (:InstanceId, :RepoOwner, :RepoName, :Number, :CreatedAt)`
-	if _, err := s.dbx.NamedExec(insertQuery, spinmint); err != nil {
-		updateQuery := `UPDATE Spinmint
-			SET RepoOwner = :RepoOwner, RepoName = :RepoName, Number = :Number, CreatedAt = :CreatedAt
-			WHERE InstanceId = :InstanceId`
-		if _, err := s.dbx.NamedExec(updateQuery, spinmint); err != nil {
+	if _, err := s.dbx.NamedExec(
+		`INSERT INTO Spinmint
+			(InstanceId, RepoOwner, RepoName, Number, CreatedAt)
+		VALUES
+			(:InstanceId, :RepoOwner, :RepoName, :Number, :CreatedAt)`, spinmint); err != nil {
+		if _, err := s.dbx.NamedExec(
+			`UPDATE Spinmint
+			 SET RepoOwner = :RepoOwner, RepoName = :RepoName, Number = :Number, CreatedAt = :CreatedAt
+			 WHERE InstanceId = :InstanceId`, spinmint); err != nil {
 			return nil, fmt.Errorf("could not insert or update spinmint: instanceid=%v, owner=%v, name=%v, number=%v, err=%w",
 				spinmint.InstanceID, spinmint.RepoOwner, spinmint.RepoName, spinmint.Number, err)
 		}
