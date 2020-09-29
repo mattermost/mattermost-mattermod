@@ -36,55 +36,6 @@ type CircleCIService interface {
 	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
 }
 
-func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequest) error {
-	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-	repoInfo := strings.Split(pr.FullName, "/")
-	if repoInfo[0] == s.Config.Org {
-		// It is from upstream mattermost repo don't need to trigger the circleci because org members
-		// have permissions
-		return nil
-	}
-
-	// Checking if the repo have CircleCI setup
-	builds, err := s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, "master", "", 5, 0)
-	if err != nil {
-		return fmt.Errorf("could not list the CircleCI builds for project: %w", err)
-	}
-
-	// If builds are 0 means no build ran for master and most probably this is not setup, so skipping.
-	if len(builds) == 0 {
-		return nil
-	}
-
-	// List the files that was modified or added in the PullRequest
-	prFiles, err := s.getFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-	if err != nil {
-		return fmt.Errorf("could not list the files for the #%d: %w", pr.Number, err)
-	}
-
-	err = s.validateBlockPaths(pr.RepoName, prFiles)
-	var blockError *BlockPathValidationError
-	if err != nil && errors.As(err, &blockError) {
-		mlog.Info("Files found in the block list", mlog.Err(err))
-		if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles()); cErr != nil {
-			mlog.Warn("Error while commenting", mlog.Err(cErr))
-		}
-		return err
-	}
-
-	opts := map[string]interface{}{
-		"revision": pr.Sha,
-		"branch":   fmt.Sprintf("pull/%d", pr.Number),
-	}
-
-	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
-	if err != nil {
-		return fmt.Errorf("could not trigger circleci: %w", err)
-	}
-
-	return nil
-}
-
 func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) error {
 	r, err := s.triggerEnterprisePipeline(ctx, pr, info)
 	if err != nil {
