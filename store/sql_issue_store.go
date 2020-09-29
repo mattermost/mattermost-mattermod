@@ -15,23 +15,19 @@ type SQLIssueStore struct {
 }
 
 func NewSQLIssueStore(sqlStore *SQLStore) IssueStore {
-	s := &SQLIssueStore{sqlStore}
-
-	for _, db := range sqlStore.GetAllConns() {
-		table := db.AddTableWithName(model.Issue{}, "Issues").SetKeys(false, "RepoOwner", "RepoName", "Number")
-		table.ColMap("RepoOwner").SetMaxSize(128)
-		table.ColMap("RepoName").SetMaxSize(128)
-		table.ColMap("Username").SetMaxSize(128)
-		table.ColMap("State").SetMaxSize(8)
-		table.ColMap("Labels").SetMaxSize(1024)
-	}
-
-	return s
+	return &SQLIssueStore{sqlStore}
 }
 
 func (s SQLIssueStore) Save(issue *model.Issue) (*model.Issue, error) {
-	if err := s.GetMaster().Insert(issue); err != nil {
-		if _, err := s.GetMaster().Update(issue); err != nil {
+	if _, err := s.dbx.NamedExec(
+		`INSERT INTO Issues
+			(RepoOwner, RepoName, Number, Username, State, Labels)
+		VALUES
+			(:RepoOwner, :RepoName, :Number, :Username, :State, :Labels)`, issue); err != nil {
+		if _, err := s.dbx.NamedExec(
+			`UPDATE Issues
+			 SET Username = :Username, State = :State, Labels = :Labels
+			 WHERE RepoOwner = :RepoOwner AND RepoName = :RepoName AND Number = :Number`, issue); err != nil {
 			return nil, fmt.Errorf("could not insert or update issue: owner=%v, name=%v, number=%v, err=%w", issue.RepoOwner, issue.RepoName, issue.Number, err)
 		}
 	}
@@ -40,15 +36,15 @@ func (s SQLIssueStore) Save(issue *model.Issue) (*model.Issue, error) {
 
 func (s SQLIssueStore) Get(repoOwner, repoName string, number int) (*model.Issue, error) {
 	var issue model.Issue
-	if err := s.GetReplica().SelectOne(&issue,
+	if err := s.dbx.Get(&issue,
 		`SELECT
 				*
 			FROM
 				Issues
 			WHERE
-				RepoOwner = :RepoOwner
-				AND RepoName = :RepoName
-				AND Number = :Number`, map[string]interface{}{"Number": number, "RepoOwner": repoOwner, "RepoName": repoName}); err != nil {
+				RepoOwner = ?
+				AND RepoName = ?
+				AND Number = ?`, repoOwner, repoName, number); err != nil {
 		if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("could not get issue: owner=%v, name=%v, number=%v, err=%w", issue.RepoOwner, issue.RepoName, issue.Number, err)
 		}
