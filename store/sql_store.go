@@ -17,6 +17,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
+	"github.com/jmoiron/sqlx"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
@@ -26,6 +27,8 @@ const (
 )
 
 type SQLStore struct {
+	dbx           *sqlx.DB
+	db            *sql.DB
 	master        *gorp.DbMap
 	pullRequest   PullRequestStore
 	issue         IssueStore
@@ -34,8 +37,6 @@ type SQLStore struct {
 }
 
 func initConnection(driverName, dataSource string) *SQLStore {
-	sqlStore := &SQLStore{}
-
 	db, err := sql.Open(driverName, dataSource)
 	if err != nil {
 		mlog.Critical("failed to open db connection", mlog.Err(err))
@@ -51,14 +52,19 @@ func initConnection(driverName, dataSource string) *SQLStore {
 		os.Exit(exitPing)
 	}
 
-	sqlStore.master = &gorp.DbMap{
-		Db:            db,
-		TypeConverter: mattermConverter{},
-		Dialect: gorp.MySQLDialect{
-			Engine:   "InnoDB",
-			Encoding: "UTF8MB4",
+	sqlStore := &SQLStore{
+		dbx: sqlx.NewDb(db, driverName),
+		db:  db,
+		master: &gorp.DbMap{
+			Db:            db,
+			TypeConverter: mattermConverter{},
+			Dialect: gorp.MySQLDialect{
+				Engine:   "InnoDB",
+				Encoding: "UTF8MB4",
+			},
 		},
 	}
+	sqlStore.dbx.MapperFunc(func(s string) string { return s })
 
 	return sqlStore
 }
@@ -70,7 +76,7 @@ func NewSQLStore(driverName, dataSource string) Store {
 	sqlStore.issue = NewSQLIssueStore(sqlStore)
 	sqlStore.spinmint = NewSQLSpinmintStore(sqlStore)
 
-	runMigrations(sqlStore.master.Db)
+	runMigrations(sqlStore.db)
 
 	return sqlStore
 }

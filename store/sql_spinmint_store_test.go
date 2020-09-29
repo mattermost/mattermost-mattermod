@@ -12,8 +12,6 @@ func TestSQLSpinmintStore(t *testing.T) {
 	ss := getTestSQLStore(t)
 
 	sms := NewSQLSpinmintStore(ss)
-	err := ss.master.CreateTablesIfNotExists()
-	require.NoError(t, err)
 
 	sm := &model.Spinmint{
 		RepoName: "repo-name",
