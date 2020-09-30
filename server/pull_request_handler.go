@@ -79,7 +79,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
-		// Don't post CLA comment again
 		_, err = s.handleCheckCLA(ctx, pr)
 		if err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
