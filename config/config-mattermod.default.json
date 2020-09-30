@@ -82,7 +82,7 @@
     "CLAExclusionsList": [],
     "CLAGithubStatusContext": "",
     "SignedCLAURL": "",
-    "NeedsToSignCLAMessage": "",
+    "PRWelcomeMessage": "",
     "BlockListPathsGlobal": [],
     "BlockListPathsPerRepo": {},
     "PrLabels": [

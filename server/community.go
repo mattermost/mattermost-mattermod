@@ -4,12 +4,14 @@
 package server
 
 import (
+	"bytes"
 	"context"
-	"strings"
+	"text/template"
 	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
 
 func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullRequest) {
@@ -40,16 +42,24 @@ func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest
 		return nil
 	}
 
-	msg := s.Config.PRWelcomeMessage
-	if claCommentNeeded {
-		msg += "\n\n" + s.Config.NeedsToSignCLAMessage
+	t, err := template.New("welcomeMessage").Parse(s.Config.PRWelcomeMessage)
+	if err != nil {
+		return errors.Wrap(err, "failed to render welcome message template")
 	}
 
-	msg = strings.ReplaceAll(msg, "USERNAME", "@"+pr.Username)
-
-	err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
+	var output bytes.Buffer
+	data := map[string]interface{}{
+		"CLACommentNeeded": claCommentNeeded,
+		"Username":         "@" + pr.Username,
+	}
+	err = t.Execute(&output, data)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not execute welcome message template")
+	}
+
+	err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, output.String())
+	if err != nil {
+		return errors.Wrap(err, "failed to send welcome message")
 	}
 
 	return nil

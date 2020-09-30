@@ -82,8 +82,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 			s := &Server{
 				Config: &Config{
-					PRWelcomeMessage:      "Hi USERNAME, thanks for the PR!",
-					NeedsToSignCLAMessage: "You need to sign the CLA.",
+					PRWelcomeMessage: "Hi {{.Username}}, thanks for the PR!{{if .CLACommentNeeded}}\n\nYou need to sign the CLA.{{end}}",
 				},
 				OrgMembers:   test.OrgMembers,
 				GithubClient: test.SetupClient(ctrl),
