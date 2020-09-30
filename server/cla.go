@@ -100,15 +100,6 @@ func isNameInCLAList(usersWhoSignedCLA []string, authorToTrim string) bool {
 	return false
 }
 
-func findNeedsToSignCLAComment(comments []*github.IssueComment, username string) (id int64, found bool) {
-	for _, comment := range comments {
-		if *comment.User.Login == username && strings.Contains(*comment.Body, "Please help complete the Mattermost") {
-			return *comment.ID, true
-		}
-	}
-	return 0, false
-}
-
 func (s *Server) createCLAPendingStatus(ctx context.Context, pr *model.PullRequest) {
 	status := &github.RepoStatus{
 		State:       github.String(statePending),
