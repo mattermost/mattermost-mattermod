@@ -26,7 +26,7 @@ func (j *JSONText) Scan(value interface{}) error {
 	var source []byte
 	switch t := value.(type) {
 	case []uint8:
-		source = []byte(t)
+		source = t
 	default:
 		return errors.New("could not deserialize pointer to string from db field")
 	}
