@@ -50,7 +50,10 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err = s.handleCheckCLA(ctx, pr); err != nil {
+
+		var claCommentNeeded bool
+		claCommentNeeded, err = s.handleCheckCLA(ctx, pr)
+		if err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
@@ -60,7 +63,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
-		if err = s.PostPRWelcomeMessage(ctx, pr); err != nil {
+		if err = s.postPRWelcomeMessage(ctx, pr, claCommentNeeded); err != nil {
 			mlog.Error("Error while commenting PR welcome message", mlog.Err(err))
 		}
 
@@ -75,7 +78,10 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		s.setBlockStatusForPR(ctx, pr)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err = s.handleCheckCLA(ctx, pr); err != nil {
+
+		// Don't post CLA comment again
+		_, err = s.handleCheckCLA(ctx, pr)
+		if err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
@@ -167,7 +173,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
-		if err = s.handleCheckCLA(ctx, pr); err != nil {
+
+		_, err = s.handleCheckCLA(ctx, pr)
+		if err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 

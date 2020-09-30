@@ -34,13 +34,18 @@ func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullReques
 	}
 }
 
-func (s *Server) PostPRWelcomeMessage(ctx context.Context, pr *model.PullRequest) error {
+func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest, claCommentNeeded bool) error {
 	// Only post welcome Message for community member
 	if s.IsOrgMember(pr.Username) {
 		return nil
 	}
 
-	msg := strings.ReplaceAll(s.Config.PRWelcomeMessage, "USERNAME", "@"+pr.Username)
+	msg := s.Config.PRWelcomeMessage
+	if claCommentNeeded {
+		msg += "\n\n" + s.Config.NeedsToSignCLAMessage
+	}
+
+	msg = strings.ReplaceAll(msg, "USERNAME", "@"+pr.Username)
 
 	err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg)
 	if err != nil {

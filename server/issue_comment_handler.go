@@ -57,7 +57,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 
 	if ev.HasCheckCLA() {
 		s.Metrics.IncreaseWebhookRequest("check_cla")
-		if err := s.handleCheckCLA(ctx, pr); err != nil {
+		if _, err := s.handleCheckCLA(ctx, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("check_cla")
 			errs = append(errs, fmt.Errorf("error checking CLA: %w", err))
 		}

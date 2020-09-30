@@ -23,8 +23,9 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
 
 	for name, test := range map[string]struct {
-		SetupClient func(*gomock.Controller) *GithubClient
-		OrgMembers  []string
+		SetupClient      func(*gomock.Controller) *GithubClient
+		OrgMembers       []string
+		claCommentNeeded bool
 	}{
 		"No org member": {
 			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
@@ -41,13 +42,38 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 				return client
 			},
-			OrgMembers: []string{"bar"},
+			OrgMembers:       []string{"bar"},
+			claCommentNeeded: false,
+		},
+		"No org member, CLA not signed": {
+			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
+				issueMocks := mocks.NewMockIssuesService(ctrl)
+				client := &GithubClient{
+					Issues: issueMocks,
+				}
+
+				comment := &github.IssueComment{Body: github.String("Hi @foo, thanks for the PR!\n\nYou need to sign the CLA.")}
+
+				issueMocks.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface),
+					gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
+					gomock.Eq(pr.Number), comment).Return(nil, nil, nil)
+
+				return client
+			},
+			OrgMembers:       []string{"bar"},
+			claCommentNeeded: true,
 		},
 		"Org member": {
 			SetupClient: func(ctrl *gomock.Controller) *GithubClient {
-				return &GithubClient{}
+				issueMocks := mocks.NewMockIssuesService(ctrl)
+				client := &GithubClient{
+					Issues: issueMocks,
+				}
+
+				return client
 			},
-			OrgMembers: []string{"foo", "bar"},
+			OrgMembers:       []string{"foo", "bar"},
+			claCommentNeeded: false,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -56,13 +82,14 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 			s := &Server{
 				Config: &Config{
-					PRWelcomeMessage: "Hi USERNAME, thanks for the PR!",
+					PRWelcomeMessage:      "Hi USERNAME, thanks for the PR!",
+					NeedsToSignCLAMessage: "You need to sign the CLA.",
 				},
 				OrgMembers:   test.OrgMembers,
 				GithubClient: test.SetupClient(ctrl),
 			}
 
-			err := s.PostPRWelcomeMessage(context.Background(), pr)
+			err := s.postPRWelcomeMessage(context.Background(), pr, test.claCommentNeeded)
 			assert.NoError(t, err)
 		})
 	}
