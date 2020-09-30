@@ -16,6 +16,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
+// handleCheckCLA checks if the author of a pull request has signed the CLA and sets a status accordingly.
+// Returns true, if the user hasn't signed yet.
 func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) (bool, error) {
 	if pr.State == model.StateClosed {
 		return false, nil
