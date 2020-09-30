@@ -6,12 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/go-gorp/gorp"
 	"github.com/go-sql-driver/mysql"
 )
 
 const (
-	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8\u0026readTimeout=30s\u0026writeTimeout=30s\u0026parseTime=true"
+	defaultMysqlDSN         = "mattermod:mattermod@tcp(localhost:3306)/mattermost_mattermod_test?charset=utf8mb4,utf8&readTimeout=30s&writeTimeout=30s&parseTime=true&multiStatements=true"
 	defaultMysqlRootUser    = "root"
 	defaultMysqlRootUserPWD = "mattermod"
 	defaultMysqlUser        = "mattermod"
@@ -34,23 +33,11 @@ func getTestSQLStore(t *testing.T) *SQLStore {
 	cfg.Passwd = getEnv("MYSQL_PASSWORD", defaultMysqlUserPWD)
 	cfg.DBName = defaultMysqlDB
 
-	db, err := sql.Open("mysql", cfg.FormatDSN())
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := initConnection("mysql", cfg.FormatDSN())
+	runMigrations(store.db)
 
-	store := &SQLStore{
-		master: &gorp.DbMap{
-			Db:            db,
-			TypeConverter: mattermConverter{},
-			Dialect: gorp.MySQLDialect{
-				Engine:   "InnoDB",
-				Encoding: "UTF8MB4",
-			},
-		},
-	}
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
+		if err := store.db.Close(); err != nil {
 			t.Fatal(err)
 		}
 		t.Log("destroyed temporary database")
