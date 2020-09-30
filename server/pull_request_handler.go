@@ -79,8 +79,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
-		_, err = s.handleCheckCLA(ctx, pr)
-		if err != nil {
+		if _, err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
@@ -173,8 +172,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
-		_, err = s.handleCheckCLA(ctx, pr)
-		if err != nil {
+		if _, err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
