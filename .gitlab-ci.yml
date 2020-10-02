@@ -3,5 +3,6 @@ include:
     file: '/all.yml'
 
 test:
+  stage: pre
   script:
     - echo "from gh pr"
