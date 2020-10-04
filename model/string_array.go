@@ -4,20 +4,17 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-
-	_ "github.com/go-sql-driver/mysql" // Load MySQL Driver
 )
 
+// StringArray type to load and save []string in mysql column as json using sqlx
 type StringArray []string
 
+// Value converts StringArray to database value
 func (sa StringArray) Value() (driver.Value, error) {
-	b, err := json.Marshal(sa)
-	if err != nil {
-		return nil, err
-	}
-	return string(b), nil
+	return json.Marshal(sa)
 }
 
+// Scan converts database column value to StringArray
 func (sa *StringArray) Scan(value interface{}) error {
 	if value == nil {
 		return nil
