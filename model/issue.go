@@ -3,15 +3,11 @@
 
 package model
 
-import (
-	"github.com/mattermost/mattermost-mattermod/types"
-)
-
 type Issue struct {
 	RepoOwner string
 	RepoName  string
 	Number    int
 	Username  string
 	State     string
-	Labels    types.JSONText
+	Labels    StringArray
 }
