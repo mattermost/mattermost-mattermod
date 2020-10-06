@@ -120,8 +120,8 @@ type Config struct {
 	CLAExclusionsList      []string
 	CLAGithubStatusContext string
 
-	SignedCLAURL          string
-	NeedsToSignCLAMessage string
+	SignedCLAURL     string
+	PRWelcomeMessage string
 
 	PrLabels    []LabelResponse
 	IssueLabels []LabelResponse
