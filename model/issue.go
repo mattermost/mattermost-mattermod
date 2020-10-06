@@ -9,5 +9,5 @@ type Issue struct {
 	Number    int
 	Username  string
 	State     string
-	Labels    []string
+	Labels    StringArray
 }
