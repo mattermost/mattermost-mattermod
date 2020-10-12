@@ -6,7 +6,6 @@ require (
 	github.com/aws/aws-sdk-go v1.31.5
 	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
-	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3

@@ -5,14 +5,12 @@ package store
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"os"
 	"time"
 
 	"github.com/mattermost/mattermost-mattermod/store/migrations"
 
-	"github.com/go-gorp/gorp"
 	_ "github.com/go-sql-driver/mysql" // Load MySQL Driver
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -29,7 +27,6 @@ const (
 type SQLStore struct {
 	dbx           *sqlx.DB
 	db            *sql.DB
-	master        *gorp.DbMap
 	pullRequest   PullRequestStore
 	issue         IssueStore
 	spinmint      SpinmintStore
@@ -55,14 +52,6 @@ func initConnection(driverName, dataSource string) *SQLStore {
 	sqlStore := &SQLStore{
 		dbx: sqlx.NewDb(db, driverName),
 		db:  db,
-		master: &gorp.DbMap{
-			Db:            db,
-			TypeConverter: mattermConverter{},
-			Dialect: gorp.MySQLDialect{
-				Engine:   "InnoDB",
-				Encoding: "UTF8MB4",
-			},
-		},
 	}
 	sqlStore.dbx.MapperFunc(func(s string) string { return s })
 
@@ -81,23 +70,9 @@ func NewSQLStore(driverName, dataSource string) Store {
 	return sqlStore
 }
 
-func (ss *SQLStore) GetMaster() *gorp.DbMap {
-	return ss.master
-}
-
-func (ss *SQLStore) GetReplica() *gorp.DbMap {
-	return ss.master
-}
-
-func (ss *SQLStore) GetAllConns() []*gorp.DbMap {
-	all := make([]*gorp.DbMap, 1)
-	all[0] = ss.master
-	return all
-}
-
 func (ss *SQLStore) Close() {
 	mlog.Info("closing db")
-	ss.master.Db.Close()
+	ss.dbx.Close()
 }
 
 func (ss *SQLStore) PullRequest() PullRequestStore {
@@ -113,7 +88,7 @@ func (ss *SQLStore) Spinmint() SpinmintStore {
 }
 
 func (ss *SQLStore) DropAllTables() {
-	err := ss.master.TruncateTables()
+	err := multiExec(ss.db, []string { "TRUNCATE TABLE Issues", "TRUNCATE TABLE PullRequests", "TRUNCATE TABLE Spinmint" })
 	if err != nil {
 		mlog.Error("failed to drop all tables", mlog.Err(err))
 	}
@@ -151,37 +126,12 @@ func runMigrations(db *sql.DB) {
 	}
 }
 
-type mattermConverter struct{}
-
-func (me mattermConverter) ToDb(val interface{}) (interface{}, error) {
-	if _, ok := val.([]string); ok {
-		b, err := json.Marshal(val)
+func multiExec(db *sql.DB, stmts []string) error {
+	for _, s := range stmts {
+		_, err := db.Exec(s)
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		return string(b), nil
 	}
-	return val, nil
-}
-
-func (me mattermConverter) FromDb(target interface{}) (gorp.CustomScanner, bool) {
-	if _, ok := target.(*[]string); ok {
-		binder := func(holder, target interface{}) error {
-			s, ok := holder.(*string)
-			if !ok {
-				return errors.New("could not deserialize pointer to string from db field")
-			}
-
-			if s == nil {
-				return nil
-			}
-
-			b := []byte(*s)
-			return json.Unmarshal(b, target)
-		}
-		return gorp.CustomScanner{Holder: new(string), Target: target, Binder: binder}, true
-	}
-
-	return gorp.CustomScanner{}, false
+	return nil
 }

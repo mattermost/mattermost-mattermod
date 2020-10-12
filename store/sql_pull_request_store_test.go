@@ -14,8 +14,6 @@ func TestPullRequestStore(t *testing.T) {
 	ss := getTestSQLStore(t)
 
 	prs := NewSQLPullRequestStore(ss)
-	err := ss.master.CreateTablesIfNotExists()
-	require.NoError(t, err)
 
 	pr := &model.PullRequest{
 		RepoOwner: "owner",
