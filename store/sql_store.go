@@ -92,7 +92,7 @@ func (ss *SQLStore) DropAllTables() {
 	for _, s := range stmts {
 		_, err := ss.dbx.Exec(s)
 		if err != nil {
-			mlog.Error("failed to drop all tables", mlog.Err(err))
+			mlog.Error("failed to drop table", mlog.Err(err), mlog.String("table", s))
 		}
 	}
 }
