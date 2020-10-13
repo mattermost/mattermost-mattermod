@@ -88,9 +88,12 @@ func (ss *SQLStore) Spinmint() SpinmintStore {
 }
 
 func (ss *SQLStore) DropAllTables() {
-	err := multiExec(ss.db, []string{"TRUNCATE TABLE Issues", "TRUNCATE TABLE PullRequests", "TRUNCATE TABLE Spinmint"})
-	if err != nil {
-		mlog.Error("failed to drop all tables", mlog.Err(err))
+	stmts := []string{"TRUNCATE TABLE Issues", "TRUNCATE TABLE PullRequests", "TRUNCATE TABLE Spinmint"}
+	for _, s := range stmts {
+		_, err := ss.dbx.Exec(s)
+		if err != nil {
+			mlog.Error("failed to drop all tables", mlog.Err(err))
+		}
 	}
 }
 
@@ -124,14 +127,4 @@ func runMigrations(db *sql.DB) {
 		mlog.Critical("Failed to migrate DB", mlog.Err(err))
 		os.Exit(1)
 	}
-}
-
-func multiExec(e sqlx.Execer, stmts []string) error {
-	for _, s := range stmts {
-		_, err := e.Exec(s)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
