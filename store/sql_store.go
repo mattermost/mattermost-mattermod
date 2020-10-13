@@ -88,11 +88,11 @@ func (ss *SQLStore) Spinmint() SpinmintStore {
 }
 
 func (ss *SQLStore) DropAllTables() {
-	stmts := []string{"TRUNCATE TABLE Issues", "TRUNCATE TABLE PullRequests", "TRUNCATE TABLE Spinmint"}
-	for _, s := range stmts {
-		_, err := ss.dbx.Exec(s)
+	tbls := []string{"Issues", "PullRequests", "Spinmint"}
+	for _, t := range tbls {
+		_, err := ss.dbx.Exec("TRUNCATE TABLE " + t)
 		if err != nil {
-			mlog.Error("failed to drop table", mlog.Err(err), mlog.String("table", s))
+			mlog.Error("failed to drop table", mlog.Err(err), mlog.String("table", t))
 		}
 	}
 }
