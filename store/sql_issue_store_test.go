@@ -13,8 +13,7 @@ import (
 func TestIssueStore(t *testing.T) {
 	store := getTestSQLStore(t)
 	issueStore := NewSQLIssueStore(store)
-	err := store.master.CreateTablesIfNotExists()
-	require.NoError(t, err)
+
 	issue := &model.Issue{
 		RepoOwner: "testowner",
 		RepoName:  "test-repo-name",
@@ -73,7 +72,7 @@ func TestIssueStore(t *testing.T) {
 }
 
 func cleanIssuesTable(t *testing.T, store *SQLStore) {
-	if _, err := store.master.Exec("TRUNCATE TABLE Issues;"); err != nil {
+	if _, err := store.dbx.Exec("TRUNCATE TABLE Issues;"); err != nil {
 		require.Fail(t, "Issue table cleaning failed", err.Error())
 	}
 }

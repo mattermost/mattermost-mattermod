@@ -15,33 +15,23 @@ type SQLPullRequestStore struct {
 }
 
 func NewSQLPullRequestStore(sqlStore *SQLStore) PullRequestStore {
-	s := &SQLPullRequestStore{sqlStore}
-
-	for _, db := range sqlStore.GetAllConns() {
-		table := db.AddTableWithName(model.PullRequest{}, "PullRequests").SetKeys(false, "RepoOwner", "RepoName", "Number")
-		table.ColMap("RepoOwner").SetMaxSize(128)
-		table.ColMap("RepoName").SetMaxSize(128)
-		table.ColMap("Username").SetMaxSize(128)
-		table.ColMap("FullName").SetMaxSize(2083)
-		table.ColMap("Ref").SetMaxSize(128)
-		table.ColMap("Sha").SetMaxSize(48)
-		table.ColMap("State").SetMaxSize(8)
-		table.ColMap("Labels").SetMaxSize(1024)
-		table.ColMap("BuildStatus").SetMaxSize(8)
-		table.ColMap("BuildLink").SetMaxSize(256)
-		table.ColMap("BuildConclusion").SetMaxSize(256)
-		table.ColMap("URL").SetMaxSize(2083)
-		table.ColMap("CreatedAt").SetMaxSize(128)
-		table.ColMap("MaintainerCanModify")
-		table.ColMap("Merged")
-	}
-
-	return s
+	return &SQLPullRequestStore{sqlStore}
 }
 
 func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, error) {
-	if err := s.GetMaster().Insert(pr); err != nil {
-		if _, err := s.GetMaster().Update(pr); err != nil {
+	if _, err := s.dbx.NamedExec(
+		`INSERT INTO PullRequests
+			(RepoOwner, RepoName, FullName, Number, Username, Ref, Sha, Labels, State, BuildStatus, BuildConclusion, BuildLink,
+				URL, CreatedAt, MaintainerCanModify, Merged)
+		VALUES
+			(:RepoOwner, :RepoName, :FullName, :Number, :Username, :Ref, :Sha, :Labels, :State, :BuildStatus, :BuildConclusion, :BuildLink,
+				:URL, :CreatedAt, :MaintainerCanModify, :Merged)`, pr); err != nil {
+		if _, err := s.dbx.NamedExec(
+			`UPDATE PullRequests
+			 SET FullName = :FullName, Username = :Username, Ref = :Ref, Sha = :Sha, Labels = :Labels,
+				 State = :State, BuildStatus = :BuildStatus, BuildConclusion = :BuildConclusion, BuildLink = :BuildLink,
+				 URL = :URL, CreatedAt = :CreatedAt, MaintainerCanModify = :MaintainerCanModify, Merged = :Merged
+			 WHERE RepoOwner = :RepoOwner AND RepoName = :RepoName AND Number = :Number`, pr); err != nil {
 			return nil, fmt.Errorf("could not insert or update PR: owner=%v, name=%v, number=%v, err=%w", pr.RepoOwner, pr.RepoName, pr.Number, err)
 		}
 	}
@@ -50,15 +40,15 @@ func (s SQLPullRequestStore) Save(pr *model.PullRequest) (*model.PullRequest, er
 
 func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) (*model.PullRequest, error) {
 	var pr model.PullRequest
-	if err := s.GetReplica().SelectOne(&pr,
+	if err := s.dbx.Get(&pr,
 		`SELECT
 				*
 			FROM
 				PullRequests
 			WHERE
-				RepoOwner = :RepoOwner
-				AND RepoName = :RepoName
-				AND Number = :Number`, map[string]interface{}{"Number": number, "RepoOwner": repoOwner, "RepoName": repoName}); err != nil {
+				RepoOwner = ?
+				AND RepoName = ?
+				AND Number = ?`, repoOwner, repoName, number); err != nil {
 		if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("could not get PR: owner=%v, name=%v, number=%v, err=%w", pr.RepoOwner, pr.RepoName, pr.Number, err)
 		}
@@ -69,7 +59,7 @@ func (s SQLPullRequestStore) Get(repoOwner, repoName string, number int) (*model
 
 func (s SQLPullRequestStore) ListOpen() ([]*model.PullRequest, error) {
 	var prs []*model.PullRequest
-	if _, err := s.GetReplica().Select(&prs,
+	if err := s.dbx.Select(&prs,
 		`SELECT
 				*
 			FROM

@@ -21,7 +21,7 @@ type PullRequest struct {
 	Username            string
 	Ref                 string
 	Sha                 string
-	Labels              []string
+	Labels              StringArray
 	State               string
 	BuildStatus         string
 	BuildConclusion     string
