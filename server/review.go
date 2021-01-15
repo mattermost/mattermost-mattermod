@@ -1,0 +1,89 @@
+// Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
+// See License.txt for license information.
+
+package server
+
+import (
+	"context"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
+	"github.com/google/go-github/v33/github"
+	"github.com/sourcegraph/go-diff/diff"
+
+	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+)
+
+const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://docs.google.com/document/d/160-9Qfk-1a2_gOU-VHfZ5CbUdkY8BZxq-2VL7XYwqGA) before merging this change."
+
+func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
+	b, err := getRawDiff(diffURL)
+	if err != nil {
+		return fmt.Errorf("could not retrieve diff: %w", err)
+	}
+
+	fileDiffs, err := diff.ParseMultiFileDiff(b)
+	if err != nil {
+		return err
+	}
+
+	mlog.Debug("Going to review files", mlog.Int("num_files", len(fileDiffs)))
+
+	// We simply iterate every file in the diff and check if the PR includes an mlog.Error/mlog.Critical call
+	for _, fileDiff := range fileDiffs {
+		var position int32 // reset position since it's file specific
+
+		for _, hunk := range fileDiff.Hunks {
+			for _, line := range strings.Split(string(hunk.Body), "\n") {
+				position++
+
+				if len(line) == 0 || line[0] != '+' {
+					continue // we are not interested if it's not an addition
+				}
+
+				if strings.Contains(line, "mlog.Error(") || strings.Contains(line, "mlog.Critical(") {
+					mlog.Info("Found mlog.Error/mlog.Critical insertion", mlog.String("file", fileDiff.NewName), mlog.Int("line", int(position)))
+
+					review := &github.PullRequestReviewRequest{
+						NodeID: github.String(nodeID),
+						Event:  github.String("COMMENT"),
+						Comments: []*github.DraftReviewComment{
+							{
+								Path:     github.String(strings.TrimPrefix(fileDiff.NewName, "b/")), // b/{file_name} is the file on the right side
+								Position: github.Int(int(position)),
+								Body:     github.String(mlogReviewCommentBody),
+							},
+						},
+					}
+
+					_, _, err := s.GithubClient.PullRequests.CreateReview(ctx, pr.RepoOwner, pr.RepoName, pr.Number, review)
+					if err != nil {
+						return fmt.Errorf("could not create the review for PR %s/%s#%d: %w", pr.RepoOwner, pr.RepoName, pr.Number, err)
+					}
+
+					return nil
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func getRawDiff(url string) ([]byte, error) {
+	resp, err := http.Get(url) //nolint: gosec
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}

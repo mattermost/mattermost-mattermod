@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v33/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
@@ -73,6 +73,12 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
+		}
+
+		if pr.RepoName == serverRepoName {
+			if err = s.reviewMlog(ctx, pr, event.PullRequest.GetNodeID(), event.PullRequest.GetDiffURL()); err != nil {
+				mlog.Error("Error while reviewing mlog", mlog.Err(err))
+			}
 		}
 
 		s.setBlockStatusForPR(ctx, pr)
