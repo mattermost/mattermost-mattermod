@@ -20,14 +20,14 @@ import (
 const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://docs.google.com/document/d/160-9Qfk-1a2_gOU-VHfZ5CbUdkY8BZxq-2VL7XYwqGA) before merging this change."
 
 func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
-	b, err := getRawDiff(diffURL)
+	b, err := getRawDiff(ctx, diffURL)
 	if err != nil {
 		return fmt.Errorf("could not retrieve diff: %w", err)
 	}
 
 	fileDiffs, err := diff.ParseMultiFileDiff(b)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not parse file diff: %w", err)
 	}
 
 	mlog.Debug("Going to review files", mlog.Int("num_files", len(fileDiffs)))
@@ -40,7 +40,7 @@ func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, 
 			for _, line := range strings.Split(string(hunk.Body), "\n") {
 				position++
 
-				if len(line) == 0 || line[0] != '+' {
+				if line == "" || line[0] != '+' {
 					continue // we are not interested if it's not an addition
 				}
 
@@ -73,8 +73,13 @@ func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, 
 	return nil
 }
 
-func getRawDiff(url string) ([]byte, error) {
-	resp, err := http.Get(url) //nolint: gosec
+func getRawDiff(ctx context.Context, url string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
