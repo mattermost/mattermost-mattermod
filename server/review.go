@@ -17,7 +17,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://docs.google.com/document/d/160-9Qfk-1a2_gOU-VHfZ5CbUdkY8BZxq-2VL7XYwqGA) before merging this change."
+const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://developers.mattermost.com/contribute/server/style-guide/#log-levels) before merging this change."
 
 func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
 	b, err := getRawDiff(ctx, diffURL)
