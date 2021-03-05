@@ -90,7 +90,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 		return nil
 	}
 
-	regex := regexp.MustCompile("\\/cherry\\-pick.*")
+	regex := regexp.MustCompile(`\\/cherry\\-pick.*`)
 	command := regex.FindString(body)
 	args := strings.Split(command, " ")
 	mlog.Info("Args", mlog.String("Args", body))
