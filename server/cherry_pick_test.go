@@ -99,3 +99,12 @@ func TestGetMilestone(t *testing.T) {
 	milestone = getMilestone(title)
 	assert.Equal(t, "release-5.1", milestone)
 }
+
+func TestGetCommand(t *testing.T) {
+	raw := "PR looks good to go. /cherry-pick release-5.28"
+	command := getCommand(raw)
+	assert.Equal(t, "/cherry-pick release-5.28", command)
+
+	command = getCommand(command)
+	assert.Equal(t, "/cherry-pick release-5.28", command)
+}

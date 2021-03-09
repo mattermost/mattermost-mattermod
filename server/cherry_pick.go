@@ -89,9 +89,8 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 		msg = msgCommenterPermission
 		return nil
 	}
-
-	index := strings.Index(body, "/cherry-pick")
-	args := strings.Split(body[index+1:], " ")
+	command := getCommand(body)
+	args := strings.Split(command, " ")
 	mlog.Info("Args", mlog.String("Args", body))
 	if !pr.Merged.Valid || !pr.Merged.Bool {
 		return nil
@@ -119,6 +118,11 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	}
 
 	return nil
+}
+
+func getCommand(command string) string {
+	index := strings.Index(command, "/cherry-pick")
+	return command[index:]
 }
 
 func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
