@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"github.com/mattermost/mattermost-mattermod/util"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,7 +59,6 @@ func TestPRFromIssueHandler(t *testing.T) {
 	ss := stmock.NewMockStore(ctrl)
 
 	prStoreMock := stmock.NewMockPullRequestStore(ctrl)
-	maintainerCanModify := false
 	prStoreMock.EXPECT().Save(gomock.Eq(&model.PullRequest{
 		RepoOwner:           event.Repo.GetOwner().GetLogin(),
 		RepoName:            event.Repo.GetName(),
@@ -67,7 +67,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 		Labels:              []string{},
 		State:               "closed",
 		Merged:              sql.NullBool{Bool: false, Valid: true},
-		MaintainerCanModify: &maintainerCanModify,
+		MaintainerCanModify: util.Boolptr(false),
 		MilestoneNumber:     sql.NullInt64{Int64: int64(event.Issue.Milestone.GetNumber()), Valid: true},
 		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
 	})).
@@ -84,7 +84,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 			Labels:              []string{},
 			State:               "closed",
 			Merged:              sql.NullBool{Bool: false, Valid: true},
-			MaintainerCanModify: &maintainerCanModify,
+			MaintainerCanModify: util.Boolptr(false),
 			MilestoneNumber:     sql.NullInt64{Int64: int64(0), Valid: true},
 			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
 		}, nil)

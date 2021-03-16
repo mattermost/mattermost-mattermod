@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/mattermost/mattermost-mattermod/util"
 	"net/http"
 	"strings"
 	"time"
@@ -24,8 +25,6 @@ const (
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
-	maintainerCanModify := pullRequest.GetMaintainerCanModify()
-
 	pr := &model.PullRequest{
 		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
 		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
@@ -39,7 +38,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		CreatedAt:           pullRequest.GetCreatedAt(),
 		Merged:              sql.NullBool{Bool: pullRequest.GetMerged(), Valid: true},
 		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
-		MaintainerCanModify: &maintainerCanModify,
+		MaintainerCanModify: util.Boolptr(pullRequest.GetMaintainerCanModify()),
 		MilestoneNumber:     sql.NullInt64{Int64: int64(pullRequest.GetMilestone().GetNumber()), Valid: true},
 		MilestoneTitle:      sql.NullString{String: pullRequest.GetMilestone().GetTitle(), Valid: true},
 	}
