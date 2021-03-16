@@ -50,3 +50,6 @@ deploy/overlays/prod/ssh/
 out/
 
 dist/
+
+# Intellij
+.idea/
