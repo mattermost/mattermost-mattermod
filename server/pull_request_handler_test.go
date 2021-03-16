@@ -221,6 +221,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
 			Times(1).Return(nil, nil)
 
+		maintainerCanModify := false
 		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
 			Times(1).Return(&model.PullRequest{
 			RepoOwner:           "mattertest",
@@ -228,7 +229,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			CreatedAt:           time.Time{},
 			Labels:              []string{"old-label"},
 			Sha:                 "sha",
-			MaintainerCanModify: sql.NullBool{Valid: true},
+			MaintainerCanModify: &maintainerCanModify,
 			Merged:              sql.NullBool{Valid: true},
 		}, nil)
 
