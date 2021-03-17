@@ -228,7 +228,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			CreatedAt:           time.Time{},
 			Labels:              []string{"old-label"},
 			Sha:                 "sha",
-			MaintainerCanModify: sql.NullBool{Valid: true},
+			MaintainerCanModify: NewBool(false),
 			Merged:              sql.NullBool{Valid: true},
 		}, nil)
 
