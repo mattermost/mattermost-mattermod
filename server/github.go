@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/mattermost/mattermost-mattermod/util"
 	"net/http"
 	"strings"
 	"time"
@@ -38,7 +37,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		CreatedAt:           pullRequest.GetCreatedAt(),
 		Merged:              sql.NullBool{Bool: pullRequest.GetMerged(), Valid: true},
 		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
-		MaintainerCanModify: util.Boolptr(pullRequest.GetMaintainerCanModify()),
+		MaintainerCanModify: NewBool(pullRequest.GetMaintainerCanModify()),
 		MilestoneNumber:     sql.NullInt64{Int64: int64(pullRequest.GetMilestone().GetNumber()), Valid: true},
 		MilestoneTitle:      sql.NullString{String: pullRequest.GetMilestone().GetTitle(), Valid: true},
 	}

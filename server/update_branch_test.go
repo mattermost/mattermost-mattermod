@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/mattermost/mattermost-mattermod/util"
 	"net/http"
 	"testing"
 
@@ -126,7 +125,7 @@ func TestHandeUpdateBranch(t *testing.T) {
 				StatusCode: http.StatusAccepted,
 			},
 		}
-		pr.MaintainerCanModify = util.Boolptr(true)
+		pr.MaintainerCanModify = NewBool(true)
 
 		prs := mocks.NewMockPullRequestsService(ctrl)
 		prs.EXPECT().UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, gomock.AssignableToTypeOf(opt)).Return(nil, resp, nil)
