@@ -304,7 +304,7 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
-	if !oldPr.Merged.Valid || (oldPr.Merged.Bool != pr.Merged.Bool) {
+	if oldPr.Merged == nil || pr.Merged == nil || (*oldPr.Merged != *pr.Merged) {
 		prHasChanges = true
 	}
 

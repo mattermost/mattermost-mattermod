@@ -92,7 +92,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	command := getCommand(body)
 	args := strings.Split(command, " ")
 	mlog.Info("Args", mlog.String("Args", body))
-	if !pr.Merged.Valid || !pr.Merged.Bool {
+	if pr.Merged == nil || !*pr.Merged {
 		return nil
 	}
 
@@ -132,7 +132,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	if !pr.Merged.Valid || !pr.Merged.Bool {
+	if pr.Merged == nil || !*pr.Merged {
 		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
