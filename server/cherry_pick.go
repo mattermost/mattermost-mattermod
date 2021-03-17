@@ -137,9 +137,9 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 		return
 	}
 
-	if !pr.MilestoneNumber.Valid ||
+	if pr.MilestoneNumber == nil ||
 		!pr.MilestoneTitle.Valid ||
-		pr.MilestoneNumber.Int64 == 0 ||
+		*pr.MilestoneNumber == 0 ||
 		pr.MilestoneTitle.String == "" {
 		mlog.Info("PR milestone number not available", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
@@ -153,7 +153,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			milestoneNumber := int(pr.MilestoneNumber.Int64)
+			milestoneNumber := int(*pr.MilestoneNumber)
 			milestone := getMilestone(pr.MilestoneTitle.String)
 
 			select {

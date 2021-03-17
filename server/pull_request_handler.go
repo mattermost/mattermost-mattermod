@@ -308,7 +308,7 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
-	if !oldPr.MilestoneNumber.Valid || (oldPr.MilestoneNumber.Int64 != pr.MilestoneNumber.Int64) {
+	if oldPr.MilestoneNumber == nil || pr.MilestoneNumber == nil || (*oldPr.MilestoneNumber != *pr.MilestoneNumber) {
 		prHasChanges = true
 	}
 
