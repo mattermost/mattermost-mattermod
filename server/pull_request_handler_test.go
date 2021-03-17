@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/mattermost/mattermost-mattermod/util"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
