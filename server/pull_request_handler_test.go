@@ -228,8 +228,8 @@ func TestPullRequestEventHandler(t *testing.T) {
 			CreatedAt:           time.Time{},
 			Labels:              []string{"old-label"},
 			Sha:                 "sha",
-			MaintainerCanModify: sql.NullBool{Valid: true},
 			Merged:              NewBool(true),
+			MaintainerCanModify: NewBool(false),
 		}, nil)
 
 		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
