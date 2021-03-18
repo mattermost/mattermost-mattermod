@@ -66,7 +66,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 		Labels:              []string{},
 		State:               "closed",
 		Merged:              sql.NullBool{Bool: false, Valid: true},
-		MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
+		MaintainerCanModify: NewBool(false),
 		MilestoneNumber:     NewInt64(int64(event.Issue.Milestone.GetNumber())),
 		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
 	})).
@@ -83,7 +83,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 			Labels:              []string{},
 			State:               "closed",
 			Merged:              sql.NullBool{Bool: false, Valid: true},
-			MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
+			MaintainerCanModify: NewBool(false),
 			MilestoneNumber:     NewInt64(0),
 			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
 		}, nil)
