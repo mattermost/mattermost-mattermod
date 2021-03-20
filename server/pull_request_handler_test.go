@@ -246,7 +246,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
-	testPRHasChanges := func(t *testing.T, oldPRMaintainerCanModify, newPRMaintainerCanModify bool, expectedSaveCalls int) {
+	testPRHasChanges := func(t *testing.T, modelPR *model.PullRequest, githubPR *github.PullRequest, expectedSaveCalls int) {
 		t.Helper()
 		rs.EXPECT().
 			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
@@ -269,43 +269,16 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Times(1).
 			Return([]*github.Label{{Name: NewString("old-label")}}, nil, nil)
 
-		pr := &model.PullRequest{
-			Number:              1,
-			RepoOwner:           "mattertest",
-			RepoName:            "mattermod",
-			Labels:              []string{"old-label"},
-			Sha:                 "sha",
-			Merged:              sql.NullBool{Bool: true, Valid: true},
-			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
-			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-			MaintainerCanModify: sql.NullBool{Valid: true, Bool: oldPRMaintainerCanModify},
-		}
-
 		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
-			Times(1).Return(pr, nil)
+			Times(1).Return(modelPR, nil)
 
 		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
 			Times(expectedSaveCalls).Return(nil, nil)
 
 		e := pullRequestEvent{
 			Action:   "",
-			PRNumber: pr.Number,
-			PullRequest: &github.PullRequest{
-				Number: &pr.Number,
-				Base: &github.PullRequestBranch{
-					Repo: &github.Repository{
-						Owner: &github.User{Login: &pr.RepoOwner},
-						Name:  &pr.RepoName,
-					},
-				},
-				Merged: &pr.Merged.Bool,
-				Head:   &github.PullRequestBranch{SHA: &pr.Sha},
-				Milestone: &github.Milestone{
-					Number: NewInt(int(pr.MilestoneNumber.Int64)),
-					Title:  &pr.MilestoneTitle.String,
-				},
-				MaintainerCanModify: &newPRMaintainerCanModify,
-			},
+			PRNumber: modelPR.Number,
+			PullRequest: githubPR,
 		}
 		b, err := json.Marshal(e)
 		require.NoError(t, err)
@@ -318,11 +291,71 @@ func TestPullRequestEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 
-	t.Run("PR has changes if the value of MaintainerCanModify is different", func(t *testing.T) {
-		testPRHasChanges(t, true, false, 2)
+	t.Run("PR has changes if the values of MaintainerCanModify are different", func(t *testing.T) {
+		modelPR := &model.PullRequest{
+			Number:              1,
+			RepoOwner:           "mattertest",
+			RepoName:            "mattermod",
+			Labels:              []string{"old-label"},
+			Sha:                 "sha",
+			Merged:              sql.NullBool{Bool: true, Valid: true},
+			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
+			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
+			MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+		}
+
+		githubPR := &github.PullRequest{
+			Number: &modelPR.Number,
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{Login: &modelPR.RepoOwner},
+					Name:  &modelPR.RepoName,
+				},
+			},
+			Merged: &modelPR.Merged.Bool,
+			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
+			Milestone: &github.Milestone{
+				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Title:  &modelPR.MilestoneTitle.String,
+			},
+			MaintainerCanModify: NewBool(false),
+		}
+
+		testPRHasChanges(t, modelPR, githubPR, 2)
 	})
-	t.Run("PR doesn't have changes if the value of MaintainerCanModify is the same", func(t *testing.T) {
-		testPRHasChanges(t, true, true, 1)
+
+
+	t.Run("PR doesn't have changes if the values of MaintainerCanModify are the same", func(t *testing.T) {
+		modelPR := &model.PullRequest{
+			Number:              1,
+			RepoOwner:           "mattertest",
+			RepoName:            "mattermod",
+			Labels:              []string{"old-label"},
+			Sha:                 "sha",
+			Merged:              sql.NullBool{Bool: true, Valid: true},
+			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
+			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
+			MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+		}
+
+		githubPR := &github.PullRequest{
+			Number: &modelPR.Number,
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{Login: &modelPR.RepoOwner},
+					Name:  &modelPR.RepoName,
+				},
+			},
+			Merged: &modelPR.Merged.Bool,
+			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
+			Milestone: &github.Milestone{
+				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Title:  &modelPR.MilestoneTitle.String,
+			},
+			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+		}
+
+		testPRHasChanges(t, modelPR, githubPR, 1)
 	})
 }
 
