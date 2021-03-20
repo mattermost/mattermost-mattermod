@@ -245,6 +245,85 @@ func TestPullRequestEventHandler(t *testing.T) {
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
+
+	testPRHasChanges := func(t *testing.T, oldPRMaintainerCanModify, newPRMaintainerCanModify bool, expectedSaveCalls int) {
+		t.Helper()
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				Statuses: []*github.RepoStatus{
+					{
+						Context: github.String("something"),
+					},
+				},
+			}, nil, nil)
+
+		cs.EXPECT().
+			ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+			Times(1).
+			Return(&github.ListCheckRunsResults{}, nil, nil)
+
+		is.EXPECT().
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			Times(1).
+			Return([]*github.Label{{Name: NewString("old-label")}}, nil, nil)
+
+		pr := &model.PullRequest{
+			Number:              1,
+			RepoOwner:           "mattertest",
+			RepoName:            "mattermod",
+			Labels:              []string{"old-label"},
+			Sha:                 "sha",
+			Merged:              sql.NullBool{Bool: true, Valid: true},
+			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
+			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
+			MaintainerCanModify: &oldPRMaintainerCanModify,
+		}
+
+		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
+			Times(1).Return(pr, nil)
+
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Times(expectedSaveCalls).Return(nil, nil)
+
+		e := pullRequestEvent{
+			Action:   "",
+			PRNumber: pr.Number,
+			PullRequest: &github.PullRequest{
+				Number: &pr.Number,
+				Base: &github.PullRequestBranch{
+					Repo: &github.Repository{
+						Owner: &github.User{Login: &pr.RepoOwner},
+						Name:  &pr.RepoName,
+					},
+				},
+				Merged: &pr.Merged.Bool,
+				Head:   &github.PullRequestBranch{SHA: &pr.Sha},
+				Milestone: &github.Milestone{
+					Number: NewInt(int(pr.MilestoneNumber.Int64)),
+					Title:  &pr.MilestoneTitle.String,
+				},
+				MaintainerCanModify: &newPRMaintainerCanModify,
+			},
+		}
+		b, err := json.Marshal(e)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+	}
+
+	t.Run("PR has changes if the value of MaintainerCanModify is different", func(t *testing.T) {
+		testPRHasChanges(t, true, false, 2)
+	})
+	t.Run("PR doesn't have changes if the value of MaintainerCanModify is the same", func(t *testing.T) {
+		testPRHasChanges(t, true, true, 1)
+	})
 }
 
 func TestCleanUpLabels(t *testing.T) {
