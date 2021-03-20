@@ -276,8 +276,8 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Times(expectedSaveCalls).Return(nil, nil)
 
 		e := pullRequestEvent{
-			Action:   "",
-			PRNumber: modelPR.Number,
+			Action:      "",
+			PRNumber:    modelPR.Number,
 			PullRequest: githubPR,
 		}
 		b, err := json.Marshal(e)
@@ -291,19 +291,40 @@ func TestPullRequestEventHandler(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 
-	t.Run("PR has changes if the values of MaintainerCanModify are different", func(t *testing.T) {
-		modelPR := &model.PullRequest{
-			Number:              1,
-			RepoOwner:           "mattertest",
-			RepoName:            "mattermod",
-			Labels:              []string{"old-label"},
-			Sha:                 "sha",
-			Merged:              sql.NullBool{Bool: true, Valid: true},
-			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
-			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-			MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+	modelPR := &model.PullRequest{
+		Number:              1,
+		RepoOwner:           "mattertest",
+		RepoName:            "mattermod",
+		Labels:              []string{"old-label"},
+		Sha:                 "sha",
+		Merged:              sql.NullBool{Bool: true, Valid: true},
+		MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
+		MilestoneTitle:      sql.NullString{Valid: true, String: ""},
+		MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+	}
+
+	t.Run("PR doesn't have changes if all the values are the same", func(t *testing.T) {
+		githubPR := &github.PullRequest{
+			Number: &modelPR.Number,
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{Login: &modelPR.RepoOwner},
+					Name:  &modelPR.RepoName,
+				},
+			},
+			Merged: &modelPR.Merged.Bool,
+			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
+			Milestone: &github.Milestone{
+				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Title:  &modelPR.MilestoneTitle.String,
+			},
+			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
 		}
 
+		testPRHasChanges(t, modelPR, githubPR, 1)
+	})
+
+	t.Run("PR has changes if the values of MaintainerCanModify are different", func(t *testing.T) {
 		githubPR := &github.PullRequest{
 			Number: &modelPR.Number,
 			Base: &github.PullRequestBranch{
@@ -324,20 +345,49 @@ func TestPullRequestEventHandler(t *testing.T) {
 		testPRHasChanges(t, modelPR, githubPR, 2)
 	})
 
-
-	t.Run("PR doesn't have changes if the values of MaintainerCanModify are the same", func(t *testing.T) {
-		modelPR := &model.PullRequest{
-			Number:              1,
-			RepoOwner:           "mattertest",
-			RepoName:            "mattermod",
-			Labels:              []string{"old-label"},
-			Sha:                 "sha",
-			Merged:              sql.NullBool{Bool: true, Valid: true},
-			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
-			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-			MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+	t.Run("PR has changes if the values of Merged are different", func(t *testing.T) {
+		githubPR := &github.PullRequest{
+			Number: &modelPR.Number,
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{Login: &modelPR.RepoOwner},
+					Name:  &modelPR.RepoName,
+				},
+			},
+			Merged: NewBool(!modelPR.Merged.Bool),
+			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
+			Milestone: &github.Milestone{
+				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Title:  &modelPR.MilestoneTitle.String,
+			},
+			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
 		}
 
+		testPRHasChanges(t, modelPR, githubPR, 2)
+	})
+
+	t.Run("PR has changes if the values of MilestoneNumber are different", func(t *testing.T) {
+		githubPR := &github.PullRequest{
+			Number: &modelPR.Number,
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{Login: &modelPR.RepoOwner},
+					Name:  &modelPR.RepoName,
+				},
+			},
+			Merged: &modelPR.Merged.Bool,
+			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
+			Milestone: &github.Milestone{
+				Number: NewInt(int(modelPR.MilestoneNumber.Int64 + 1)),
+				Title:  &modelPR.MilestoneTitle.String,
+			},
+			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+		}
+
+		testPRHasChanges(t, modelPR, githubPR, 2)
+	})
+
+	t.Run("PR has changes if the values of MilestoneTitle are different", func(t *testing.T) {
 		githubPR := &github.PullRequest{
 			Number: &modelPR.Number,
 			Base: &github.PullRequestBranch{
@@ -350,12 +400,12 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Title:  NewString(modelPR.MilestoneTitle.String + "moretext"),
 			},
 			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
 		}
 
-		testPRHasChanges(t, modelPR, githubPR, 1)
+		testPRHasChanges(t, modelPR, githubPR, 2)
 	})
 }
 
