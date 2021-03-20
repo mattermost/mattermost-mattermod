@@ -50,3 +50,5 @@ deploy/overlays/prod/ssh/
 out/
 
 dist/
+
+.idea/
