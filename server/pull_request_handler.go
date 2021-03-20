@@ -300,7 +300,7 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
-	if oldPr.MaintainerCanModify == nil || pr.MaintainerCanModify == nil || (*oldPr.MaintainerCanModify != *pr.MaintainerCanModify) {
+	if !oldPr.MaintainerCanModify.Valid || oldPr.MaintainerCanModify != pr.MaintainerCanModify {
 		prHasChanges = true
 	}
 

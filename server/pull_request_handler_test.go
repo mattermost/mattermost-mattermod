@@ -278,7 +278,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged:              sql.NullBool{Bool: true, Valid: true},
 			MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
 			MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-			MaintainerCanModify: &oldPRMaintainerCanModify,
+			MaintainerCanModify: sql.NullBool{Valid: true, Bool: oldPRMaintainerCanModify},
 		}
 
 		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
