@@ -339,7 +339,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
-			MaintainerCanModify: NewBool(false),
+			MaintainerCanModify: NewBool(!modelPR.MaintainerCanModify.Bool),
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
