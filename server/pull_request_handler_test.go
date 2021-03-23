@@ -228,7 +228,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			CreatedAt:           time.Time{},
 			Labels:              []string{"old-label"},
 			Sha:                 "sha",
-			MaintainerCanModify: sql.NullBool{Valid: true},
+			MaintainerCanModify: NewBool(false),
 			Merged:              NewBool(false),
 		}, nil)
 
@@ -300,7 +300,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		Merged:              NewBool(true),
 		MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
 		MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-		MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+		MaintainerCanModify: NewBool(true),
 	}
 
 	t.Run("PR doesn't have changes if all the values are the same", func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 1)
@@ -339,7 +339,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
-			MaintainerCanModify: NewBool(!modelPR.MaintainerCanModify.Bool),
+			MaintainerCanModify: NewBool(!*modelPR.MaintainerCanModify),
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -360,7 +360,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -381,7 +381,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64 + 1)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -402,7 +402,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
 				Title:  NewString(modelPR.MilestoneTitle.String + "moretext"),
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
