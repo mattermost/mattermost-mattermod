@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -299,7 +298,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		Sha:                 "sha",
 		Merged:              NewBool(true),
 		MilestoneNumber:     NewInt64(0),
-		MilestoneTitle:      sql.NullString{Valid: true, String: ""},
+		MilestoneTitle:      NewString(""),
 		MaintainerCanModify: NewBool(true),
 	}
 
@@ -316,7 +315,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(*modelPR.MilestoneNumber)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Title:  modelPR.MilestoneTitle,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
@@ -337,7 +336,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(*modelPR.MilestoneNumber)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Title:  modelPR.MilestoneTitle,
 			},
 			MaintainerCanModify: NewBool(!*modelPR.MaintainerCanModify),
 		}
@@ -358,7 +357,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(*modelPR.MilestoneNumber)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Title:  modelPR.MilestoneTitle,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
@@ -379,7 +378,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(*modelPR.MilestoneNumber + 1)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Title:  modelPR.MilestoneTitle,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
@@ -400,7 +399,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
 				Number: NewInt(int(*modelPR.MilestoneNumber)),
-				Title:  NewString(modelPR.MilestoneTitle.String + "moretext"),
+				Title:  NewString(*modelPR.MilestoneTitle + "moretext"),
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}

@@ -312,7 +312,7 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
-	if !oldPr.MilestoneTitle.Valid || (oldPr.MilestoneTitle.String != pr.MilestoneTitle.String) {
+	if oldPr.MilestoneTitle == nil || *oldPr.MilestoneTitle != *pr.MilestoneTitle {
 		prHasChanges = true
 	}
 

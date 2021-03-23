@@ -5,7 +5,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,7 +38,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
 		MaintainerCanModify: NewBool(pullRequest.GetMaintainerCanModify()),
 		MilestoneNumber:     NewInt64(int64(pullRequest.GetMilestone().GetNumber())),
-		MilestoneTitle:      sql.NullString{String: pullRequest.GetMilestone().GetTitle(), Valid: true},
+		MilestoneTitle:      NewString(pullRequest.GetMilestone().GetTitle()),
 	}
 
 	pr.FullName = pullRequest.GetHead().GetRepo().GetFullName()

@@ -5,7 +5,6 @@ package server
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -68,7 +67,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 		Merged:              NewBool(false),
 		MaintainerCanModify: NewBool(false),
 		MilestoneNumber:     NewInt64(int64(event.Issue.Milestone.GetNumber())),
-		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
+		MilestoneTitle:      NewString(event.Issue.Milestone.GetTitle()),
 	})).
 		Times(1).Return(nil, nil)
 	prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
@@ -85,7 +84,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 			Merged:              NewBool(false),
 			MaintainerCanModify: NewBool(false),
 			MilestoneNumber:     NewInt64(0),
-			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
+			MilestoneTitle:      NewString("release-5.28"),
 		}, nil)
 
 	ss.EXPECT().

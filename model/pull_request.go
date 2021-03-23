@@ -4,7 +4,6 @@
 package model
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -32,5 +31,5 @@ type PullRequest struct {
 	MergeCommitSHA      string `db:"-"`
 	MaintainerCanModify *bool
 	MilestoneNumber     *int64
-	MilestoneTitle      sql.NullString
+	MilestoneTitle      *string
 }
