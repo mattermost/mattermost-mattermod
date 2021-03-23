@@ -31,6 +31,6 @@ type PullRequest struct {
 	Merged              *bool
 	MergeCommitSHA      string `db:"-"`
 	MaintainerCanModify *bool
-	MilestoneNumber     sql.NullInt64
+	MilestoneNumber     *int64
 	MilestoneTitle      sql.NullString
 }

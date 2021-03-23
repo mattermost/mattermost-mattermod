@@ -67,7 +67,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 		State:               "closed",
 		Merged:              NewBool(false),
 		MaintainerCanModify: NewBool(false),
-		MilestoneNumber:     sql.NullInt64{Int64: int64(event.Issue.Milestone.GetNumber()), Valid: true},
+		MilestoneNumber:     NewInt64(int64(event.Issue.Milestone.GetNumber())),
 		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
 	})).
 		Times(1).Return(nil, nil)
@@ -84,7 +84,7 @@ func TestPRFromIssueHandler(t *testing.T) {
 			State:               "closed",
 			Merged:              NewBool(false),
 			MaintainerCanModify: NewBool(false),
-			MilestoneNumber:     sql.NullInt64{Int64: int64(0), Valid: true},
+			MilestoneNumber:     NewInt64(0),
 			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
 		}, nil)
 

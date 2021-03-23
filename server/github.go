@@ -38,7 +38,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		Merged:              NewBool(pullRequest.GetMerged()),
 		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
 		MaintainerCanModify: NewBool(pullRequest.GetMaintainerCanModify()),
-		MilestoneNumber:     sql.NullInt64{Int64: int64(pullRequest.GetMilestone().GetNumber()), Valid: true},
+		MilestoneNumber:     NewInt64(int64(pullRequest.GetMilestone().GetNumber())),
 		MilestoneTitle:      sql.NullString{String: pullRequest.GetMilestone().GetTitle(), Valid: true},
 	}
 

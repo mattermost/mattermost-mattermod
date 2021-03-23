@@ -298,7 +298,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		Labels:              []string{"old-label"},
 		Sha:                 "sha",
 		Merged:              NewBool(true),
-		MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
+		MilestoneNumber:     NewInt64(0),
 		MilestoneTitle:      sql.NullString{Valid: true, String: ""},
 		MaintainerCanModify: NewBool(true),
 	}
@@ -315,7 +315,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Number: NewInt(int(*modelPR.MilestoneNumber)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
@@ -336,7 +336,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Number: NewInt(int(*modelPR.MilestoneNumber)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
 			MaintainerCanModify: NewBool(!*modelPR.MaintainerCanModify),
@@ -357,7 +357,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged: NewBool(!*modelPR.Merged),
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Number: NewInt(int(*modelPR.MilestoneNumber)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
@@ -378,7 +378,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64 + 1)),
+				Number: NewInt(int(*modelPR.MilestoneNumber + 1)),
 				Title:  &modelPR.MilestoneTitle.String,
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,
@@ -399,7 +399,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
+				Number: NewInt(int(*modelPR.MilestoneNumber)),
 				Title:  NewString(modelPR.MilestoneTitle.String + "moretext"),
 			},
 			MaintainerCanModify: modelPR.MaintainerCanModify,

@@ -32,7 +32,7 @@ func (s *Server) prFromIssueHandler(event *issueEvent, w http.ResponseWriter) {
 
 	// We update the milestone that we have from the issue event and merge it with the PR.
 	// This is necessary to work around caching issues with GitHub.
-	oldPR.MilestoneNumber = sql.NullInt64{Int64: int64(event.Issue.GetMilestone().GetNumber()), Valid: true}
+	oldPR.MilestoneNumber = NewInt64(int64(event.Issue.GetMilestone().GetNumber()))
 	oldPR.MilestoneTitle = sql.NullString{String: event.Issue.GetMilestone().GetTitle(), Valid: true}
 
 	_, err = s.Store.PullRequest().Save(oldPR)
