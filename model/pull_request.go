@@ -28,7 +28,7 @@ type PullRequest struct {
 	BuildLink           string
 	URL                 string
 	CreatedAt           time.Time
-	Merged              sql.NullBool
+	Merged              *bool
 	MergeCommitSHA      string `db:"-"`
 	MaintainerCanModify sql.NullBool
 	MilestoneNumber     sql.NullInt64
