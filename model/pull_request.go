@@ -33,3 +33,31 @@ type PullRequest struct {
 	MilestoneNumber     *int64
 	MilestoneTitle      *string
 }
+
+func (pr *PullRequest) GetMerged() bool {
+	if pr == nil || pr.Merged == nil {
+		return false
+	}
+	return *pr.Merged
+}
+
+func (pr *PullRequest) GetMaintainerCanModify() bool {
+	if pr == nil || pr.MaintainerCanModify == nil {
+		return false
+	}
+	return *pr.MaintainerCanModify
+}
+
+func (pr *PullRequest) GetMilestoneNumber() int64 {
+	if pr == nil || pr.MilestoneNumber == nil {
+		return 0
+	}
+	return *pr.MilestoneNumber
+}
+
+func (pr *PullRequest) GetMilestoneTitle() string {
+	if pr == nil || pr.MilestoneTitle == nil {
+		return ""
+	}
+	return *pr.MilestoneTitle
+}
