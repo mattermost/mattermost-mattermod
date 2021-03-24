@@ -150,7 +150,7 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			milestoneNumber := int(*pr.MilestoneNumber)
+			milestoneNumber := int(pr.GetMilestoneNumber())
 			milestone := getMilestone(pr.GetMilestoneTitle())
 
 			select {
