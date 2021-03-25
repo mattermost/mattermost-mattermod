@@ -36,7 +36,9 @@ type Repository struct {
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
 	JobName                    string
-	GreetingTeam               string // Team of staff who is in charge of managing new community PRs for this repo
+        // GreetingTeam is the GitHub team responsible for triaging non-member PRs for this repo.
+	GreetingTeam               string 
+	// GreetingLabels are the labels applied automatically to non-member PRs for this repo.
 	GreetingLabels             []string
 }
 
