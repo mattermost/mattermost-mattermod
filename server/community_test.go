@@ -93,3 +93,75 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 		})
 	}
 }
+
+func TestAssignCommunityLabels(t *testing.T) {
+	pr := &model.PullRequest{
+		RepoOwner: "owner",
+		RepoName:  "repoName",
+		Number:    123,
+		Username:  "foo",
+	}
+
+	t.Run("Org Member", func(t *testing.T) {
+		repo := &Repository{
+			Owner:          "owner",
+			Name:           "repoName",
+			GreetingLabels: []string{"hey", "hello"},
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+			},
+			OrgMembers: []string{"foo"},
+		}
+		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+	})
+
+	t.Run("No Labels", func(t *testing.T) {
+		repo := &Repository{
+			Owner:          "owner",
+			Name:           "repoName",
+			GreetingLabels: []string{},
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+			},
+			OrgMembers: []string{"foo"},
+		}
+		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+	})
+
+	t.Run("Happy patth", func(t *testing.T) {
+		repo := &Repository{
+			Owner:          "owner",
+			Name:           "repoName",
+			GreetingLabels: []string{"hello", "hi"},
+		}
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
+		issueMocks := mocks.NewMockIssuesService(ctrl)
+
+		client := &GithubClient{
+			Issues: issueMocks,
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+			},
+			GithubClient: client,
+			OrgMembers:   []string{"foo"},
+		}
+		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+
+		issueMocks.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
+			gomock.Eq(pr.Number), repo.GreetingLabels).Return(nil, nil, nil)
+	})
+}
