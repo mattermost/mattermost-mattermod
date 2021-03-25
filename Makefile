@@ -124,7 +124,7 @@ mocks:
 	go install github.com/golang/mock/mockgen
 	mockgen -package mocks -destination server/mocks/checks.go github.com/mattermost/mattermost-mattermod/server ChecksService
 	mockgen -package mocks -destination server/mocks/issues.go github.com/mattermost/mattermost-mattermod/server IssuesService
-	mockgen -package mocks -destination server/mocks/issues.go github.com/mattermost/mattermost-mattermod/server TeamsService
+	mockgen -package mocks -destination server/mocks/teams.go github.com/mattermost/mattermost-mattermod/server TeamsService
 	mockgen -package mocks -destination server/mocks/git.go github.com/mattermost/mattermost-mattermod/server GitService
 	mockgen -package mocks -destination server/mocks/organizations.go github.com/mattermost/mattermost-mattermod/server OrganizationsService
 	mockgen -package mocks -destination server/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/server PullRequestsService
