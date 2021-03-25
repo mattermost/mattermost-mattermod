@@ -92,7 +92,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	command := getCommand(body)
 	args := strings.Split(command, " ")
 	mlog.Info("Args", mlog.String("Args", body))
-	if !pr.Merged.Valid || !pr.Merged.Bool {
+	if !pr.GetMerged() {
 		return nil
 	}
 
@@ -132,15 +132,12 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
 
-	if !pr.Merged.Valid || !pr.Merged.Bool {
+	if !pr.GetMerged() {
 		mlog.Info("PR not merged, not cherry picking", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 
-	if !pr.MilestoneNumber.Valid ||
-		!pr.MilestoneTitle.Valid ||
-		pr.MilestoneNumber.Int64 == 0 ||
-		pr.MilestoneTitle.String == "" {
+	if pr.GetMilestoneNumber() == 0 || pr.GetMilestoneTitle() == "" {
 		mlog.Info("PR milestone number not available", mlog.Int("PR Number", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
@@ -153,8 +150,8 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	prLabels := labelsToStringArray(labels)
 	for _, prLabel := range prLabels {
 		if prLabel == "CherryPick/Approved" {
-			milestoneNumber := int(pr.MilestoneNumber.Int64)
-			milestone := getMilestone(pr.MilestoneTitle.String)
+			milestoneNumber := int(pr.GetMilestoneNumber())
+			milestone := getMilestone(pr.GetMilestoneTitle())
 
 			select {
 			case <-s.cherryPickStopChan:

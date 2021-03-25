@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"reflect"
 	"testing"
 
@@ -32,7 +31,7 @@ func TestHandleCherryPick(t *testing.T) {
 		RepoName:  "repo-name",
 		Number:    123,
 		Sha:       "some-sha",
-		Merged:    sql.NullBool{Valid: true},
+		Merged:    NewBool(false),
 	}
 
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -58,7 +57,7 @@ func TestHandleCherryPick(t *testing.T) {
 	t.Run("should ignore when server is closing", func(t *testing.T) {
 		s.cherryPickStopChan = make(chan struct{})
 		s.cherryPickRequests = make(chan *cherryPickRequest, 1)
-		pr.Merged.Bool = true
+		pr.Merged = NewBool(true)
 		close(s.cherryPickStopChan)
 		close(s.cherryPickRequests)
 
@@ -69,7 +68,7 @@ func TestHandleCherryPick(t *testing.T) {
 	t.Run("should fail on too many cherry pick tasks", func(t *testing.T) {
 		s.cherryPickStopChan = make(chan struct{})
 		s.cherryPickRequests = make(chan *cherryPickRequest, 1)
-		pr.Merged.Bool = true
+		pr.Merged = NewBool(true)
 
 		*msg = cherryPickScheduledMsg
 

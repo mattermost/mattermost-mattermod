@@ -4,7 +4,6 @@
 package model
 
 import (
-	"database/sql"
 	"time"
 )
 
@@ -28,9 +27,41 @@ type PullRequest struct {
 	BuildLink           string
 	URL                 string
 	CreatedAt           time.Time
-	Merged              sql.NullBool
+	Merged              *bool
 	MergeCommitSHA      string `db:"-"`
-	MaintainerCanModify sql.NullBool
-	MilestoneNumber     sql.NullInt64
-	MilestoneTitle      sql.NullString
+	MaintainerCanModify *bool
+	MilestoneNumber     *int64
+	MilestoneTitle      *string
+}
+
+// GetMerged returns the Merged field if it's non-nil, zero value otherwise.
+func (pr *PullRequest) GetMerged() bool {
+	if pr == nil || pr.Merged == nil {
+		return false
+	}
+	return *pr.Merged
+}
+
+// GetMaintainerCanModify returns the MaintainerCanModify field if it's non-nil, zero value otherwise.
+func (pr *PullRequest) GetMaintainerCanModify() bool {
+	if pr == nil || pr.MaintainerCanModify == nil {
+		return false
+	}
+	return *pr.MaintainerCanModify
+}
+
+// GetMilestoneNumber returns the MilestoneNumber field if it's non-nil, zero value otherwise.
+func (pr *PullRequest) GetMilestoneNumber() int64 {
+	if pr == nil || pr.MilestoneNumber == nil {
+		return 0
+	}
+	return *pr.MilestoneNumber
+}
+
+// GetMilestoneTitle returns the MilestoneTitle field if it's non-nil, zero value otherwise.
+func (pr *PullRequest) GetMilestoneTitle() string {
+	if pr == nil || pr.MilestoneTitle == nil {
+		return ""
+	}
+	return *pr.MilestoneTitle
 }
