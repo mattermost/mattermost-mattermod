@@ -310,19 +310,19 @@ func (s *Server) checkPullRequestForChanges(ctx context.Context, pr *model.PullR
 		prHasChanges = true
 	}
 
-	if !oldPr.MaintainerCanModify.Valid || oldPr.MaintainerCanModify.Bool != pr.MaintainerCanModify.Bool {
+	if oldPr.GetMaintainerCanModify() != pr.GetMaintainerCanModify() {
 		prHasChanges = true
 	}
 
-	if !oldPr.Merged.Valid || (oldPr.Merged.Bool != pr.Merged.Bool) {
+	if oldPr.GetMerged() != pr.GetMerged() {
 		prHasChanges = true
 	}
 
-	if !oldPr.MilestoneNumber.Valid || (oldPr.MilestoneNumber.Int64 != pr.MilestoneNumber.Int64) {
+	if oldPr.GetMilestoneNumber() != pr.GetMilestoneNumber() {
 		prHasChanges = true
 	}
 
-	if !oldPr.MilestoneTitle.Valid || (oldPr.MilestoneTitle.String != pr.MilestoneTitle.String) {
+	if oldPr.GetMilestoneTitle() != pr.GetMilestoneTitle() {
 		prHasChanges = true
 	}
 

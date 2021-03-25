@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -228,8 +227,8 @@ func TestPullRequestEventHandler(t *testing.T) {
 			CreatedAt:           time.Time{},
 			Labels:              []string{"old-label"},
 			Sha:                 "sha",
-			MaintainerCanModify: sql.NullBool{Valid: true},
-			Merged:              sql.NullBool{Valid: true},
+			MaintainerCanModify: NewBool(false),
+			Merged:              NewBool(false),
 		}, nil)
 
 		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
@@ -297,10 +296,10 @@ func TestPullRequestEventHandler(t *testing.T) {
 		RepoName:            "mattermod",
 		Labels:              []string{"old-label"},
 		Sha:                 "sha",
-		Merged:              sql.NullBool{Bool: true, Valid: true},
-		MilestoneNumber:     sql.NullInt64{Valid: true, Int64: 0},
-		MilestoneTitle:      sql.NullString{Valid: true, String: ""},
-		MaintainerCanModify: sql.NullBool{Valid: true, Bool: true},
+		Merged:              NewBool(true),
+		MilestoneNumber:     NewInt64(0),
+		MilestoneTitle:      NewString(""),
+		MaintainerCanModify: NewBool(true),
 	}
 
 	t.Run("PR doesn't have changes if all the values are the same", func(t *testing.T) {
@@ -312,13 +311,13 @@ func TestPullRequestEventHandler(t *testing.T) {
 					Name:  &modelPR.RepoName,
 				},
 			},
-			Merged: &modelPR.Merged.Bool,
+			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Number: NewInt(int(modelPR.GetMilestoneNumber())),
+				Title:  modelPR.MilestoneTitle,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 1)
@@ -333,13 +332,13 @@ func TestPullRequestEventHandler(t *testing.T) {
 					Name:  &modelPR.RepoName,
 				},
 			},
-			Merged: &modelPR.Merged.Bool,
+			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Number: NewInt(int(modelPR.GetMilestoneNumber())),
+				Title:  modelPR.MilestoneTitle,
 			},
-			MaintainerCanModify: NewBool(!modelPR.MaintainerCanModify.Bool),
+			MaintainerCanModify: NewBool(!modelPR.GetMaintainerCanModify()),
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -354,13 +353,13 @@ func TestPullRequestEventHandler(t *testing.T) {
 					Name:  &modelPR.RepoName,
 				},
 			},
-			Merged: NewBool(!modelPR.Merged.Bool),
+			Merged: NewBool(!modelPR.GetMerged()),
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Number: NewInt(int(modelPR.GetMilestoneNumber())),
+				Title:  modelPR.MilestoneTitle,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -375,13 +374,13 @@ func TestPullRequestEventHandler(t *testing.T) {
 					Name:  &modelPR.RepoName,
 				},
 			},
-			Merged: &modelPR.Merged.Bool,
+			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64 + 1)),
-				Title:  &modelPR.MilestoneTitle.String,
+				Number: NewInt(int(modelPR.GetMilestoneNumber() + 1)),
+				Title:  modelPR.MilestoneTitle,
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
@@ -396,13 +395,13 @@ func TestPullRequestEventHandler(t *testing.T) {
 					Name:  &modelPR.RepoName,
 				},
 			},
-			Merged: &modelPR.Merged.Bool,
+			Merged: modelPR.Merged,
 			Head:   &github.PullRequestBranch{SHA: &modelPR.Sha},
 			Milestone: &github.Milestone{
-				Number: NewInt(int(modelPR.MilestoneNumber.Int64)),
-				Title:  NewString(modelPR.MilestoneTitle.String + "moretext"),
+				Number: NewInt(int(modelPR.GetMilestoneNumber())),
+				Title:  NewString(modelPR.GetMilestoneTitle() + "moretext"),
 			},
-			MaintainerCanModify: &modelPR.MaintainerCanModify.Bool,
+			MaintainerCanModify: modelPR.MaintainerCanModify,
 		}
 
 		testPRHasChanges(t, modelPR, githubPR, 2)
