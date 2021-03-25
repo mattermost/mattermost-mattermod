@@ -69,7 +69,17 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		repo, repoExist := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 
+		if repoExist {
+			if err = s.assignGreeter(ctx, pr, repo); err != nil {
+				mlog.Error("Error while assigning a greeter to the community PR", mlog.Err(err))
+			}
+
+			if err = s.assignCommunityLabels(ctx, pr, repo); err != nil {
+				mlog.Error("Error while assigning labels to the community PR", mlog.Err(err))
+			}
+		}
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)

@@ -36,6 +36,8 @@ type Repository struct {
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
 	JobName                    string
+	GreetingTeam               string // Team of staff who is in charge of managing new community PRs for this repo
+	GreetingLabels             []string
 }
 
 type JenkinsCredentials struct {

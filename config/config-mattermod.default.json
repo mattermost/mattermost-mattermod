@@ -25,7 +25,9 @@
             "JenkinsServer": "jenkins",
             "JobName": "",
             "InstanceSetupUpgradeScript": "",
-            "InstanceSetupScript": ""
+            "InstanceSetupScript": "",
+            "GreeterTeam": "",
+            "GreetingLabels": []
         }
     ],
 
