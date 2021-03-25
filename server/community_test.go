@@ -129,12 +129,12 @@ func TestAssignCommunityLabels(t *testing.T) {
 			Config: &Config{
 				Repositories: []*Repository{repo},
 			},
-			OrgMembers: []string{"foo"},
+			OrgMembers: []string{"bar"},
 		}
 		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
 	})
 
-	t.Run("Happy patth", func(t *testing.T) {
+	t.Run("Happy path", func(t *testing.T) {
 		repo := &Repository{
 			Owner:          "owner",
 			Name:           "repoName",
@@ -156,12 +156,151 @@ func TestAssignCommunityLabels(t *testing.T) {
 				Repositories: []*Repository{repo},
 			},
 			GithubClient: client,
-			OrgMembers:   []string{"foo"},
+			OrgMembers:   []string{"bar"},
 		}
-		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
 
-		issueMocks.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface),
+		issueMocks.EXPECT().AddLabelsToIssue(
+			gomock.AssignableToTypeOf(ctxInterface),
 			gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
-			gomock.Eq(pr.Number), repo.GreetingLabels).Return(nil, nil, nil)
+			gomock.Eq(pr.Number),
+			gomock.Eq(repo.GreetingLabels),
+		).Return(nil, nil, nil)
+
+		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+	})
+}
+
+func TestAssignGreeter(t *testing.T) {
+	pr := &model.PullRequest{
+		RepoOwner: "owner",
+		RepoName:  "repoName",
+		Number:    123,
+		Username:  "foo",
+	}
+
+	t.Run("Org Member", func(t *testing.T) {
+		repo := &Repository{
+			Owner:        "owner",
+			Name:         "repoName",
+			GreetingTeam: "greetingTeam",
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+			},
+			OrgMembers: []string{"foo"},
+		}
+		assert.NoError(t, s.assignGreeter(context.Background(), pr, repo))
+	})
+
+	t.Run("No greeting team", func(t *testing.T) {
+		repo := &Repository{
+			Owner: "owner",
+			Name:  "repoName",
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+			},
+			OrgMembers: []string{"bar"},
+		}
+		assert.NoError(t, s.assignGreeter(context.Background(), pr, repo))
+	})
+
+	t.Run("Empty team", func(t *testing.T) {
+		repo := &Repository{
+			Owner:        "owner",
+			Name:         "repoName",
+			GreetingTeam: "greetingTeam",
+		}
+		userLogin := "bar"
+		members := []*github.User{}
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
+		teamMocks := mocks.NewMockTeamsService(ctrl)
+
+		client := &GithubClient{
+			Teams: teamMocks,
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+				Org:          "SomeOrg",
+			},
+			GithubClient: client,
+			OrgMembers:   []string{userLogin},
+		}
+
+		teamMocks.EXPECT().ListTeamMembersBySlug(
+			gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(s.Config.Org),
+			gomock.Eq(repo.GreetingTeam),
+			gomock.Nil(),
+		).Return(members, nil, nil)
+
+		err := s.assignGreeter(context.Background(), pr, repo)
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("Happy path", func(t *testing.T) {
+		repo := &Repository{
+			Owner:        "owner",
+			Name:         "repoName",
+			GreetingTeam: "greetingTeam",
+		}
+		userLogin := "bar"
+		greeter := &github.User{Login: &userLogin}
+		members := []*github.User{greeter}
+		greetingRequest := github.ReviewersRequest{
+			Reviewers: []string{*greeter.Login},
+		}
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
+		teamMocks := mocks.NewMockTeamsService(ctrl)
+		pullMocks := mocks.NewMockPullRequestsService(ctrl)
+
+		client := &GithubClient{
+			Teams:        teamMocks,
+			PullRequests: pullMocks,
+		}
+
+		s := &Server{
+			Config: &Config{
+				Repositories: []*Repository{repo},
+				Org:          "SomeOrg",
+			},
+			GithubClient: client,
+			OrgMembers:   []string{userLogin},
+		}
+
+		teamMocks.EXPECT().ListTeamMembersBySlug(
+			gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(s.Config.Org),
+			gomock.Eq(repo.GreetingTeam),
+			gomock.Nil(),
+		).Return(members, nil, nil)
+
+		pullMocks.EXPECT().RequestReviewers(
+			gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(pr.RepoOwner),
+			gomock.Eq(pr.RepoName),
+			gomock.Eq(pr.Number),
+			gomock.Eq(greetingRequest),
+		).Return(nil, nil, nil)
+
+		err := s.assignGreeter(context.Background(), pr, repo)
+
+		assert.NoError(t, err)
+
 	})
 }
