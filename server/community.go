@@ -68,7 +68,7 @@ func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest
 }
 
 func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo *Repository) error {
-	// Only assign an Usher for community PRs
+	// Only assign an greeter for community PRs
 	if s.IsOrgMember(pr.Username) {
 		return nil
 	}
