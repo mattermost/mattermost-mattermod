@@ -68,7 +68,7 @@ func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest
 }
 
 func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo *Repository) error {
-	// Only assign an greeter for community PRs
+	// Only assign an greeter for non-member PRs
 	if s.IsOrgMember(pr.Username) {
 		return nil
 	}
@@ -106,13 +106,13 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	return nil
 }
 
-func (s *Server) assignCommunityLabels(ctx context.Context, pr *model.PullRequest, repo *Repository) error {
-	// Only assign labels for community PRs
+func (s *Server) assignGreetingLabels(ctx context.Context, pr *model.PullRequest, repo *Repository) error {
+	// Only assign labels for non-member PRs
 	if s.IsOrgMember(pr.Username) {
 		return nil
 	}
 
-	// Is repo configured to setup labels for community PRs?
+	// Is repo configured to setup labels for non-member PRs?
 	if len(repo.GreetingLabels) == 0 {
 		return nil
 	}

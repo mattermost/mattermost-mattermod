@@ -94,7 +94,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 	}
 }
 
-func TestAssignCommunityLabels(t *testing.T) {
+func TestAssignGreetingLabels(t *testing.T) {
 	pr := &model.PullRequest{
 		RepoOwner: "owner",
 		RepoName:  "repoName",
@@ -115,7 +115,7 @@ func TestAssignCommunityLabels(t *testing.T) {
 			},
 			OrgMembers: []string{"foo"},
 		}
-		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
 
 	t.Run("No Labels", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestAssignCommunityLabels(t *testing.T) {
 			},
 			OrgMembers: []string{"bar"},
 		}
-		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
 
 	t.Run("Happy path", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestAssignCommunityLabels(t *testing.T) {
 			gomock.Eq(repo.GreetingLabels),
 		).Return(nil, nil, nil)
 
-		assert.NoError(t, s.assignCommunityLabels(context.Background(), pr, repo))
+		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
 }
 
@@ -200,12 +200,25 @@ func TestAssignGreeter(t *testing.T) {
 			Name:  "repoName",
 		}
 
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		teamMocks := mocks.NewMockTeamsService(ctrl)
+
+		ctrl.RecordCall(teamMocks, "ListTeamMembersBySlug").Times(0)
+
+		client := &GithubClient{
+			Teams: teamMocks,
+		}
+
 		s := &Server{
 			Config: &Config{
 				Repositories: []*Repository{repo},
 			},
-			OrgMembers: []string{"bar"},
+			GithubClient: client,
+			OrgMembers:   []string{"bar"},
 		}
+
 		assert.NoError(t, s.assignGreeter(context.Background(), pr, repo))
 	})
 

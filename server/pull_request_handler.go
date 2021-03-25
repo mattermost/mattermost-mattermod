@@ -76,7 +76,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Error("Error while assigning a greeter to the community PR", mlog.Err(err))
 			}
 
-			if err = s.assignCommunityLabels(ctx, pr, repo); err != nil {
+			if err = s.assignGreetingLabels(ctx, pr, repo); err != nil {
 				mlog.Error("Error while assigning labels to the community PR", mlog.Err(err))
 			}
 		}
