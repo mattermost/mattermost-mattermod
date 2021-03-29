@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const BAR = "bar"
+
 func TestPostPRWelcomeMessage(t *testing.T) {
 	pr := &model.PullRequest{
 		RepoOwner: "owner",
@@ -42,7 +44,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 				return client
 			},
-			OrgMembers:       []string{"bar"},
+			OrgMembers:       []string{BAR},
 			claCommentNeeded: false,
 		},
 		"No org member, CLA not signed": {
@@ -60,7 +62,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 				return client
 			},
-			OrgMembers:       []string{"bar"},
+			OrgMembers:       []string{BAR},
 			claCommentNeeded: true,
 		},
 		"Org member": {
@@ -72,7 +74,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 
 				return client
 			},
-			OrgMembers:       []string{"foo", "bar"},
+			OrgMembers:       []string{"foo", BAR},
 			claCommentNeeded: false,
 		},
 	} {
@@ -129,7 +131,7 @@ func TestAssignGreetingLabels(t *testing.T) {
 			Config: &Config{
 				Repositories: []*Repository{repo},
 			},
-			OrgMembers: []string{"bar"},
+			OrgMembers: []string{BAR},
 		}
 		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
@@ -156,7 +158,7 @@ func TestAssignGreetingLabels(t *testing.T) {
 				Repositories: []*Repository{repo},
 			},
 			GithubClient: client,
-			OrgMembers:   []string{"bar"},
+			OrgMembers:   []string{BAR},
 		}
 
 		issueMocks.EXPECT().AddLabelsToIssue(
@@ -216,7 +218,7 @@ func TestAssignGreeter(t *testing.T) {
 				Repositories: []*Repository{repo},
 			},
 			GithubClient: client,
-			OrgMembers:   []string{"bar"},
+			OrgMembers:   []string{BAR},
 		}
 
 		assert.NoError(t, s.assignGreeter(context.Background(), pr, repo))
@@ -228,7 +230,7 @@ func TestAssignGreeter(t *testing.T) {
 			Name:         "repoName",
 			GreetingTeam: "greetingTeam",
 		}
-		userLogin := "bar"
+		userLogin := BAR
 		members := []*github.User{}
 
 		ctrl := gomock.NewController(t)
@@ -267,7 +269,7 @@ func TestAssignGreeter(t *testing.T) {
 			Name:         "repoName",
 			GreetingTeam: "greetingTeam",
 		}
-		userLogin := "bar"
+		userLogin := BAR
 		greeter := &github.User{Login: &userLogin}
 		members := []*github.User{greeter}
 		greetingRequest := github.ReviewersRequest{

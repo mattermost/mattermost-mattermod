@@ -36,10 +36,8 @@ type Repository struct {
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
 	JobName                    string
-        // GreetingTeam is the GitHub team responsible for triaging non-member PRs for this repo.
-	GreetingTeam               string 
-	// GreetingLabels are the labels applied automatically to non-member PRs for this repo.
-	GreetingLabels             []string
+	GreetingTeam               string   // GreetingTeam is the GitHub team responsible for triaging non-member PRs for this repo.
+	GreetingLabels             []string // GreetingLabels are the labels applied automatically to non-member PRs for this repo.
 }
 
 type JenkinsCredentials struct {
