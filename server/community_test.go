@@ -315,6 +315,5 @@ func TestAssignGreeter(t *testing.T) {
 		err := s.assignGreeter(context.Background(), pr, repo)
 
 		assert.NoError(t, err)
-
 	})
 }
