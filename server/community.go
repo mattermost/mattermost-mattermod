@@ -6,6 +6,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
 	"text/template"
 	"time"
@@ -81,15 +82,13 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	// get available members
 	greeterList, _, err := s.GithubClient.Teams.ListTeamMembersBySlug(ctx, s.Config.Org, repo.GreetingTeam, nil)
 	if err != nil {
-		mlog.Error("Error retrieving greeting team members", mlog.Err(err), mlog.String("GreetingTeam", repo.GreetingTeam))
-		return err
+		return errors.Wrapf(err, "Error retrieving team members from %s", repo.GreetingTeam)
 	}
 
 	// Assign one of them as a reviewer
 	size := len(greeterList)
 	if size == 0 {
-		mlog.Warn("There were no members on the greeting team", mlog.String("GreetingTeam", repo.GreetingTeam))
-		return nil
+		return fmt.Errorf("There were no members on the greeting team %s", repo.GreetingTeam)
 	}
 
 	greeter := greeterList[rand.Intn(size)]
@@ -99,8 +98,7 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 
 	_, _, err = s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
 	if err != nil {
-		mlog.Warn("Couldn't assing a member of the greeting team", mlog.Err(err), mlog.String("GreetingTeam", repo.GreetingTeam))
-		return nil
+		return errors.Wrapf(err, "Couldn't assing a member of the greeting team %s", repo.GreetingTeam)
 	}
 
 	return nil
@@ -120,8 +118,7 @@ func (s *Server) assignGreetingLabels(ctx context.Context, pr *model.PullRequest
 	// Assign labels
 	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, repo.GreetingLabels)
 	if err != nil {
-		mlog.Error("Error applying Greeting labels", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
-		return err
+		return errors.Wrapf(err, "Error applying Greeting labels to %s #%d", pr.RepoName, pr.Number)
 	}
 	return nil
 }

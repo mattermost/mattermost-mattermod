@@ -258,8 +258,7 @@ func TestAssignGreeter(t *testing.T) {
 		).Return(members, nil, nil)
 
 		err := s.assignGreeter(context.Background(), pr, repo)
-
-		assert.NoError(t, err)
+		assert.Error(t, err)
 	})
 
 	t.Run("Happy path", func(t *testing.T) {
