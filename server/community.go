@@ -34,7 +34,7 @@ func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullReques
 
 	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, []string{"Hacktoberfest", "hacktoberfest-accepted"})
 	if err != nil {
-		mlog.Error("Error applying Hacktoberfest labels", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+		mlog.Error("error applying Hacktoberfest labels", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
 		return
 	}
 }
@@ -82,13 +82,13 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	// get available members
 	greeterList, _, err := s.GithubClient.Teams.ListTeamMembersBySlug(ctx, s.Config.Org, repo.GreetingTeam, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Error retrieving team members from %s", repo.GreetingTeam)
+		return errors.Wrapf(err, "can't retrieve team members from %s", repo.GreetingTeam)
 	}
 
 	// Assign one of them as a reviewer
 	size := len(greeterList)
 	if size == 0 {
-		return fmt.Errorf("There were no members on the greeting team %s", repo.GreetingTeam)
+		return fmt.Errorf("there were no members on the greeting team %s", repo.GreetingTeam)
 	}
 
 	greeter := greeterList[rand.Intn(size)]
@@ -98,7 +98,7 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 
 	_, _, err = s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
 	if err != nil {
-		return errors.Wrapf(err, "Couldn't assing a member of the greeting team %s", repo.GreetingTeam)
+		return errors.Wrapf(err, "couldn't assing a member of the greeting team %s", repo.GreetingTeam)
 	}
 
 	return nil
@@ -118,7 +118,7 @@ func (s *Server) assignGreetingLabels(ctx context.Context, pr *model.PullRequest
 	// Assign labels
 	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, repo.GreetingLabels)
 	if err != nil {
-		return errors.Wrapf(err, "Error applying Greeting labels to %s #%d", pr.RepoName, pr.Number)
+		return errors.Wrapf(err, "couldn't apply greeting labels to %s #%d", pr.RepoName, pr.Number)
 	}
 	return nil
 }
