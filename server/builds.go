@@ -121,7 +121,7 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 					parts := strings.Split(pr.BuildLink, "/")
 					// Doing this because the lib we are using does not support folders :(
 					switch pr.RepoName {
-					case "mattermost-server":
+					case serverRepoName:
 						jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
 						jobName = parts[len(parts)-6]     //mattermost-server
 						subJobName := parts[len(parts)-4] //PR-XXXX

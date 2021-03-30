@@ -7,7 +7,7 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
-	github "github.com/google/go-github/v32/github"
+	github "github.com/google/go-github/v33/github"
 	reflect "reflect"
 )
 
@@ -32,6 +32,22 @@ func NewMockPullRequestsService(ctrl *gomock.Controller) *MockPullRequestsServic
 // EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockPullRequestsService) EXPECT() *MockPullRequestsServiceMockRecorder {
 	return m.recorder
+}
+
+// CreateReview mocks base method
+func (m *MockPullRequestsService) CreateReview(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.PullRequestReviewRequest) (*github.PullRequestReview, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateReview", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*github.PullRequestReview)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateReview indicates an expected call of CreateReview
+func (mr *MockPullRequestsServiceMockRecorder) CreateReview(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReview", reflect.TypeOf((*MockPullRequestsService)(nil).CreateReview), arg0, arg1, arg2, arg3, arg4)
 }
 
 // Get mocks base method

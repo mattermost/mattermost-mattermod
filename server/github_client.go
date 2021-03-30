@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/die-net/lrucache"
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v33/github"
 	"github.com/m4ns0ur/httpcache"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
@@ -53,6 +53,7 @@ type PullRequestsService interface {
 	Merge(ctx context.Context, owner string, repo string, number int, commitMessage string, options *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error)
 	RequestReviewers(ctx context.Context, owner, repo string, number int, reviewers github.ReviewersRequest) (*github.PullRequest, *github.Response, error)
 	UpdateBranch(ctx context.Context, owner, repo string, number int, opts *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error)
+	CreateReview(ctx context.Context, owner, repo string, number int, review *github.PullRequestReviewRequest) (*github.PullRequestReview, *github.Response, error)
 }
 
 type RepositoriesService interface {
@@ -62,6 +63,10 @@ type RepositoriesService interface {
 	GetCombinedStatus(ctx context.Context, owner, repo, ref string, opts *github.ListOptions) (*github.CombinedStatus, *github.Response, error)
 	ListTeams(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.Team, *github.Response, error)
 	ListStatuses(ctx context.Context, owner, repo, ref string, opts *github.ListOptions) ([]*github.RepoStatus, *github.Response, error)
+}
+
+type TeamsService interface {
+	ListTeamMembersBySlug(ctx context.Context, org, slug string, opts *github.TeamListTeamMembersOptions) ([]*github.User, *github.Response, error)
 }
 
 // GithubClient wraps the github.Client with relevant interfaces.
@@ -74,6 +79,7 @@ type GithubClient struct {
 	Organizations OrganizationsService
 	PullRequests  PullRequestsService
 	Repositories  RepositoriesService
+	Teams         TeamsService
 }
 
 // NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
@@ -101,6 +107,7 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 		Organizations: client.Organizations,
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
+		Teams:         client.Teams,
 	}
 }
 

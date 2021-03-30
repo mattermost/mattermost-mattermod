@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v33/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
@@ -69,10 +69,26 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
+		repo, repoExist := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 
+		if repoExist {
+			if err = s.assignGreeter(ctx, pr, repo); err != nil {
+				mlog.Error("Error while assigning a greeter to the community PR", mlog.Err(err))
+			}
+
+			if err = s.assignGreetingLabels(ctx, pr, repo); err != nil {
+				mlog.Error("Error while assigning labels to the community PR", mlog.Err(err))
+			}
+		}
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
+		}
+
+		if pr.RepoName == serverRepoName {
+			if err = s.reviewMlog(ctx, pr, event.PullRequest.GetNodeID(), event.PullRequest.GetDiffURL()); err != nil {
+				mlog.Error("Error while reviewing mlog", mlog.Err(err))
+			}
 		}
 
 		s.setBlockStatusForPR(ctx, pr)
