@@ -37,8 +37,8 @@ spec:
             - "-config=/app/config/config.json"
           resources:
             limits:
-              cpu: "1"
-              memory: 400Mi
+              cpu: "2"
+              memory: 1Gi
             requests:
               cpu: 200m
               memory: 100Mi
