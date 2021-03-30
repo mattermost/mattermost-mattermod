@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-github/v32/github"
+	"github.com/google/go-github/v33/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
@@ -66,6 +66,8 @@ const (
 	templateSpinmintLink = "SPINMINT_LINK"
 	templateInstanceID   = "INSTANCE_ID"
 	templateInternalIP   = "INTERNAL_IP"
+
+	serverRepoName = "mattermost-server"
 )
 
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
