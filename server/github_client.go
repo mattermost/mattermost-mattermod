@@ -65,6 +65,10 @@ type RepositoriesService interface {
 	ListStatuses(ctx context.Context, owner, repo, ref string, opts *github.ListOptions) ([]*github.RepoStatus, *github.Response, error)
 }
 
+type TeamsService interface {
+	ListTeamMembersBySlug(ctx context.Context, org, slug string, opts *github.TeamListTeamMembersOptions) ([]*github.User, *github.Response, error)
+}
+
 // GithubClient wraps the github.Client with relevant interfaces.
 type GithubClient struct {
 	client *github.Client
@@ -75,6 +79,7 @@ type GithubClient struct {
 	Organizations OrganizationsService
 	PullRequests  PullRequestsService
 	Repositories  RepositoriesService
+	Teams         TeamsService
 }
 
 // NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
@@ -102,6 +107,7 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 		Organizations: client.Organizations,
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
+		Teams:         client.Teams,
 	}
 }
 
