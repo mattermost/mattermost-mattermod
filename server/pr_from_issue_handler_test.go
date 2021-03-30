@@ -5,7 +5,6 @@ package server
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -65,10 +64,10 @@ func TestPRFromIssueHandler(t *testing.T) {
 		Sha:                 "sha",
 		Labels:              []string{},
 		State:               "closed",
-		Merged:              sql.NullBool{Bool: false, Valid: true},
-		MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
-		MilestoneNumber:     sql.NullInt64{Int64: int64(event.Issue.Milestone.GetNumber()), Valid: true},
-		MilestoneTitle:      sql.NullString{String: event.Issue.Milestone.GetTitle(), Valid: true},
+		Merged:              NewBool(false),
+		MaintainerCanModify: NewBool(false),
+		MilestoneNumber:     NewInt64(int64(event.Issue.Milestone.GetNumber())),
+		MilestoneTitle:      NewString(event.Issue.Milestone.GetTitle()),
 	})).
 		Times(1).Return(nil, nil)
 	prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
@@ -82,10 +81,10 @@ func TestPRFromIssueHandler(t *testing.T) {
 			Sha:                 "sha",
 			Labels:              []string{},
 			State:               "closed",
-			Merged:              sql.NullBool{Bool: false, Valid: true},
-			MaintainerCanModify: sql.NullBool{Bool: false, Valid: true},
-			MilestoneNumber:     sql.NullInt64{Int64: int64(0), Valid: true},
-			MilestoneTitle:      sql.NullString{String: "release-5.28", Valid: true},
+			Merged:              NewBool(false),
+			MaintainerCanModify: NewBool(false),
+			MilestoneNumber:     NewInt64(0),
+			MilestoneTitle:      NewString("release-5.28"),
 		}, nil)
 
 	ss.EXPECT().
