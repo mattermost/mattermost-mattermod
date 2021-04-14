@@ -20,8 +20,8 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 	defer cancel()
 
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-	ref := "refs/heads/" + s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(prNumber)
-
+	// will generate the string refs/heads/build-pr-1222-8bfcb54
+	ref := fmt.Sprintf("refs/heads/%s%d-%s", s.Config.BuildMobileAppBranchPrefix, prNumber, pr.Sha[0:7])
 	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(ctx, pr, s.Config.Org)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve the status of the PR. Error:  \n```%s```", err.Error())
