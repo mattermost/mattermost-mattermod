@@ -28,103 +28,6 @@ const (
 	tooManyCherryPickMsg   = "There are too many cherry picking requests. Please do this manually or try again later."
 )
 
-type cherryPickRequest struct {
-	pr        *model.PullRequest
-	version   string
-	milestone *int
-}
-
-func (s *Server) listenCherryPickRequests() {
-	defer func() {
-		close(s.cherryPickStoppedChan)
-	}()
-
-	for job := range s.cherryPickRequests {
-		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*2*time.Second)
-			defer cancel()
-			pr := job.pr
-			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
-			if err != nil {
-				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-				if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); cErr != nil {
-					mlog.Warn("Error while commenting", mlog.Err(cErr))
-				}
-				mlog.Error("Error while cherry picking", mlog.Err(err))
-			}
-		}()
-	}
-}
-
-func (s *Server) finishCherryPickRequests() {
-	close(s.cherryPickStopChan)
-	close(s.cherryPickRequests)
-	select {
-	case <-time.After(5 * time.Second):
-		ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
-		defer cancel()
-		// While consuming requests here, listenCherryPickRequests routine will continue
-		// to listen as well. We're just trying to cancel requests as much as we can.
-		msg := "Cherry picking is canceled due to server shutdown."
-		for job := range s.cherryPickRequests {
-			if err := s.sendGitHubComment(ctx, job.pr.RepoOwner, job.pr.RepoName, job.pr.Number, msg); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
-		}
-	case <-s.cherryPickStoppedChan:
-	}
-}
-
-func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, pr *model.PullRequest) error {
-	var msg string
-	defer func() {
-		if msg != "" {
-			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
-		}
-	}()
-
-	if !s.IsOrgMember(commenter) {
-		msg = msgCommenterPermission
-		return nil
-	}
-	command := getCommand(body)
-	args := strings.Split(command, " ")
-	mlog.Info("Args", mlog.String("Args", body))
-	if !pr.GetMerged() {
-		return nil
-	}
-
-	if len(args) < 2 {
-		return nil
-	}
-
-	select {
-	case <-s.cherryPickStopChan:
-		return errors.New("server is closing")
-	default:
-	}
-
-	select {
-	case s.cherryPickRequests <- &cherryPickRequest{
-		pr:      pr,
-		version: strings.TrimSpace(args[1]),
-	}:
-		msg = cherryPickScheduledMsg
-	default:
-		msg = tooManyCherryPickMsg
-		return errors.New("too many requests")
-	}
-
-	return nil
-}
-
-func getCommand(command string) string {
-	index := strings.Index(command, "/cherry-pick")
-	return command[index:]
-}
-
 func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 	// We create a new context here instead of using the parent one because this is being called from a goroutine.
 	// Ideally, the entire request needs to be handled asynchronously.
@@ -154,14 +57,14 @@ func (s *Server) checkIfNeedCherryPick(pr *model.PullRequest) {
 			milestone := getMilestone(pr.GetMilestoneTitle())
 
 			select {
-			case <-s.cherryPickStopChan:
+			case <-s.commandStopChan:
 				return
 			default:
 			}
 
 			var msg string
 			select {
-			case s.cherryPickRequests <- &cherryPickRequest{
+			case s.commandRequests <- &commandRequest{
 				pr:        pr,
 				version:   strings.TrimSpace(milestone),
 				milestone: &milestoneNumber,

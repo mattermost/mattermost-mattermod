@@ -65,7 +65,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 
 	if ev.HasCherryPick() {
 		s.Metrics.IncreaseWebhookRequest("cherry_pick")
-		if err := s.handleCherryPick(ctx, commenter, ev.Comment.GetBody(), pr); err != nil {
+		if err := s.handleCommandRequest(ctx, commenter, CHERRY_PICK, ev.Comment.GetBody(), pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("cherry_pick")
 			errs = append(errs, fmt.Errorf("error cherry picking: %w", err))
 		}
@@ -84,6 +84,14 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		if err := s.handleUpdateBranch(ctx, commenter, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("update_branch")
 			errs = append(errs, fmt.Errorf("error updating branch: %w", err))
+		}
+	}
+
+	if ev.HasLocalImports() {
+		s.Metrics.IncreaseWebhookRequest(GOIMPORTS_LOCAL)
+		if err := s.handleCommandRequest(ctx, commenter, GOIMPORTS_LOCAL, ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors(GOIMPORTS_LOCAL)
+			errs = append(errs, fmt.Errorf("error running goimports-local: %w", err))
 		}
 	}
 
@@ -134,4 +142,9 @@ func (e *issueCommentEvent) HasAutoAssign() bool {
 // HasUpdateBranch is true if body contains "/update-branch"
 func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
+}
+
+// HasUpdateBranch is true if body contains "/goimports-local"
+func (e *issueCommentEvent) HasLocalImports() bool {
+	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/goimports-local")
 }
