@@ -59,6 +59,9 @@ CLOSEST_VERSION=$(getClosestVersion)
 
 # Bump the released version
 sed -i -E 's|'${CLOSEST_VERSION}'|'${RELEASE_VERSION}'|g' deploy/overlays/prod/kustomization.yaml
+# On FreeBSD sed versions, -i takes an argument, so it creates a backup file with the next argument, which happens to be -E in this case. Hence, to keep things simple, we just delete the backup file.
+# Just -i does not work on MacOS, and -i '' does not work on GNU. Hence we are stuck with this quirk.
+rm -f deploy/overlays/prod/kustomization.yaml-E
 
 # Commit changes
 printf "\033[36m==> %s\033[0m\n" "Commit changes for release version v${RELEASE_VERSION}"
