@@ -65,7 +65,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 
 	if ev.HasCherryPick() {
 		s.Metrics.IncreaseWebhookRequest("cherry_pick")
-		if err := s.handleCommandRequest(ctx, commenter, CHERRY_PICK, ev.Comment.GetBody(), pr); err != nil {
+		if err := s.handleCommandRequest(ctx, commenter, "cherry-pick", ev.Comment.GetBody(), pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("cherry_pick")
 			errs = append(errs, fmt.Errorf("error cherry picking: %w", err))
 		}
@@ -88,9 +88,9 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if ev.HasLocalImports() {
-		s.Metrics.IncreaseWebhookRequest(GOIMPORTS_LOCAL)
-		if err := s.handleCommandRequest(ctx, commenter, GOIMPORTS_LOCAL, ev.Comment.GetBody(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors(GOIMPORTS_LOCAL)
+		s.Metrics.IncreaseWebhookRequest("goimports-local")
+		if err := s.handleCommandRequest(ctx, commenter, "goimports-local", ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("goimports-local")
 			errs = append(errs, fmt.Errorf("error running goimports-local: %w", err))
 		}
 	}
