@@ -45,12 +45,12 @@ func TestHandleCherryPick(t *testing.T) {
 	t.Run("should ignore for non org members", func(t *testing.T) {
 		*msg = msgCommenterPermission
 
-		err := s.handleCherryPick(context.Background(), "non-org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "non-org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
 	t.Run("should ignore not merged PRs", func(t *testing.T) {
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
@@ -61,7 +61,7 @@ func TestHandleCherryPick(t *testing.T) {
 		close(s.commandStopChan)
 		close(s.commandRequests)
 
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "server is closing")
 	})
 
@@ -72,18 +72,18 @@ func TestHandleCherryPick(t *testing.T) {
 
 		*msg = cherryPickScheduledMsg
 
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 
 		*msg = tooManyCherryPickMsg
 
-		err = s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err = s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "too many requests")
 	})
 
 	t.Run("should not panic on empty requests", func(t *testing.T) {
 		require.NotPanics(t, func() {
-			err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
+			err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick", pr)
 			require.NoError(t, err)
 		})
 	})
@@ -97,13 +97,4 @@ func TestGetMilestone(t *testing.T) {
 	title = "v5.1.0"
 	milestone = getMilestone(title)
 	assert.Equal(t, "release-5.1", milestone)
-}
-
-func TestGetCommand(t *testing.T) {
-	raw := "PR looks good to go. /cherry-pick release-5.28"
-	command := getCommand(raw)
-	assert.Equal(t, "/cherry-pick release-5.28", command)
-
-	command = getCommand(command)
-	assert.Equal(t, "/cherry-pick release-5.28", command)
 }
