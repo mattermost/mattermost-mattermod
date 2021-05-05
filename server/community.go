@@ -6,8 +6,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"math/rand"
 	"text/template"
 	"time"
 
@@ -79,26 +77,13 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 		return nil
 	}
 
-	// get available members
-	greeterList, _, err := s.GithubClient.Teams.ListTeamMembersBySlug(ctx, s.Config.Org, repo.GreetingTeam, nil)
-	if err != nil {
-		return errors.Wrapf(err, "can't retrieve team members from %s", repo.GreetingTeam)
-	}
-
-	// Assign one of them as a reviewer
-	size := len(greeterList)
-	if size == 0 {
-		return fmt.Errorf("there were no members on the greeting team %s", repo.GreetingTeam)
-	}
-
-	greeter := greeterList[rand.Intn(size)]
 	greetingRequest := github.ReviewersRequest{
-		Reviewers: []string{*greeter.Login},
+		Reviewers: []string{repo.GreetingTeam},
 	}
 
-	_, _, err = s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
+	_, _, err := s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
 	if err != nil {
-		return errors.Wrapf(err, "couldn't assing a member of the greeting team %s", repo.GreetingTeam)
+		return errors.Wrapf(err, "couldn't assign the greeting team %s", repo.GreetingTeam)
 	}
 
 	return nil
