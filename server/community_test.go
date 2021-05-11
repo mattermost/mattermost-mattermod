@@ -224,45 +224,6 @@ func TestAssignGreeter(t *testing.T) {
 		assert.NoError(t, s.assignGreeter(context.Background(), pr, repo))
 	})
 
-	t.Run("Empty team", func(t *testing.T) {
-		repo := &Repository{
-			Owner:        "owner",
-			Name:         "repoName",
-			GreetingTeam: "greetingTeam",
-		}
-		userLogin := BAR
-		members := []*github.User{}
-
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
-
-		teamMocks := mocks.NewMockTeamsService(ctrl)
-
-		client := &GithubClient{
-			Teams: teamMocks,
-		}
-
-		s := &Server{
-			Config: &Config{
-				Repositories: []*Repository{repo},
-				Org:          "SomeOrg",
-			},
-			GithubClient: client,
-			OrgMembers:   []string{userLogin},
-		}
-
-		teamMocks.EXPECT().ListTeamMembersBySlug(
-			gomock.AssignableToTypeOf(ctxInterface),
-			gomock.Eq(s.Config.Org),
-			gomock.Eq(repo.GreetingTeam),
-			gomock.Nil(),
-		).Return(members, nil, nil)
-
-		err := s.assignGreeter(context.Background(), pr, repo)
-		assert.Error(t, err)
-	})
-
 	t.Run("Happy path", func(t *testing.T) {
 		repo := &Repository{
 			Owner:        "owner",
@@ -270,10 +231,8 @@ func TestAssignGreeter(t *testing.T) {
 			GreetingTeam: "greetingTeam",
 		}
 		userLogin := BAR
-		greeter := &github.User{Login: &userLogin}
-		members := []*github.User{greeter}
 		greetingRequest := github.ReviewersRequest{
-			Reviewers: []string{*greeter.Login},
+			Reviewers: []string{repo.GreetingTeam},
 		}
 
 		ctrl := gomock.NewController(t)
@@ -296,13 +255,6 @@ func TestAssignGreeter(t *testing.T) {
 			GithubClient: client,
 			OrgMembers:   []string{userLogin},
 		}
-
-		teamMocks.EXPECT().ListTeamMembersBySlug(
-			gomock.AssignableToTypeOf(ctxInterface),
-			gomock.Eq(s.Config.Org),
-			gomock.Eq(repo.GreetingTeam),
-			gomock.Nil(),
-		).Return(members, nil, nil)
 
 		pullMocks.EXPECT().RequestReviewers(
 			gomock.AssignableToTypeOf(ctxInterface),
