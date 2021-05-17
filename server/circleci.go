@@ -40,8 +40,7 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
-		// It is from upstream mattermost repo don't need to trigger the circleci because org members
-		// have permissions
+		// It is from upstream mattermost repo don't need to trigger the circleci because it is comming from the upstream repo.
 		return nil
 	}
 
@@ -54,6 +53,39 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	// If builds are 0 means no build ran for master and most probably this is not setup, so skipping.
 	if len(builds) == 0 {
 		return nil
+	}
+
+	okToTestLabel := false
+	for _, label := range pr.Labels {
+		if label == "ok-to-test" {
+			okToTestLabel = true
+			break
+		}
+	}
+
+	// not org member and there is not ok-to-test label
+	// will stop any build/test
+	if !okToTestLabel && !s.IsOrgMember(pr.Username) {
+		// at this point we are not triggering or checking PR from upstream, all is from fork repos
+		branchName := fmt.Sprintf("pull/%d", pr.Number)
+		pipelines, err := s.CircleCiClientV2.GetPipelineByBranch(circleci.VcsTypeGithub, "mattermost", pr.RepoOwner, pr.RepoName, branchName, "")
+		if err != nil {
+			return fmt.Errorf("could not list the CircleCI pipelines for project: %w", err)
+		}
+		for _, pipeline := range pipelines.Items {
+			fmt.Printf("%s: %d\n", pipeline.ID, pipeline.Number)
+			workflows, err := s.CircleCiClientV2.GetPipelineWorkflow(pipeline.ID, "")
+			if err != nil {
+				return fmt.Errorf("could not list the CircleCI workflows for project: %w", err)
+			}
+			for _, workflow := range workflows.Items {
+				// will cancel all workflows, even the ones is already completed/canceled.
+				_, err := s.CircleCiClientV2.CancelWorkflow(workflow.WorkflowID)
+				if err != nil {
+					return fmt.Errorf("could not cancel the workflow: %w", err)
+				}
+			}
+		}
 	}
 
 	// List the files that was modified or added in the PullRequest
@@ -69,15 +101,30 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 		if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, blockError.ReportBlockFiles()); cErr != nil {
 			mlog.Warn("Error while commenting", mlog.Err(cErr))
 		}
-		return err
+
+		// If the PR is not coming from a Org member then we will not re-trigger the job to get the necessary context
+		// it will be triggered if the label ok-to-test is applied, meaning it is reviewed by a staff member and the PR does not have
+		// any issues
+		if !s.IsOrgMember(pr.Username) && !okToTestLabel {
+			return err
+		}
 	}
 
+	err = s.buildByProjectTrigger(ctx, pr)
+	if err != nil {
+		return fmt.Errorf("could not trigger circleci: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) buildByProjectTrigger(ctx context.Context, pr *model.PullRequest) error {
 	opts := map[string]interface{}{
 		"revision": pr.Sha,
 		"branch":   fmt.Sprintf("pull/%d", pr.Number),
 	}
 
-	err = s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
+	err := s.CircleCiClient.BuildByProjectWithContext(ctx, circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, opts)
 	if err != nil {
 		return fmt.Errorf("could not trigger circleci: %w", err)
 	}
