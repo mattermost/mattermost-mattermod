@@ -87,14 +87,6 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if ev.HasLocalImports() {
-		s.Metrics.IncreaseWebhookRequest("goimports-local")
-		if err := s.handleCommandRequest(ctx, commenter, "goimports-local", ev.Comment.GetBody(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("goimports-local")
-			errs = append(errs, fmt.Errorf("error running goimports-local: %w", err))
-		}
-	}
-
 	for _, err := range errs {
 		mlog.Error("Error handling PR comment", mlog.Err(err))
 	}
@@ -142,9 +134,4 @@ func (e *issueCommentEvent) HasAutoAssign() bool {
 // HasUpdateBranch is true if body contains "/update-branch"
 func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
-}
-
-// HasUpdateBranch is true if body contains "/goimports-local"
-func (e *issueCommentEvent) HasLocalImports() bool {
-	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/goimports-local")
 }

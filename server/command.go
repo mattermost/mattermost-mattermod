@@ -35,7 +35,8 @@ func (s *Server) handleCommandRequest(ctx context.Context, commenter, command, b
 		}
 	}()
 
-	if !s.IsOrgMember(commenter) {
+	//trigger `goimports -local` for any user
+	if command != GOIMPORTS_LOCAL && !s.IsOrgMember(commenter) {
 		msg = msgCommenterPermission
 		return nil
 	}
