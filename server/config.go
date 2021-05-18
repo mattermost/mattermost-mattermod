@@ -177,6 +177,10 @@ type Config struct {
 
 	RepoFolder    string // folder containing local checkouts of repositories for cherry-picking
 	ScriptsFolder string // folder containing the cherry-pick.sh script
+
+	CommandsConfig struct {
+		EnableLocalGoImports bool
+	}
 }
 
 func findConfigFile(fileName string) string {
