@@ -45,12 +45,12 @@ func TestHandleCherryPick(t *testing.T) {
 	t.Run("should ignore for non org members", func(t *testing.T) {
 		*msg = msgCommenterPermission
 
-		err := s.handleCommandRequest(context.Background(), "non-org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "non-org-member", CHERRY_PICK, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
 	t.Run("should ignore not merged PRs", func(t *testing.T) {
-		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CHERRY_PICK, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
@@ -61,7 +61,7 @@ func TestHandleCherryPick(t *testing.T) {
 		close(s.commandStopChan)
 		close(s.commandRequests)
 
-		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CHERRY_PICK, "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "server is closing")
 	})
 
@@ -72,18 +72,18 @@ func TestHandleCherryPick(t *testing.T) {
 
 		*msg = cherryPickScheduledMsg
 
-		err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CHERRY_PICK, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 
 		*msg = tooManyCherryPickMsg
 
-		err = s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick release-5.28", pr)
+		err = s.handleCommandRequest(context.Background(), "org-member", CHERRY_PICK, "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "too many requests")
 	})
 
 	t.Run("should not panic on empty requests", func(t *testing.T) {
 		require.NotPanics(t, func() {
-			err := s.handleCommandRequest(context.Background(), "org-member", "cherry-pick", "/cherry-pick", pr)
+			err := s.handleCommandRequest(context.Background(), "org-member", CHERRY_PICK, "/cherry-pick", pr)
 			require.NoError(t, err)
 		})
 	})
