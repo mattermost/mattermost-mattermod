@@ -64,9 +64,9 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if ev.HasCherryPick() {
-		s.Metrics.IncreaseWebhookRequest(CHERRY_PICK)
-		if err := s.handleCommandRequest(ctx, commenter, CHERRY_PICK, ev.Comment.GetBody(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors(CHERRY_PICK)
+		s.Metrics.IncreaseWebhookRequest(CherryPick)
+		if err := s.handleCommandRequest(ctx, commenter, CherryPick, ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors(CherryPick)
 			errs = append(errs, fmt.Errorf("error cherry picking: %w", err))
 		}
 	}

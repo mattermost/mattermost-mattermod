@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	CHERRY_PICK       = "cherry-pick"
-	GOIMPORTS_LOCAL   = "goimports-local"
+	CherryPick        = "cherry-pick"
+	GoImportsLocal    = "goimports-local"
 	tooManyCommandMsg = "There are too many command requests. Please do this manually or try again later."
 )
 
@@ -35,8 +35,8 @@ func (s *Server) handleCommandRequest(ctx context.Context, commenter, command, b
 		}
 	}()
 
-	//trigger `goimports -local` for any user
-	if command != GOIMPORTS_LOCAL && !s.IsOrgMember(commenter) {
+	// trigger `goimports -local` for any user
+	if command != GoImportsLocal && !s.IsOrgMember(commenter) {
 		msg = msgCommenterPermission
 		return nil
 	}
@@ -66,9 +66,9 @@ func (s *Server) handleCommandRequest(ctx context.Context, commenter, command, b
 		cmdArgs: args,
 	}:
 		switch command {
-		case CHERRY_PICK:
+		case CherryPick:
 			msg = cherryPickScheduledMsg
-		case GOIMPORTS_LOCAL:
+		case GoImportsLocal:
 			msg = goimportsLocalScheduledMsg
 		}
 	default:
@@ -91,7 +91,7 @@ func (s *Server) listenCommandRequests() {
 			pr := job.pr
 			command := job.command
 			switch command {
-			case CHERRY_PICK:
+			case CherryPick:
 				cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
 				if err != nil {
 					msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
@@ -100,7 +100,7 @@ func (s *Server) listenCommandRequests() {
 					}
 					mlog.Error("Error while cherry picking", mlog.Err(err))
 				}
-			case GOIMPORTS_LOCAL:
+			case GoImportsLocal:
 				cmdOut, err := s.doGoImportsLocal(ctx, pr)
 				if err != nil {
 					msg := fmt.Sprintf("Error trying doing the automated goimports -local run. Please do this manually\n\n```\n%s\n```\n", cmdOut)

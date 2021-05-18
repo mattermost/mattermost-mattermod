@@ -237,7 +237,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	} else if changed {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
 		if s.Config.CommandsConfig.EnableLocalGoImports {
-			err = s.handleCommandRequest(ctx, pr.Username, GOIMPORTS_LOCAL, "/"+GOIMPORTS_LOCAL, pr)
+			err = s.handleCommandRequest(ctx, pr.Username, GoImportsLocal, "/"+GoImportsLocal, pr)
 			if err != nil {
 				mlog.Error("Could not check changes for PR", mlog.Err(err))
 			}
