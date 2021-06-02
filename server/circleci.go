@@ -4,11 +4,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/google/go-github/v33/github"
@@ -34,6 +36,26 @@ type CircleCIService interface {
 	TriggerPipelineWithContext(ctx context.Context, vcsType circleci.VcsType, account, repo, branch, tag string, params map[string]interface{}) (*circleci.Pipeline, error)
 	// GetPipelineWorkflowWithContext returns a list of paginated workflows by pipeline ID
 	GetPipelineWorkflowWithContext(ctx context.Context, pipelineID, pageToken string) (*circleci.WorkflowList, error)
+	// GetPipelineByBranch gets a pipeline for the given project for the given branch.
+	GetPipelineByBranch(vcsType circleci.VcsType, account, repo, branch, pageToken string) (*circleci.Pipelines, error)
+	// GetPipelineWorkflow gets workflow based on a pipeline id.
+	GetPipelineWorkflow(pipelineID, pageToken string) (*circleci.WorkflowList, error)
+	// CancelWorkflow cancel a workflow using their workflow id.
+	CancelWorkflow(workflowID string) (*circleci.CancelWorkflow, error)
+}
+
+func (s *Server) triggerCircleCI(ctx context.Context, pr *model.PullRequest) error {
+	err := s.buildByProjectTrigger(ctx, pr)
+	if err != nil {
+		return fmt.Errorf("could not trigger circleci: %w", err)
+	}
+
+	err = s.removeNeedOkToTestComment(ctx, pr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequest) error {
@@ -55,39 +77,72 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 		return nil
 	}
 
+	// Get the updated Labels from GitHub, if the call fail use the existing ones
+	var labelsToCheck = pr.Labels
+	freshLabels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
+		mlog.Error("Error listing the labels for PR", mlog.Err(err))
+	} else {
+		labelsToCheck = labelsToStringArray(freshLabels)
+	}
+
 	okToTestLabel := false
-	for _, label := range pr.Labels {
-		if label == "ok-to-test" {
+	for _, label := range labelsToCheck {
+		if label == s.Config.OkToTestLabel {
 			okToTestLabel = true
 			break
 		}
 	}
 
-	// not org member and there is not ok-to-test label
+	// not org member and there is not ok to test label
 	// will stop any build/test
 	if !okToTestLabel && !s.IsOrgMember(pr.Username) {
 		// at this point we are not triggering or checking PR from upstream, all is from fork repos
 		branchName := fmt.Sprintf("pull/%d", pr.Number)
-		pipelines, err := s.CircleCiClientV2.GetPipelineByBranch(circleci.VcsTypeGithub, "mattermost", pr.RepoOwner, pr.RepoName, branchName, "")
-		if err != nil {
-			return fmt.Errorf("could not list the CircleCI pipelines for project: %w", err)
+		pipelines, errPipeline := s.CircleCiClientV2.GetPipelineByBranch(circleci.VcsTypeGithub, pr.RepoOwner, pr.RepoName, branchName, "")
+		if errPipeline != nil {
+			return fmt.Errorf("could not list the CircleCI pipelines for project: %w", errPipeline)
 		}
 		for _, pipeline := range pipelines.Items {
-			fmt.Printf("%s: %d\n", pipeline.ID, pipeline.Number)
-			workflows, err := s.CircleCiClientV2.GetPipelineWorkflow(pipeline.ID, "")
-			if err != nil {
-				return fmt.Errorf("could not list the CircleCI workflows for project: %w", err)
+			mlog.Info("Pipeline", mlog.String("pipelineID", pipeline.ID))
+			workflows, errWorkFlow := s.CircleCiClientV2.GetPipelineWorkflow(pipeline.ID, "")
+			if errWorkFlow != nil {
+				return fmt.Errorf("could not list the CircleCI workflows for project: %w", errWorkFlow)
 			}
 			for _, workflow := range workflows.Items {
 				// will cancel all workflows, even the ones is already completed/canceled.
-				_, err := s.CircleCiClientV2.CancelWorkflow(workflow.WorkflowID)
-				if err != nil {
-					return fmt.Errorf("could not cancel the workflow: %w", err)
+				mlog.Info("Workflow", mlog.String("WorkflowID", workflow.WorkflowID))
+				_, errCancel := s.CircleCiClientV2.CancelWorkflow(workflow.WorkflowID)
+				if errCancel != nil {
+					return fmt.Errorf("could not cancel the workflow: %w", errCancel)
 				}
 			}
 		}
+
+		if err = s.postNeedOkToTest(ctx, pr); err != nil {
+			mlog.Warn("Error while commenting the need for ok to test", mlog.Err(err))
+		}
+
+		if err = s.checkFiles(ctx, pr, okToTestLabel); err != nil {
+			mlog.Warn("Forked PR from non-org member changes protected files", mlog.Err(err))
+		}
+
+		return fmt.Errorf("blocking CI test, need ok-to-test PR: %d", pr.Number)
 	}
 
+	if err = s.checkFiles(ctx, pr, okToTestLabel); err != nil {
+		return err
+	}
+
+	err = s.buildByProjectTrigger(ctx, pr)
+	if err != nil {
+		return fmt.Errorf("could not trigger circleci: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Server) checkFiles(ctx context.Context, pr *model.PullRequest, okToTestLabel bool) error {
 	// List the files that was modified or added in the PullRequest
 	prFiles, err := s.getFiles(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
@@ -108,11 +163,6 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 		if !s.IsOrgMember(pr.Username) && !okToTestLabel {
 			return err
 		}
-	}
-
-	err = s.buildByProjectTrigger(ctx, pr)
-	if err != nil {
-		return fmt.Errorf("could not trigger circleci: %w", err)
 	}
 
 	return nil
@@ -356,4 +406,80 @@ func areAllExpectedJobs(builds []*circleci.Build, jobNames []string) bool {
 	}
 
 	return len(jobNames) == c
+}
+
+func (s *Server) postNeedOkToTest(ctx context.Context, pr *model.PullRequest) error {
+	// Only post welcome Message for community member
+	if s.IsOrgMember(pr.Username) {
+		return nil
+	}
+
+	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, []string{s.Config.NeedOkToTestLabel})
+	if err != nil {
+		mlog.Error("Error applying the automated label", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+	}
+
+	output, err := s.generateTemplateOkToTest(pr)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate the template")
+	}
+
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+	if err != nil {
+		return fmt.Errorf("could not get issue from GitHub: %w", err)
+	}
+
+	for _, comment := range comments {
+		if strings.Contains(comment.GetBody(), output.String()) {
+			return nil
+		}
+	}
+
+	err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, output.String())
+	if err != nil {
+		return errors.Wrap(err, "failed to send needOkToTest")
+	}
+
+	return nil
+}
+
+func (s *Server) removeNeedOkToTestComment(ctx context.Context, pr *model.PullRequest) error {
+	output, err := s.generateTemplateOkToTest(pr)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate the template")
+	}
+
+	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+	if err != nil {
+		return fmt.Errorf("could not get issue from GitHub: %w", err)
+	}
+
+	for _, comment := range comments {
+		if strings.Contains(comment.GetBody(), output.String()) {
+			_, err = s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
+			if err != nil {
+				return fmt.Errorf("could not remove the comment: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Server) generateTemplateOkToTest(pr *model.PullRequest) (bytes.Buffer, error) {
+	t, err := template.New("needOkToTest").Parse(s.Config.NeedOkToTestMessage)
+	if err != nil {
+		return bytes.Buffer{}, errors.Wrap(err, "failed to render needOkToTest template")
+	}
+
+	var output bytes.Buffer
+	templateData := map[string]interface{}{
+		"Username": "@" + pr.Username,
+	}
+	err = t.Execute(&output, templateData)
+	if err != nil {
+		return bytes.Buffer{}, errors.Wrap(err, "could not execute needOkToTest template")
+	}
+
+	return output, nil
 }

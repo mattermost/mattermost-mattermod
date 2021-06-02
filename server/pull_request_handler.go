@@ -50,17 +50,20 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	switch event.Action {
 	case "opened":
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		s.setBlockStatusForPR(ctx, pr)
+		// If is not an org member add the Need Ok to test label right away
+		if !s.IsOrgMember(pr.Username) {
+			_, _, err = s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, []string{s.Config.NeedOkToTestLabel})
+			if err != nil {
+				mlog.Error("Error applying the automated label in the new pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+				return
+			}
+		}
 
 		var claCommentNeeded bool
 		claCommentNeeded, err = s.handleCheckCLA(ctx, pr)
 		if err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
-		}
-
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
 		if err = s.postPRWelcomeMessage(ctx, pr, claCommentNeeded); err != nil {
@@ -91,9 +94,15 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
-		s.setBlockStatusForPR(ctx, pr)
+		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
+			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
+		} else {
+			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+		}
+
 	case "reopened":
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
+		s.setBlockStatusForPR(ctx, pr)
 
 		if _, err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
@@ -111,8 +120,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
 		}
-
-		s.setBlockStatusForPR(ctx, pr)
 	case "labeled":
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
@@ -125,6 +132,20 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			go s.buildMobileApp(pr)
 
 			s.removeLabel(ctx, mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
+		}
+
+		if *event.Label.Name == s.Config.OkToTestLabel {
+			_, err = s.GithubClient.Issues.RemoveLabelForIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.NeedOkToTestLabel)
+			if err != nil {
+				mlog.Error("Error removing the automated label in the cherry pick pr ", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
+				return
+			}
+
+			if err = s.triggerCircleCI(ctx, pr); err != nil {
+				mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
+			} else {
+				mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
+			}
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
@@ -143,7 +164,12 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			}
 			go s.waitForBuildAndSetupSpinmint(pr, false)
 		}
+
 		if s.isBlockPRMerge(*event.Label.Name) {
+			if err = s.blockPRMerge(ctx, pr); err != nil {
+				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
+			}
+		} else {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
@@ -378,7 +404,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 
 		for _, label := range s.Config.PrLabels {
 			mlog.Info("looking for label", mlog.String("label", label.Label))
-			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
+			finalMessage := strings.ReplaceAll(label.Message, "USERNAME", pr.Username)
 			if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
 				if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage); err != nil {

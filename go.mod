@@ -15,7 +15,7 @@ require (
 	github.com/jarcoal/httpmock v1.0.8
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
-	github.com/mattermost/go-circleci v0.7.0
+	github.com/mattermost/go-circleci v0.7.1
 	github.com/mattermost/mattermost-server/v5 v5.3.2-0.20200715184036-90ff87a77ff7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.10.0
