@@ -6,35 +6,36 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v33/github"
-	reflect "reflect"
 )
 
-// MockTeamsService is a mock of TeamsService interface
+// MockTeamsService is a mock of TeamsService interface.
 type MockTeamsService struct {
 	ctrl     *gomock.Controller
 	recorder *MockTeamsServiceMockRecorder
 }
 
-// MockTeamsServiceMockRecorder is the mock recorder for MockTeamsService
+// MockTeamsServiceMockRecorder is the mock recorder for MockTeamsService.
 type MockTeamsServiceMockRecorder struct {
 	mock *MockTeamsService
 }
 
-// NewMockTeamsService creates a new mock instance
+// NewMockTeamsService creates a new mock instance.
 func NewMockTeamsService(ctrl *gomock.Controller) *MockTeamsService {
 	mock := &MockTeamsService{ctrl: ctrl}
 	mock.recorder = &MockTeamsServiceMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockTeamsService) EXPECT() *MockTeamsServiceMockRecorder {
 	return m.recorder
 }
 
-// ListTeamMembersBySlug mocks base method
+// ListTeamMembersBySlug mocks base method.
 func (m *MockTeamsService) ListTeamMembersBySlug(arg0 context.Context, arg1, arg2 string, arg3 *github.TeamListTeamMembersOptions) ([]*github.User, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListTeamMembersBySlug", arg0, arg1, arg2, arg3)
@@ -44,7 +45,7 @@ func (m *MockTeamsService) ListTeamMembersBySlug(arg0 context.Context, arg1, arg
 	return ret0, ret1, ret2
 }
 
-// ListTeamMembersBySlug indicates an expected call of ListTeamMembersBySlug
+// ListTeamMembersBySlug indicates an expected call of ListTeamMembersBySlug.
 func (mr *MockTeamsServiceMockRecorder) ListTeamMembersBySlug(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTeamMembersBySlug", reflect.TypeOf((*MockTeamsService)(nil).ListTeamMembersBySlug), arg0, arg1, arg2, arg3)

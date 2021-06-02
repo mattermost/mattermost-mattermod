@@ -5,59 +5,60 @@
 package mocks
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	store "github.com/mattermost/mattermost-mattermod/store"
-	reflect "reflect"
 )
 
-// MockStore is a mock of Store interface
+// MockStore is a mock of Store interface.
 type MockStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockStoreMockRecorder
 }
 
-// MockStoreMockRecorder is the mock recorder for MockStore
+// MockStoreMockRecorder is the mock recorder for MockStore.
 type MockStoreMockRecorder struct {
 	mock *MockStore
 }
 
-// NewMockStore creates a new mock instance
+// NewMockStore creates a new mock instance.
 func NewMockStore(ctrl *gomock.Controller) *MockStore {
 	mock := &MockStore{ctrl: ctrl}
 	mock.recorder = &MockStoreMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method
+// Close mocks base method.
 func (m *MockStore) Close() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Close")
 }
 
-// Close indicates an expected call of Close
+// Close indicates an expected call of Close.
 func (mr *MockStoreMockRecorder) Close() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStore)(nil).Close))
 }
 
-// DropAllTables mocks base method
+// DropAllTables mocks base method.
 func (m *MockStore) DropAllTables() {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "DropAllTables")
 }
 
-// DropAllTables indicates an expected call of DropAllTables
+// DropAllTables indicates an expected call of DropAllTables.
 func (mr *MockStoreMockRecorder) DropAllTables() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DropAllTables", reflect.TypeOf((*MockStore)(nil).DropAllTables))
 }
 
-// Issue mocks base method
+// Issue mocks base method.
 func (m *MockStore) Issue() store.IssueStore {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Issue")
@@ -65,13 +66,13 @@ func (m *MockStore) Issue() store.IssueStore {
 	return ret0
 }
 
-// Issue indicates an expected call of Issue
+// Issue indicates an expected call of Issue.
 func (mr *MockStoreMockRecorder) Issue() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Issue", reflect.TypeOf((*MockStore)(nil).Issue))
 }
 
-// PullRequest mocks base method
+// PullRequest mocks base method.
 func (m *MockStore) PullRequest() store.PullRequestStore {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PullRequest")
@@ -79,13 +80,13 @@ func (m *MockStore) PullRequest() store.PullRequestStore {
 	return ret0
 }
 
-// PullRequest indicates an expected call of PullRequest
+// PullRequest indicates an expected call of PullRequest.
 func (mr *MockStoreMockRecorder) PullRequest() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullRequest", reflect.TypeOf((*MockStore)(nil).PullRequest))
 }
 
-// Spinmint mocks base method
+// Spinmint mocks base method.
 func (m *MockStore) Spinmint() store.SpinmintStore {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Spinmint")
@@ -93,7 +94,7 @@ func (m *MockStore) Spinmint() store.SpinmintStore {
 	return ret0
 }
 
-// Spinmint indicates an expected call of Spinmint
+// Spinmint indicates an expected call of Spinmint.
 func (mr *MockStoreMockRecorder) Spinmint() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Spinmint", reflect.TypeOf((*MockStore)(nil).Spinmint))

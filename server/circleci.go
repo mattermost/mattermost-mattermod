@@ -62,7 +62,7 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	mlog.Info("Checking if need trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 	repoInfo := strings.Split(pr.FullName, "/")
 	if repoInfo[0] == s.Config.Org {
-		// It is from upstream mattermost repo don't need to trigger the circleci because it is comming from the upstream repo.
+		// It is from upstream mattermost repo don't need to trigger the circleci because it is coming from the upstream repo.
 		return nil
 	}
 

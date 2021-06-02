@@ -5,35 +5,36 @@
 package mocks
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/mattermost/mattermost-mattermod/model"
-	reflect "reflect"
 )
 
-// MockPullRequestStore is a mock of PullRequestStore interface
+// MockPullRequestStore is a mock of PullRequestStore interface.
 type MockPullRequestStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockPullRequestStoreMockRecorder
 }
 
-// MockPullRequestStoreMockRecorder is the mock recorder for MockPullRequestStore
+// MockPullRequestStoreMockRecorder is the mock recorder for MockPullRequestStore.
 type MockPullRequestStoreMockRecorder struct {
 	mock *MockPullRequestStore
 }
 
-// NewMockPullRequestStore creates a new mock instance
+// NewMockPullRequestStore creates a new mock instance.
 func NewMockPullRequestStore(ctrl *gomock.Controller) *MockPullRequestStore {
 	mock := &MockPullRequestStore{ctrl: ctrl}
 	mock.recorder = &MockPullRequestStoreMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPullRequestStore) EXPECT() *MockPullRequestStoreMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method
+// Get mocks base method.
 func (m *MockPullRequestStore) Get(arg0, arg1 string, arg2 int) (*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
@@ -42,13 +43,13 @@ func (m *MockPullRequestStore) Get(arg0, arg1 string, arg2 int) (*model.PullRequ
 	return ret0, ret1
 }
 
-// Get indicates an expected call of Get
+// Get indicates an expected call of Get.
 func (mr *MockPullRequestStoreMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPullRequestStore)(nil).Get), arg0, arg1, arg2)
 }
 
-// ListOpen mocks base method
+// ListOpen mocks base method.
 func (m *MockPullRequestStore) ListOpen() ([]*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListOpen")
@@ -57,13 +58,13 @@ func (m *MockPullRequestStore) ListOpen() ([]*model.PullRequest, error) {
 	return ret0, ret1
 }
 
-// ListOpen indicates an expected call of ListOpen
+// ListOpen indicates an expected call of ListOpen.
 func (mr *MockPullRequestStoreMockRecorder) ListOpen() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListOpen", reflect.TypeOf((*MockPullRequestStore)(nil).ListOpen))
 }
 
-// Save mocks base method
+// Save mocks base method.
 func (m *MockPullRequestStore) Save(arg0 *model.PullRequest) (*model.PullRequest, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
@@ -72,7 +73,7 @@ func (m *MockPullRequestStore) Save(arg0 *model.PullRequest) (*model.PullRequest
 	return ret0, ret1
 }
 
-// Save indicates an expected call of Save
+// Save indicates an expected call of Save.
 func (mr *MockPullRequestStoreMockRecorder) Save(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockPullRequestStore)(nil).Save), arg0)

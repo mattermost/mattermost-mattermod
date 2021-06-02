@@ -6,35 +6,36 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v33/github"
-	reflect "reflect"
 )
 
-// MockPullRequestsService is a mock of PullRequestsService interface
+// MockPullRequestsService is a mock of PullRequestsService interface.
 type MockPullRequestsService struct {
 	ctrl     *gomock.Controller
 	recorder *MockPullRequestsServiceMockRecorder
 }
 
-// MockPullRequestsServiceMockRecorder is the mock recorder for MockPullRequestsService
+// MockPullRequestsServiceMockRecorder is the mock recorder for MockPullRequestsService.
 type MockPullRequestsServiceMockRecorder struct {
 	mock *MockPullRequestsService
 }
 
-// NewMockPullRequestsService creates a new mock instance
+// NewMockPullRequestsService creates a new mock instance.
 func NewMockPullRequestsService(ctrl *gomock.Controller) *MockPullRequestsService {
 	mock := &MockPullRequestsService{ctrl: ctrl}
 	mock.recorder = &MockPullRequestsServiceMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPullRequestsService) EXPECT() *MockPullRequestsServiceMockRecorder {
 	return m.recorder
 }
 
-// CreateReview mocks base method
+// CreateReview mocks base method.
 func (m *MockPullRequestsService) CreateReview(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.PullRequestReviewRequest) (*github.PullRequestReview, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateReview", arg0, arg1, arg2, arg3, arg4)
@@ -44,13 +45,13 @@ func (m *MockPullRequestsService) CreateReview(arg0 context.Context, arg1, arg2 
 	return ret0, ret1, ret2
 }
 
-// CreateReview indicates an expected call of CreateReview
+// CreateReview indicates an expected call of CreateReview.
 func (mr *MockPullRequestsServiceMockRecorder) CreateReview(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateReview", reflect.TypeOf((*MockPullRequestsService)(nil).CreateReview), arg0, arg1, arg2, arg3, arg4)
 }
 
-// Get mocks base method
+// Get mocks base method.
 func (m *MockPullRequestsService) Get(arg0 context.Context, arg1, arg2 string, arg3 int) (*github.PullRequest, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2, arg3)
@@ -60,13 +61,13 @@ func (m *MockPullRequestsService) Get(arg0 context.Context, arg1, arg2 string, a
 	return ret0, ret1, ret2
 }
 
-// Get indicates an expected call of Get
+// Get indicates an expected call of Get.
 func (mr *MockPullRequestsServiceMockRecorder) Get(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockPullRequestsService)(nil).Get), arg0, arg1, arg2, arg3)
 }
 
-// List mocks base method
+// List mocks base method.
 func (m *MockPullRequestsService) List(arg0 context.Context, arg1, arg2 string, arg3 *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", arg0, arg1, arg2, arg3)
@@ -76,13 +77,13 @@ func (m *MockPullRequestsService) List(arg0 context.Context, arg1, arg2 string, 
 	return ret0, ret1, ret2
 }
 
-// List indicates an expected call of List
+// List indicates an expected call of List.
 func (mr *MockPullRequestsServiceMockRecorder) List(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPullRequestsService)(nil).List), arg0, arg1, arg2, arg3)
 }
 
-// ListFiles mocks base method
+// ListFiles mocks base method.
 func (m *MockPullRequestsService) ListFiles(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.ListOptions) ([]*github.CommitFile, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListFiles", arg0, arg1, arg2, arg3, arg4)
@@ -92,13 +93,13 @@ func (m *MockPullRequestsService) ListFiles(arg0 context.Context, arg1, arg2 str
 	return ret0, ret1, ret2
 }
 
-// ListFiles indicates an expected call of ListFiles
+// ListFiles indicates an expected call of ListFiles.
 func (mr *MockPullRequestsServiceMockRecorder) ListFiles(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFiles", reflect.TypeOf((*MockPullRequestsService)(nil).ListFiles), arg0, arg1, arg2, arg3, arg4)
 }
 
-// ListReviewers mocks base method
+// ListReviewers mocks base method.
 func (m *MockPullRequestsService) ListReviewers(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.ListOptions) (*github.Reviewers, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListReviewers", arg0, arg1, arg2, arg3, arg4)
@@ -108,13 +109,13 @@ func (m *MockPullRequestsService) ListReviewers(arg0 context.Context, arg1, arg2
 	return ret0, ret1, ret2
 }
 
-// ListReviewers indicates an expected call of ListReviewers
+// ListReviewers indicates an expected call of ListReviewers.
 func (mr *MockPullRequestsServiceMockRecorder) ListReviewers(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReviewers", reflect.TypeOf((*MockPullRequestsService)(nil).ListReviewers), arg0, arg1, arg2, arg3, arg4)
 }
 
-// ListReviews mocks base method
+// ListReviews mocks base method.
 func (m *MockPullRequestsService) ListReviews(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.ListOptions) ([]*github.PullRequestReview, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListReviews", arg0, arg1, arg2, arg3, arg4)
@@ -124,13 +125,13 @@ func (m *MockPullRequestsService) ListReviews(arg0 context.Context, arg1, arg2 s
 	return ret0, ret1, ret2
 }
 
-// ListReviews indicates an expected call of ListReviews
+// ListReviews indicates an expected call of ListReviews.
 func (mr *MockPullRequestsServiceMockRecorder) ListReviews(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReviews", reflect.TypeOf((*MockPullRequestsService)(nil).ListReviews), arg0, arg1, arg2, arg3, arg4)
 }
 
-// Merge mocks base method
+// Merge mocks base method.
 func (m *MockPullRequestsService) Merge(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 string, arg5 *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Merge", arg0, arg1, arg2, arg3, arg4, arg5)
@@ -140,13 +141,13 @@ func (m *MockPullRequestsService) Merge(arg0 context.Context, arg1, arg2 string,
 	return ret0, ret1, ret2
 }
 
-// Merge indicates an expected call of Merge
+// Merge indicates an expected call of Merge.
 func (mr *MockPullRequestsServiceMockRecorder) Merge(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Merge", reflect.TypeOf((*MockPullRequestsService)(nil).Merge), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-// RequestReviewers mocks base method
+// RequestReviewers mocks base method.
 func (m *MockPullRequestsService) RequestReviewers(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 github.ReviewersRequest) (*github.PullRequest, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RequestReviewers", arg0, arg1, arg2, arg3, arg4)
@@ -156,13 +157,13 @@ func (m *MockPullRequestsService) RequestReviewers(arg0 context.Context, arg1, a
 	return ret0, ret1, ret2
 }
 
-// RequestReviewers indicates an expected call of RequestReviewers
+// RequestReviewers indicates an expected call of RequestReviewers.
 func (mr *MockPullRequestsServiceMockRecorder) RequestReviewers(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RequestReviewers", reflect.TypeOf((*MockPullRequestsService)(nil).RequestReviewers), arg0, arg1, arg2, arg3, arg4)
 }
 
-// UpdateBranch mocks base method
+// UpdateBranch mocks base method.
 func (m *MockPullRequestsService) UpdateBranch(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateBranch", arg0, arg1, arg2, arg3, arg4)
@@ -172,7 +173,7 @@ func (m *MockPullRequestsService) UpdateBranch(arg0 context.Context, arg1, arg2 
 	return ret0, ret1, ret2
 }
 
-// UpdateBranch indicates an expected call of UpdateBranch
+// UpdateBranch indicates an expected call of UpdateBranch.
 func (mr *MockPullRequestsServiceMockRecorder) UpdateBranch(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBranch", reflect.TypeOf((*MockPullRequestsService)(nil).UpdateBranch), arg0, arg1, arg2, arg3, arg4)

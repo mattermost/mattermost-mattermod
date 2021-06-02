@@ -6,35 +6,36 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v33/github"
-	reflect "reflect"
 )
 
-// MockRepositoriesService is a mock of RepositoriesService interface
+// MockRepositoriesService is a mock of RepositoriesService interface.
 type MockRepositoriesService struct {
 	ctrl     *gomock.Controller
 	recorder *MockRepositoriesServiceMockRecorder
 }
 
-// MockRepositoriesServiceMockRecorder is the mock recorder for MockRepositoriesService
+// MockRepositoriesServiceMockRecorder is the mock recorder for MockRepositoriesService.
 type MockRepositoriesServiceMockRecorder struct {
 	mock *MockRepositoriesService
 }
 
-// NewMockRepositoriesService creates a new mock instance
+// NewMockRepositoriesService creates a new mock instance.
 func NewMockRepositoriesService(ctrl *gomock.Controller) *MockRepositoriesService {
 	mock := &MockRepositoriesService{ctrl: ctrl}
 	mock.recorder = &MockRepositoriesServiceMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRepositoriesService) EXPECT() *MockRepositoriesServiceMockRecorder {
 	return m.recorder
 }
 
-// CreateStatus mocks base method
+// CreateStatus mocks base method.
 func (m *MockRepositoriesService) CreateStatus(arg0 context.Context, arg1, arg2, arg3 string, arg4 *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateStatus", arg0, arg1, arg2, arg3, arg4)
@@ -44,13 +45,13 @@ func (m *MockRepositoriesService) CreateStatus(arg0 context.Context, arg1, arg2,
 	return ret0, ret1, ret2
 }
 
-// CreateStatus indicates an expected call of CreateStatus
+// CreateStatus indicates an expected call of CreateStatus.
 func (mr *MockRepositoriesServiceMockRecorder) CreateStatus(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStatus", reflect.TypeOf((*MockRepositoriesService)(nil).CreateStatus), arg0, arg1, arg2, arg3, arg4)
 }
 
-// Get mocks base method
+// Get mocks base method.
 func (m *MockRepositoriesService) Get(arg0 context.Context, arg1, arg2 string) (*github.Repository, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
@@ -60,13 +61,13 @@ func (m *MockRepositoriesService) Get(arg0 context.Context, arg1, arg2 string) (
 	return ret0, ret1, ret2
 }
 
-// Get indicates an expected call of Get
+// Get indicates an expected call of Get.
 func (mr *MockRepositoriesServiceMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepositoriesService)(nil).Get), arg0, arg1, arg2)
 }
 
-// GetBranch mocks base method
+// GetBranch mocks base method.
 func (m *MockRepositoriesService) GetBranch(arg0 context.Context, arg1, arg2, arg3 string) (*github.Branch, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBranch", arg0, arg1, arg2, arg3)
@@ -76,13 +77,13 @@ func (m *MockRepositoriesService) GetBranch(arg0 context.Context, arg1, arg2, ar
 	return ret0, ret1, ret2
 }
 
-// GetBranch indicates an expected call of GetBranch
+// GetBranch indicates an expected call of GetBranch.
 func (mr *MockRepositoriesServiceMockRecorder) GetBranch(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), arg0, arg1, arg2, arg3)
 }
 
-// GetCombinedStatus mocks base method
+// GetCombinedStatus mocks base method.
 func (m *MockRepositoriesService) GetCombinedStatus(arg0 context.Context, arg1, arg2, arg3 string, arg4 *github.ListOptions) (*github.CombinedStatus, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCombinedStatus", arg0, arg1, arg2, arg3, arg4)
@@ -92,13 +93,13 @@ func (m *MockRepositoriesService) GetCombinedStatus(arg0 context.Context, arg1, 
 	return ret0, ret1, ret2
 }
 
-// GetCombinedStatus indicates an expected call of GetCombinedStatus
+// GetCombinedStatus indicates an expected call of GetCombinedStatus.
 func (mr *MockRepositoriesServiceMockRecorder) GetCombinedStatus(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCombinedStatus", reflect.TypeOf((*MockRepositoriesService)(nil).GetCombinedStatus), arg0, arg1, arg2, arg3, arg4)
 }
 
-// ListStatuses mocks base method
+// ListStatuses mocks base method.
 func (m *MockRepositoriesService) ListStatuses(arg0 context.Context, arg1, arg2, arg3 string, arg4 *github.ListOptions) ([]*github.RepoStatus, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListStatuses", arg0, arg1, arg2, arg3, arg4)
@@ -108,13 +109,13 @@ func (m *MockRepositoriesService) ListStatuses(arg0 context.Context, arg1, arg2,
 	return ret0, ret1, ret2
 }
 
-// ListStatuses indicates an expected call of ListStatuses
+// ListStatuses indicates an expected call of ListStatuses.
 func (mr *MockRepositoriesServiceMockRecorder) ListStatuses(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListStatuses", reflect.TypeOf((*MockRepositoriesService)(nil).ListStatuses), arg0, arg1, arg2, arg3, arg4)
 }
 
-// ListTeams mocks base method
+// ListTeams mocks base method.
 func (m *MockRepositoriesService) ListTeams(arg0 context.Context, arg1, arg2 string, arg3 *github.ListOptions) ([]*github.Team, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListTeams", arg0, arg1, arg2, arg3)
@@ -124,7 +125,7 @@ func (m *MockRepositoriesService) ListTeams(arg0 context.Context, arg1, arg2 str
 	return ret0, ret1, ret2
 }
 
-// ListTeams indicates an expected call of ListTeams
+// ListTeams indicates an expected call of ListTeams.
 func (mr *MockRepositoriesServiceMockRecorder) ListTeams(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTeams", reflect.TypeOf((*MockRepositoriesService)(nil).ListTeams), arg0, arg1, arg2, arg3)

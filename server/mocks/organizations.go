@@ -6,35 +6,36 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	github "github.com/google/go-github/v33/github"
-	reflect "reflect"
 )
 
-// MockOrganizationsService is a mock of OrganizationsService interface
+// MockOrganizationsService is a mock of OrganizationsService interface.
 type MockOrganizationsService struct {
 	ctrl     *gomock.Controller
 	recorder *MockOrganizationsServiceMockRecorder
 }
 
-// MockOrganizationsServiceMockRecorder is the mock recorder for MockOrganizationsService
+// MockOrganizationsServiceMockRecorder is the mock recorder for MockOrganizationsService.
 type MockOrganizationsServiceMockRecorder struct {
 	mock *MockOrganizationsService
 }
 
-// NewMockOrganizationsService creates a new mock instance
+// NewMockOrganizationsService creates a new mock instance.
 func NewMockOrganizationsService(ctrl *gomock.Controller) *MockOrganizationsService {
 	mock := &MockOrganizationsService{ctrl: ctrl}
 	mock.recorder = &MockOrganizationsServiceMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockOrganizationsService) EXPECT() *MockOrganizationsServiceMockRecorder {
 	return m.recorder
 }
 
-// GetOrgMembership mocks base method
+// GetOrgMembership mocks base method.
 func (m *MockOrganizationsService) GetOrgMembership(arg0 context.Context, arg1, arg2 string) (*github.Membership, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetOrgMembership", arg0, arg1, arg2)
@@ -44,13 +45,13 @@ func (m *MockOrganizationsService) GetOrgMembership(arg0 context.Context, arg1, 
 	return ret0, ret1, ret2
 }
 
-// GetOrgMembership indicates an expected call of GetOrgMembership
+// GetOrgMembership indicates an expected call of GetOrgMembership.
 func (mr *MockOrganizationsServiceMockRecorder) GetOrgMembership(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrgMembership", reflect.TypeOf((*MockOrganizationsService)(nil).GetOrgMembership), arg0, arg1, arg2)
 }
 
-// IsMember mocks base method
+// IsMember mocks base method.
 func (m *MockOrganizationsService) IsMember(arg0 context.Context, arg1, arg2 string) (bool, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsMember", arg0, arg1, arg2)
@@ -60,13 +61,13 @@ func (m *MockOrganizationsService) IsMember(arg0 context.Context, arg1, arg2 str
 	return ret0, ret1, ret2
 }
 
-// IsMember indicates an expected call of IsMember
+// IsMember indicates an expected call of IsMember.
 func (mr *MockOrganizationsServiceMockRecorder) IsMember(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsMember", reflect.TypeOf((*MockOrganizationsService)(nil).IsMember), arg0, arg1, arg2)
 }
 
-// ListMembers mocks base method
+// ListMembers mocks base method.
 func (m *MockOrganizationsService) ListMembers(arg0 context.Context, arg1 string, arg2 *github.ListMembersOptions) ([]*github.User, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMembers", arg0, arg1, arg2)
@@ -76,7 +77,7 @@ func (m *MockOrganizationsService) ListMembers(arg0 context.Context, arg1 string
 	return ret0, ret1, ret2
 }
 
-// ListMembers indicates an expected call of ListMembers
+// ListMembers indicates an expected call of ListMembers.
 func (mr *MockOrganizationsServiceMockRecorder) ListMembers(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMembers", reflect.TypeOf((*MockOrganizationsService)(nil).ListMembers), arg0, arg1, arg2)
