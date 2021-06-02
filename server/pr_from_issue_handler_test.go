@@ -152,11 +152,11 @@ func TestPRFromIssueHandlerNoMilestone(t *testing.T) {
 	ss := stmock.NewMockStore(ctrl)
 
 	prStoreMock := stmock.NewMockPullRequestStore(ctrl)
-	prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
-		gomock.Eq(event.Repo.GetName()),
-		gomock.Eq(event.Issue.GetNumber())).
-		Times(1).
-		Return(nil, nil)
+	// prStoreMock.EXPECT().Get(gomock.Eq(event.Repo.GetOwner().GetLogin()),
+	// 	gomock.Eq(event.Repo.GetName()),
+	// 	gomock.Eq(event.Issue.GetNumber())).
+	// 	Times(1).
+	// 	Return(nil, nil)
 
 	ss.EXPECT().
 		PullRequest().
