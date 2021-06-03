@@ -17,16 +17,6 @@ patchesStrategicMerge:
   - patches/deployment-data-pvc.yaml
   - patches/deployment-gitconfig.yaml
 
-configMapGenerator:
-  - name: config
-    behavior: merge
-    files:
-      - config/instance-setup-mattermost-server
-      - config/instance-setup-mattermost-webapp
-      - config/instance-setup-upgrade-mattermost-server
-      - config/test.spinmint.com.fullchain.pem
-      - config/test.spinmint.com.privkey.pem
-
 secretGenerator:
   - name: gitconfig
     files:
