@@ -79,6 +79,10 @@
     "TranslationsMattermostMessage": "",
     "TranslationsBot": "",
 
+    "NeedOkToTestMessage": "",
+    "OkToTestLabel": "",
+    "NeedOkToTestLabel": "",
+
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",
     "CLAExclusionsList": [],

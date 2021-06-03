@@ -5,35 +5,36 @@
 package mocks
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/mattermost/mattermost-mattermod/model"
-	reflect "reflect"
 )
 
-// MockIssueStore is a mock of IssueStore interface
+// MockIssueStore is a mock of IssueStore interface.
 type MockIssueStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockIssueStoreMockRecorder
 }
 
-// MockIssueStoreMockRecorder is the mock recorder for MockIssueStore
+// MockIssueStoreMockRecorder is the mock recorder for MockIssueStore.
 type MockIssueStoreMockRecorder struct {
 	mock *MockIssueStore
 }
 
-// NewMockIssueStore creates a new mock instance
+// NewMockIssueStore creates a new mock instance.
 func NewMockIssueStore(ctrl *gomock.Controller) *MockIssueStore {
 	mock := &MockIssueStore{ctrl: ctrl}
 	mock.recorder = &MockIssueStoreMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockIssueStore) EXPECT() *MockIssueStoreMockRecorder {
 	return m.recorder
 }
 
-// Get mocks base method
+// Get mocks base method.
 func (m *MockIssueStore) Get(arg0, arg1 string, arg2 int) (*model.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1, arg2)
@@ -42,13 +43,13 @@ func (m *MockIssueStore) Get(arg0, arg1 string, arg2 int) (*model.Issue, error) 
 	return ret0, ret1
 }
 
-// Get indicates an expected call of Get
+// Get indicates an expected call of Get.
 func (mr *MockIssueStoreMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockIssueStore)(nil).Get), arg0, arg1, arg2)
 }
 
-// Save mocks base method
+// Save mocks base method.
 func (m *MockIssueStore) Save(arg0 *model.Issue) (*model.Issue, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
@@ -57,7 +58,7 @@ func (m *MockIssueStore) Save(arg0 *model.Issue) (*model.Issue, error) {
 	return ret0, ret1
 }
 
-// Save indicates an expected call of Save
+// Save indicates an expected call of Save.
 func (mr *MockIssueStoreMockRecorder) Save(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockIssueStore)(nil).Save), arg0)

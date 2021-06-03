@@ -5,35 +5,36 @@
 package mocks
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	model "github.com/mattermost/mattermost-mattermod/model"
-	reflect "reflect"
 )
 
-// MockSpinmintStore is a mock of SpinmintStore interface
+// MockSpinmintStore is a mock of SpinmintStore interface.
 type MockSpinmintStore struct {
 	ctrl     *gomock.Controller
 	recorder *MockSpinmintStoreMockRecorder
 }
 
-// MockSpinmintStoreMockRecorder is the mock recorder for MockSpinmintStore
+// MockSpinmintStoreMockRecorder is the mock recorder for MockSpinmintStore.
 type MockSpinmintStoreMockRecorder struct {
 	mock *MockSpinmintStore
 }
 
-// NewMockSpinmintStore creates a new mock instance
+// NewMockSpinmintStore creates a new mock instance.
 func NewMockSpinmintStore(ctrl *gomock.Controller) *MockSpinmintStore {
 	mock := &MockSpinmintStore{ctrl: ctrl}
 	mock.recorder = &MockSpinmintStoreMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSpinmintStore) EXPECT() *MockSpinmintStoreMockRecorder {
 	return m.recorder
 }
 
-// Delete mocks base method
+// Delete mocks base method.
 func (m *MockSpinmintStore) Delete(arg0 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0)
@@ -41,13 +42,13 @@ func (m *MockSpinmintStore) Delete(arg0 string) error {
 	return ret0
 }
 
-// Delete indicates an expected call of Delete
+// Delete indicates an expected call of Delete.
 func (mr *MockSpinmintStoreMockRecorder) Delete(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSpinmintStore)(nil).Delete), arg0)
 }
 
-// Get mocks base method
+// Get mocks base method.
 func (m *MockSpinmintStore) Get(arg0 int, arg1 string) (*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Get", arg0, arg1)
@@ -56,13 +57,13 @@ func (m *MockSpinmintStore) Get(arg0 int, arg1 string) (*model.Spinmint, error) 
 	return ret0, ret1
 }
 
-// Get indicates an expected call of Get
+// Get indicates an expected call of Get.
 func (mr *MockSpinmintStoreMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSpinmintStore)(nil).Get), arg0, arg1)
 }
 
-// List mocks base method
+// List mocks base method.
 func (m *MockSpinmintStore) List() ([]*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List")
@@ -71,13 +72,13 @@ func (m *MockSpinmintStore) List() ([]*model.Spinmint, error) {
 	return ret0, ret1
 }
 
-// List indicates an expected call of List
+// List indicates an expected call of List.
 func (mr *MockSpinmintStoreMockRecorder) List() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSpinmintStore)(nil).List))
 }
 
-// Save mocks base method
+// Save mocks base method.
 func (m *MockSpinmintStore) Save(arg0 *model.Spinmint) (*model.Spinmint, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0)
@@ -86,7 +87,7 @@ func (m *MockSpinmintStore) Save(arg0 *model.Spinmint) (*model.Spinmint, error) 
 	return ret0, ret1
 }
 
-// Save indicates an expected call of Save
+// Save indicates an expected call of Save.
 func (mr *MockSpinmintStoreMockRecorder) Save(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSpinmintStore)(nil).Save), arg0)

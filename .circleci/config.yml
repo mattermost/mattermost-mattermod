@@ -6,7 +6,7 @@ orbs:
 executors:
   default:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
 
 jobs:
   lint:
@@ -43,7 +43,7 @@ jobs:
 
   test:
     docker:
-      - image: circleci/golang:1.14
+      - image: circleci/golang:1.16
       - image: circleci/mysql:5.7
         environment:
           MYSQL_ROOT_PASSWORD: mattermod
