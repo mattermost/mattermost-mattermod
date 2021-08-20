@@ -51,17 +51,19 @@
     "SetupSpinmintUpgradeTag": "",
     "SetupSpinmintUpgradeMessage": "",
     "SetupSpinmintUpgradeDoneMessage": "",
-    "BuildMobileAppTag": "",
-    "BuildMobileAppInitMessage": "",
-    "BuildMobileAppDoneMessage": "",
-    "BuildMobileAppFailedMessage": "",
-    "BuildMobileAppJobs": [
+    "BuildAppTag": "",
+    "BuildAppInitMessage": "",
+    "BuildAppDoneMessage": "",
+    "BuildAppFailedMessage": "",
+    "BuildAppJobs": [
         {
             "JobName": "",
+            "RepoName": "",
             "ExpectedArtifacts": 0
         },
         {
             "JobName": "",
+            "RepoName": "",
             "ExpectedArtifacts": 0
         }
     ],

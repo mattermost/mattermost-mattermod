@@ -118,12 +118,12 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Error("Label event received, but label object was empty")
 			return
 		}
-		if *event.Label.Name == s.Config.BuildMobileAppTag {
-			mlog.Info("Label to run mobile build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
-			mobileRepoOwner, mobileRepoName := pr.RepoOwner, pr.RepoName
-			go s.buildMobileApp(pr)
+		if *event.Label.Name == s.Config.BuildAppTag {
+			mlog.Info("Label to run mobile/desktop app build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
+			repoOwner, repoName := pr.RepoOwner, pr.RepoName
+			go s.buildApp(pr)
 
-			s.removeLabel(ctx, mobileRepoOwner, mobileRepoName, pr.Number, s.Config.BuildMobileAppTag)
+			s.removeLabel(ctx, repoOwner, repoName, pr.Number, s.Config.BuildAppTag)
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
