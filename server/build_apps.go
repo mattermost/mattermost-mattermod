@@ -14,14 +14,14 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
-func (s *Server) buildMobileApp(pr *model.PullRequest) {
+func (s *Server) buildApp(pr *model.PullRequest) {
 	// This needs its own context because is executing a heavy job
-	ctx, cancel := context.WithTimeout(context.Background(), defaultBuildMobileTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultBuildAppTimeout*time.Second)
 	defer cancel()
 
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	// will generate the string refs/heads/build-pr-1222-8bfcb54
-	ref := fmt.Sprintf("refs/heads/%s%d-%s", s.Config.BuildMobileAppBranchPrefix, prNumber, pr.Sha[0:7])
+	ref := fmt.Sprintf("refs/heads/%s%d-%s", s.Config.BuildAppBranchPrefix, prNumber, pr.Sha[0:7])
 	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(ctx, pr, s.Config.Org)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve the status of the PR. Error:  \n```%s```", err.Error())
@@ -53,7 +53,7 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 		}
 
 		s.createRef(ctx, pr, ref)
-		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildMobileAppInitMessage); cErr != nil {
+		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildAppInitMessage); cErr != nil {
 			mlog.Warn("Error while commenting", mlog.Err(cErr))
 		}
 		s.build(ctx, pr, s.Config.Org)
@@ -75,9 +75,9 @@ func (s *Server) buildMobileApp(pr *model.PullRequest) {
 
 func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-	branch := s.Config.BuildMobileAppBranchPrefix + strconv.Itoa(pr.Number)
+	branch := s.Config.BuildAppBranchPrefix + strconv.Itoa(pr.Number)
 
-	expectedJobNames := getExpectedJobNames(s.Config.BuildMobileAppJobs)
+	expectedJobNames := getExpectedJobNames(s.Config.BuildAppJobs, prRepoName)
 
 	builds, err := s.waitForJobs(ctx, pr, org, branch, expectedJobNames)
 	if err != nil {
@@ -100,7 +100,7 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 
 	var artifacts []*circleci.Artifact
 	for _, build := range builds {
-		expectedArtifacts := getExpectedArtifacts(s.Config.BuildMobileAppJobs, build.Workflows.JobName)
+		expectedArtifacts := getExpectedArtifacts(s.Config.BuildAppJobs, build.Workflows.JobName, prRepoName)
 		buildArtifacts, err := s.waitForArtifacts(ctx, pr, s.Config.Org, build.BuildNum, expectedArtifacts)
 		if err != nil {
 			msg := fmt.Sprintf("Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
@@ -128,19 +128,23 @@ func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	}
 }
 
-func getExpectedArtifacts(jobs []*BuildMobileAppJob, buildJobName string) int {
+func getExpectedArtifacts(jobs []*BuildAppJob, buildJobName, prRepoName string) int {
 	for _, job := range jobs {
-		if buildJobName == job.JobName {
+		if buildJobName == job.JobName && prRepoName == job.RepoName {
 			return job.ExpectedArtifacts
 		}
 	}
+
 	return 0
 }
 
-func getExpectedJobNames(jobs []*BuildMobileAppJob) []string {
+func getExpectedJobNames(jobs []*BuildAppJob, prRepoName string) []string {
 	var expectedJobNames []string
 	for _, job := range jobs {
-		expectedJobNames = append(expectedJobNames, job.JobName)
+		if prRepoName == job.RepoName {
+			expectedJobNames = append(expectedJobNames, job.JobName)
+		}
 	}
+
 	return expectedJobNames
 }

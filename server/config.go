@@ -19,8 +19,8 @@ const (
 	defaultRequestTimeout       = 60
 	defaultEETaskTimeout        = 300
 	defaultCronTaskTimeout      = 600
-	defaultBuildMobileTimeout   = 7200
-	defaultBuildSpinmintTimeout = 2700
+	defaultBuildAppTimeout      = 7200
+	defaultBuildSpinmintTimeout = 7200
 )
 
 type LabelResponse struct {
@@ -53,8 +53,9 @@ type Integration struct {
 	Message         string
 }
 
-type BuildMobileAppJob struct {
+type BuildAppJob struct {
 	JobName           string
+	RepoName          string
 	ExpectedArtifacts int
 }
 
@@ -96,12 +97,12 @@ type Config struct {
 	SetupSpinmintUpgradeMessage     string
 	SetupSpinmintUpgradeDoneMessage string
 
-	BuildMobileAppTag           string
-	BuildMobileAppInitMessage   string
-	BuildMobileAppDoneMessage   string
-	BuildMobileAppFailedMessage string
-	BuildMobileAppBranchPrefix  string
-	BuildMobileAppJobs          []*BuildMobileAppJob
+	BuildAppTag           string
+	BuildAppInitMessage   string
+	BuildAppDoneMessage   string
+	BuildAppFailedMessage string
+	BuildAppBranchPrefix  string
+	BuildAppJobs          []*BuildAppJob
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
