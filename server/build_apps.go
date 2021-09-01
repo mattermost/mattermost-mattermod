@@ -6,7 +6,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/mattermost/go-circleci"
@@ -75,7 +74,7 @@ func (s *Server) buildApp(pr *model.PullRequest) {
 
 func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-	branch := s.Config.BuildAppBranchPrefix + strconv.Itoa(pr.Number) + pr.Sha[0:7]
+	branch := fmt.Sprintf("%s%d-%s", s.Config.BuildAppBranchPrefix, pr.Number, pr.Sha[0:7])
 
 	expectedJobNames := getExpectedJobNames(s.Config.BuildAppJobs, prRepoName)
 
