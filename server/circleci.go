@@ -250,7 +250,7 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 		case <-ctx.Done():
 			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
-			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
+			mlog.Debug("Waiting for jobs to complete", mlog.Int("pr", pr.Number), mlog.String("branch", branch), mlog.String("repo", pr.RepoName), mlog.Int("expected", len(expectedJobNames)))
 			var builds []*circleci.Build
 			var err error
 			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
@@ -263,6 +263,10 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 				if err != nil {
 					return nil, err
 				}
+			}
+
+			for _, build := range builds {
+				mlog.Debug("Job Status", mlog.String("branch", branch), mlog.String("Jobname", build.Workflows.JobName), mlog.String("JobStatus", build.Status))
 			}
 
 			if !areAllExpectedJobs(builds, expectedJobNames) {
