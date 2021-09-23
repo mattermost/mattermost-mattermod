@@ -217,19 +217,16 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 				}
 
 				for _, wf := range wfList.Items {
-					if wf.Name == workflowName {
-						workflowID = wf.ID
-						break
+					if wf.Name == workflowName && wf.ID == id {
+						workflowID = wf.WorkflowID
+						return workflowID, nil
 					}
-				}
-
-				if workflowID != "" {
-					return workflowID, nil
 				}
 
 				if wfList.NextPageToken == "" {
 					break
 				}
+
 				token = wfList.NextPageToken
 			}
 
