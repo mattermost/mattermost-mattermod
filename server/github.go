@@ -199,14 +199,10 @@ func (s *Server) GetUpdateChecks(ctx context.Context, owner, repoName string, pr
 		return nil, err
 	}
 
-	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub, "")
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return nil, err
-	}
-
-	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		mlog.Error(err.Error())
 	}
 
 	return pr, nil
