@@ -48,7 +48,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	switch event.Action {
-	case "opened":
+	case prEventOpened:
 		mlog.Info("PR opened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
 		var claCommentNeeded bool

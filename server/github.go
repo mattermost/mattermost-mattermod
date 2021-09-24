@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	statePending = "pending"
-	stateSuccess = "success"
-	stateError   = "error"
+	statePending  = "pending"
+	stateSuccess  = "success"
+	stateError    = "error"
+	prEventOpened = "opened"
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
@@ -75,7 +76,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	}
 
 	// if is opened it might not have any label yet
-	if action != "opened" {
+	if action != prEventOpened {
 		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 		if err != nil {
 			return nil, err
