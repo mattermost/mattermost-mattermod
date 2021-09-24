@@ -104,6 +104,16 @@ func TestAssignGreetingLabels(t *testing.T) {
 		Username:  "foo",
 	}
 
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	issueMocks := mocks.NewMockIssuesService(ctrl)
+
+	client := &GithubClient{
+		Issues: issueMocks,
+	}
+
 	t.Run("Org Member", func(t *testing.T) {
 		repo := &Repository{
 			Owner:          "owner",
@@ -115,8 +125,10 @@ func TestAssignGreetingLabels(t *testing.T) {
 			Config: &Config{
 				Repositories: []*Repository{repo},
 			},
-			OrgMembers: []string{"foo"},
+			OrgMembers:   []string{"foo"},
+			GithubClient: client,
 		}
+
 		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
 
@@ -131,8 +143,17 @@ func TestAssignGreetingLabels(t *testing.T) {
 			Config: &Config{
 				Repositories: []*Repository{repo},
 			},
-			OrgMembers: []string{BAR},
+			GithubClient: client,
+			OrgMembers:   []string{BAR},
 		}
+
+		issueMocks.EXPECT().AddLabelsToIssue(
+			gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
+			gomock.Eq(pr.Number),
+			gomock.Eq([]string{contributorLabel}),
+		).Return(nil, nil, nil)
+
 		assert.NoError(t, s.assignGreetingLabels(context.Background(), pr, repo))
 	})
 
@@ -140,17 +161,7 @@ func TestAssignGreetingLabels(t *testing.T) {
 		repo := &Repository{
 			Owner:          "owner",
 			Name:           "repoName",
-			GreetingLabels: []string{"hello", "hi"},
-		}
-
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-		ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
-
-		issueMocks := mocks.NewMockIssuesService(ctrl)
-
-		client := &GithubClient{
-			Issues: issueMocks,
+			GreetingLabels: []string{"hello", "hi", contributorLabel},
 		}
 
 		s := &Server{
