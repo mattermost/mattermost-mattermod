@@ -40,7 +40,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 	}
 	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 
-	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest)
+	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest, event.Action)
 	if err != nil {
 		mlog.Error("Unable to get PR from GitHub", mlog.Int("pr", event.PRNumber), mlog.Err(err))
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -69,8 +69,8 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 
 		s.addHacktoberfestLabel(ctx, pr)
 		s.handleTranslationPR(ctx, pr)
-		repo, repoExist := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 
+		repo, repoExist := GetRepository(s.Config.Repositories, pr.RepoOwner, pr.RepoName)
 		if repoExist {
 			if err = s.assignGreeter(ctx, pr, repo); err != nil {
 				mlog.Error("Error while assigning a greeter to the community PR", mlog.Err(err))
@@ -80,6 +80,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Error("Error while assigning labels to the community PR", mlog.Err(err))
 			}
 		}
+
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
 			s.createEnterpriseTestsPendingStatus(ctx, pr)
 			go s.triggerEETestsForOrgMembers(pr)
@@ -650,7 +651,7 @@ func (s *Server) getPRFromIssueCommentEvent(ctx context.Context, event *issueCom
 		return nil, fmt.Errorf("could not get the latest PR information from github: %w", err)
 	}
 
-	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub, event.Action)
 	if err != nil {
 		return nil, fmt.Errorf("error updating the PR in the DB: %w", err)
 	}

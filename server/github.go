@@ -22,7 +22,7 @@ const (
 	stateError   = "error"
 )
 
-func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
+func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
 		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
@@ -74,12 +74,15 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		}
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		return nil, err
-	}
+	// if is opened it might not have any label yet
+	if action != "opened" {
+		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	pr.Labels = labelsToStringArray(labels)
+		pr.Labels = labelsToStringArray(labels)
+	}
 
 	if _, err := s.Store.PullRequest().Save(pr); err != nil {
 		return nil, err

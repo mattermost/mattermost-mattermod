@@ -245,7 +245,7 @@ func (s *Server) Tick() {
 			time.Sleep(200 * time.Millisecond)
 
 			for _, ghPullRequest := range ghPullRequests {
-				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
+				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest, "")
 				if errPR != nil {
 					mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 					s.Metrics.IncreaseCronTaskErrors("tick")
