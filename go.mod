@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-mattermod
 
-go 1.14
+go 1.16
 
 require (
 	github.com/aws/aws-sdk-go v1.31.5
