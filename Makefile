@@ -121,20 +121,11 @@ push-jobserver:
 ## Generate mocks.
 .PHONY: mocks
 mocks:
-	go install github.com/golang/mock/mockgen
-	mockgen -package mocks -destination server/mocks/checks.go github.com/mattermost/mattermost-mattermod/server ChecksService
-	mockgen -package mocks -destination server/mocks/issues.go github.com/mattermost/mattermost-mattermod/server IssuesService
-	mockgen -package mocks -destination server/mocks/teams.go github.com/mattermost/mattermost-mattermod/server TeamsService
-	mockgen -package mocks -destination server/mocks/git.go github.com/mattermost/mattermost-mattermod/server GitService
-	mockgen -package mocks -destination server/mocks/organizations.go github.com/mattermost/mattermost-mattermod/server OrganizationsService
-	mockgen -package mocks -destination server/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/server PullRequestsService
-	mockgen -package mocks -destination server/mocks/repositories.go github.com/mattermost/mattermost-mattermod/server RepositoriesService
-	mockgen -package mocks -destination server/mocks/provider.go github.com/mattermost/mattermost-mattermod/server MetricsProvider
-	mockgen -package mocks -destination server/mocks/circleci.go github.com/mattermost/mattermost-mattermod/server CircleCIService
-	mockgen -package mocks -destination store/mocks/store.go github.com/mattermost/mattermost-mattermod/store Store
-	mockgen -package mocks -destination store/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/store PullRequestStore
-	mockgen -package mocks -destination store/mocks/issue.go github.com/mattermost/mattermost-mattermod/store IssueStore
-	mockgen -package mocks -destination store/mocks/spinmint.go github.com/mattermost/mattermost-mattermod/store SpinmintStore
+	which mockgen || echo "Please install with \"go install github.com/golang/mock/mockgen@v1.6.0\""
+	mockgen -source=server/circleci.go -destination=server/mocks/circleci.go
+	mockgen -source=server/github_client.go -destination=server/mocks/github_client.go
+	mockgen -source=server/metrics.go -destination=server/mocks/metrics.go
+	mockgen -source=store/store.go -destination=store/mocks/store.go
 
 #####################
 ## Release targets ##
