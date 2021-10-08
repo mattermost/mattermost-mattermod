@@ -122,10 +122,10 @@ push-jobserver:
 .PHONY: mocks
 mocks:
 	which mockgen || echo "Please install with \"go install github.com/golang/mock/mockgen@v1.6.0\""
-	mockgen -source=server/circleci.go -destination=server/mocks/circleci.go
-	mockgen -source=server/github_client.go -destination=server/mocks/github_client.go
-	mockgen -source=server/metrics.go -destination=server/mocks/metrics.go
-	mockgen -source=store/store.go -destination=store/mocks/store.go
+	mockgen -package=mocks -source=server/circleci.go -destination=server/mocks/circleci.go
+	mockgen -package=mocks -source=server/github_client.go -destination=server/mocks/github_client.go
+	mockgen -package=mocks -source=server/metrics.go -destination=server/mocks/metrics.go
+	mockgen -package=mocks -source=store/store.go -destination=store/mocks/store.go
 
 #####################
 ## Release targets ##
