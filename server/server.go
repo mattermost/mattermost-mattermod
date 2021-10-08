@@ -53,7 +53,7 @@ type pingResponse struct {
 }
 
 const (
-	logFilename       = "mattermod.log"
+	logFilename = "mattermod.log"
 
 	serverRepoName = "mattermost-server"
 )

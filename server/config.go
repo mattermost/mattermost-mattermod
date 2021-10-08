@@ -14,10 +14,10 @@ import (
 
 const (
 	// In seconds
-	defaultRequestTimeout       = 60
-	defaultEETaskTimeout        = 300
-	defaultCronTaskTimeout      = 600
-	defaultBuildAppTimeout      = 7200
+	defaultRequestTimeout  = 60
+	defaultEETaskTimeout   = 300
+	defaultCronTaskTimeout = 600
+	defaultBuildAppTimeout = 7200
 )
 
 type LabelResponse struct {
@@ -64,7 +64,7 @@ type Config struct {
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
 
-	TickRateMinutes        int
+	TickRateMinutes int
 
 	DriverName string
 	DataSource string
