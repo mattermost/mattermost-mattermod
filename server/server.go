@@ -38,7 +38,6 @@ type Server struct {
 	CircleCiClient        CircleCIService
 	CircleCiClientV2      CircleCIService
 	OrgMembers            []string
-	Builds                buildsInterface
 	commentLock           sync.Mutex
 	StartTime             time.Time
 	awsSession            *session.Session
@@ -56,16 +55,7 @@ type pingResponse struct {
 }
 
 const (
-	instanceIDMessage = "Instance ID: "
 	logFilename       = "mattermod.log"
-
-	// buildOverride overrides the buildsInterface of the server for development
-	// and testing.
-	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
-
-	templateSpinmintLink = "SPINMINT_LINK"
-	templateInstanceID   = "INSTANCE_ID"
-	templateInternalIP   = "INTERNAL_IP"
 
 	serverRepoName = "mattermost-server"
 )
@@ -93,19 +83,6 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
 	if err != nil {
 		return nil, err
-	}
-	awsSession, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
-	s.awsSession = awsSession
-
-	s.Builds = &Builds{}
-	if os.Getenv(buildOverride) != "" {
-		mlog.Warn("Using mocked build tools")
-		s.Builds = &MockedBuilds{
-			Version: os.Getenv(buildOverride),
-		}
 	}
 
 	r := mux.NewRouter()

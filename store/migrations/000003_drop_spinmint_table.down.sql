@@ -1,0 +1,5 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS `Spinmint`;
+
+COMMIT;

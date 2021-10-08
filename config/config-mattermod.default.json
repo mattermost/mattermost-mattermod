@@ -15,14 +15,12 @@
     "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
 
     "TickRateMinutes": 15,
-    "SpinmintExpirationHour": 72,
 
     "Repositories": [
         {
             "Owner": "",
             "Name": "",
             "BuildStatusContext": "",
-            "JenkinsServer": "jenkins",
             "JobName": "",
             "InstanceSetupUpgradeScript": "",
             "InstanceSetupScript": "",
@@ -41,16 +39,6 @@
     "AutoAssignerTeam": "",
     "AutoAssignerTeamID": 0,
 
-    "SetupSpinmintTag": "",
-    "SetupSpinmintMessage": "",
-    "SetupSpinmintDoneMessage": "",
-    "SetupSpinmintFailedMessage": "",
-    "DestroyedSpinmintMessage": "",
-    "DestroyedExpirationSpinmintMessage": "",
-    "SpinmintsUseHttps": false,
-    "SetupSpinmintUpgradeTag": "",
-    "SetupSpinmintUpgradeMessage": "",
-    "SetupSpinmintUpgradeDoneMessage": "",
     "BuildAppTag": "",
     "BuildAppInitMessage": "",
     "BuildAppDoneMessage": "",
@@ -99,29 +87,6 @@
     ],
 
     "IssueLabelsToCleanUp": [],
-
-    "JenkinsCredentials": {
-        "jenkins": {
-            "URL": "",
-            "Username": "",
-            "ApiToken": ""
-        }
-    },
-
-    "AWSCredentials": {
-        "Id": "",
-        "Secret": "",
-        "Token": ""
-    },
-
-    "AWSRegion": "",
-    "AWSImageId": "",
-    "AWSKeyName": "",
-    "AWSInstanceType": "",
-    "AWSHostedZoneId": "",
-    "AWSSecurityGroup": "",
-    "AWSSubNetId": "",
-    "AWSDnsSuffix": "",
 
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",

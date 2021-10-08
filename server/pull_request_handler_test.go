@@ -207,16 +207,6 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Times(1).
 			Return([]*github.Label{}, nil, nil)
 
-		is.EXPECT().
-			ListComments(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, gomock.AssignableToTypeOf(&github.IssueListCommentsOptions{})).
-			Times(1).
-			Return([]*github.IssueComment{}, &github.Response{
-				NextPage: 0,
-				Response: &http.Response{
-					StatusCode: http.StatusOK,
-				},
-			}, nil)
-
 		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
 			Times(1).Return(nil, nil)
 

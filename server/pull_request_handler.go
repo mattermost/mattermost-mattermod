@@ -135,14 +135,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
 		}
 
-		// TODO: remove the old test server code
-		if event.Label.GetName() == s.Config.SetupSpinmintTag {
-			mlog.Info("Label to spin a old test server")
-			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintMessage); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
-			go s.waitForBuildAndSetupSpinmint(pr, false)
-		}
 		if s.isBlockPRMerge(*event.Label.Name) {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
@@ -164,27 +156,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
-		}
-
-		// TODO: remove the old test server code
-		if s.isSpinMintLabel(*event.Label.Name) {
-			spinmint, err2 := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-			if err2 != nil {
-				mlog.Error("Unable to get the test server information.", mlog.String("pr_error", err2.Error()))
-				break
-			}
-
-			if spinmint == nil {
-				mlog.Info("Nothing to do. There is no test server for this PR", mlog.Int("pr", pr.Number))
-				break
-			}
-
-			mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
-			mlog.Info("Will destroy the test server for a merged/closed PR.")
-			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
-			go s.destroySpinmint(pr, spinmint.InstanceID)
 		}
 	case "synchronize":
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
@@ -209,27 +180,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		go s.checkIfNeedCherryPick(pr)
 		go s.CleanUpLabels(pr)
-
-		spinmint, err2 := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-		if err2 != nil {
-			mlog.Error("Unable to get the spinmint information.", mlog.String("pr_error", err2.Error()))
-			break
-		}
-
-		if spinmint == nil {
-			mlog.Info("Nothing to do. There is no Spinmint for this PR", mlog.Int("pr", pr.Number))
-			break
-		}
-
-		mlog.Info("Spinmint instance", mlog.String("spinmint", spinmint.InstanceID))
-		mlog.Info("Will destroy the spinmint for a merged/closed PR.")
-
-		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
-			mlog.Warn("Error while commenting", mlog.Err(err))
-		}
-		if strings.Contains(spinmint.InstanceID, "i-") {
-			go s.destroySpinmint(pr, spinmint.InstanceID)
-		}
 	}
 
 	changed, err := s.checkPullRequestForChanges(ctx, pr)
@@ -355,35 +305,13 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 		return fmt.Errorf("unable to list comments for PR: %w", err)
 	}
 
-	// Old comment created by Mattermod user for test server deletion will be deleted here
-	for _, comment := range comments {
-		if *comment.User.Login == s.Config.Username &&
-			strings.Contains(*comment.Body, s.Config.DestroyedSpinmintMessage) || strings.Contains(*comment.Body, s.Config.DestroyedExpirationSpinmintMessage) {
-			mlog.Info("Removing old server deletion comment with ID", mlog.Int64("ID", *comment.ID))
-			_, err = s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
-			if err != nil {
-				mlog.Error("Unable to remove old server deletion comment", mlog.Err(err))
-			}
-		}
-	}
-
-	if addedLabel == s.Config.SetupSpinmintUpgradeTag && !messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage) {
-		mlog.Info("Label to spin a test server for upgrade")
-		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.SetupSpinmintUpgradeMessage); err != nil {
-			mlog.Warn("Error while commenting", mlog.Err(err))
-		}
-		go s.waitForBuildAndSetupSpinmint(pr, true)
-	} else {
-		mlog.Info("looking for other labels")
-
-		for _, label := range s.Config.PrLabels {
-			mlog.Info("looking for label", mlog.String("label", label.Label))
-			finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
-			if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
-				mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
-				if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage); err != nil {
-					mlog.Warn("Error while commenting", mlog.Err(err))
-				}
+	for _, label := range s.Config.PrLabels {
+		mlog.Info("looking for label", mlog.String("label", label.Label))
+		finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
+		if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
+			mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
 		}
 	}
@@ -395,65 +323,7 @@ func (s *Server) handlePRUnlabeled(ctx context.Context, pr *model.PullRequest, r
 	s.commentLock.Lock()
 	defer s.commentLock.Unlock()
 
-	comments, err := s.getComments(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-	if err != nil {
-		return fmt.Errorf("failed fetching comments: %w", err)
-	}
-
-	if s.isSpinMintLabel(removedLabel) &&
-		(messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintMessage) ||
-			messageByUserContains(comments, s.Config.Username, s.Config.SetupSpinmintUpgradeMessage)) &&
-		!messageByUserContains(comments, s.Config.Username, s.Config.DestroyedSpinmintMessage) {
-		// Old comments created by Mattermod user will be deleted here.
-		s.removeOldComments(ctx, comments, pr)
-
-		spinmint, err := s.Store.Spinmint().Get(pr.Number, pr.RepoName)
-		if err != nil {
-			return fmt.Errorf("unable to get the test server information: %w", err)
-		}
-
-		if spinmint == nil {
-			mlog.Info("Nothing to do. There is not test server for this PR", mlog.Int("pr", pr.Number))
-			return nil
-		}
-
-		mlog.Info("test server instance", mlog.String("test server", spinmint.InstanceID))
-		mlog.Info("Will destroy the test server for a merged/closed PR.")
-
-		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.DestroyedSpinmintMessage); err != nil {
-			mlog.Warn("Error while commenting", mlog.Err(err))
-		}
-		go s.destroySpinmint(pr, spinmint.InstanceID)
-	}
-
 	return nil
-}
-
-func (s *Server) removeOldComments(ctx context.Context, comments []*github.IssueComment, pr *model.PullRequest) {
-	serverMessages := []string{s.Config.SetupSpinmintMessage,
-		s.Config.SetupSpinmintUpgradeMessage,
-		s.Config.SetupSpinmintFailedMessage,
-		"Spinmint test server created",
-		"Spinmint upgrade test server created",
-		"Error during the request to upgrade",
-		"Error doing the upgrade process",
-	}
-
-	mlog.Info("Removing old Mattermod comments")
-	for _, comment := range comments {
-		if *comment.User.Login == s.Config.Username {
-			for _, message := range serverMessages {
-				if strings.Contains(*comment.Body, message) {
-					mlog.Info("Removing old comment with ID", mlog.Int64("ID", *comment.ID))
-					_, err := s.GithubClient.Issues.DeleteComment(ctx, pr.RepoOwner, pr.RepoName, *comment.ID)
-					if err != nil {
-						mlog.Error("Unable to remove old Mattermod comment", mlog.Err(err))
-					}
-					break
-				}
-			}
-		}
-	}
 }
 
 func (s *Server) CheckPRActivity() {
