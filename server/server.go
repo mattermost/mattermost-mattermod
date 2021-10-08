@@ -20,7 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/google/go-github/v33/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
@@ -40,7 +39,6 @@ type Server struct {
 	OrgMembers            []string
 	commentLock           sync.Mutex
 	StartTime             time.Time
-	awsSession            *session.Session
 	Metrics               MetricsProvider
 	cherryPickRequests    chan *cherryPickRequest
 	cherryPickStopChan    chan struct{}

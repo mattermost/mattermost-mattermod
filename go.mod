@@ -3,7 +3,6 @@ module github.com/mattermost/mattermost-mattermod
 go 1.14
 
 require (
-	github.com/aws/aws-sdk-go v1.31.5
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
