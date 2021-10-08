@@ -43,6 +43,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("Unable to start Job Server", mlog.Err(err))
+		metricsServer.Stop()
 		os.Exit(1)
 	}
 

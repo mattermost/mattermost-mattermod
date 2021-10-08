@@ -68,7 +68,7 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 		uerr = &updateError{source: msgUpdatePullRequest}
 		return uerr
 	}
-	if err != nil && !strings.Contains("job scheduled on GitHub side; try again later", err.Error()) {
+	if err != nil && !strings.Contains(err.Error(), "job scheduled on GitHub side; try again later") {
 		uerr = &updateError{source: msgUpdatePullRequest}
 		return fmt.Errorf("%s: %w", uerr, err)
 	}

@@ -123,8 +123,8 @@ func (b *Builds) waitForBuild(ctx context.Context, s *Server, client *jenkins.Je
 					switch pr.RepoName {
 					case serverRepoName:
 						jobNumber, _ = strconv.ParseInt(parts[len(parts)-3], 10, 32)
-						jobName = parts[len(parts)-6]     //mattermost-server
-						subJobName := parts[len(parts)-4] //PR-XXXX
+						jobName = parts[len(parts)-6]     // mattermost-server
+						subJobName := parts[len(parts)-4] // PR-XXXX
 						jobName = "mp/job/" + jobName + "/job/" + subJobName
 					default:
 						return pr, errors.Errorf("unsupported repository %s", pr.RepoName)

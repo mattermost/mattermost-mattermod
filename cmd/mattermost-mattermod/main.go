@@ -47,6 +47,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
+		metricsServer.Stop()
 		os.Exit(1)
 	}
 

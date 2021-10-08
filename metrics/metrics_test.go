@@ -36,12 +36,12 @@ func TestMetrics(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.webhookEvents.GetMetricWithLabelValues("test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(0), m.Counter.GetValue())
 		provider.IncreaseWebhookRequest("test")
 		data, err = provider.webhookEvents.GetMetricWithLabelValues("test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 
@@ -49,12 +49,12 @@ func TestMetrics(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.webhookErrors.GetMetricWithLabelValues("test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(0), m.Counter.GetValue())
 		provider.IncreaseWebhookErrors("test")
 		data, err = provider.webhookErrors.GetMetricWithLabelValues("test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 
@@ -77,12 +77,12 @@ func TestMetrics(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.githubCacheHits.GetMetricWithLabelValues("GET", "test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(0), m.Counter.GetValue())
 		provider.IncreaseGithubCacheHits("GET", "test")
 		data, err = provider.githubCacheHits.GetMetricWithLabelValues("GET", "test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 
@@ -90,12 +90,12 @@ func TestMetrics(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.githubCacheMisses.GetMetricWithLabelValues("GET", "test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(0), m.Counter.GetValue())
 		provider.IncreaseGithubCacheMisses("GET", "test")
 		data, err = provider.githubCacheMisses.GetMetricWithLabelValues("GET", "test")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 
@@ -118,12 +118,12 @@ func TestMetrics(t *testing.T) {
 		m := &prometheusModels.Metric{}
 		data, err := provider.cronTasksErrors.GetMetricWithLabelValues("test-task")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(0), m.Counter.GetValue())
 		provider.IncreaseCronTaskErrors("test-task")
 		data, err = provider.cronTasksErrors.GetMetricWithLabelValues("test-task")
 		require.NoError(t, err)
-		require.NoError(t, data.(prometheus.Counter).Write(m))
+		require.NoError(t, data.Write(m))
 		require.Equal(t, float64(1), m.Counter.GetValue())
 	})
 }
