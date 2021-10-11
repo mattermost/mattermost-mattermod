@@ -307,7 +307,7 @@ func (s *Server) handlePRLabeled(ctx context.Context, pr *model.PullRequest, add
 
 	for _, label := range s.Config.PrLabels {
 		mlog.Info("looking for label", mlog.String("label", label.Label))
-		finalMessage := strings.Replace(label.Message, "USERNAME", pr.Username, -1)
+		finalMessage := strings.ReplaceAll(label.Message, "USERNAME", pr.Username)
 		if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 			mlog.Info("Posted message for label on PR: ", mlog.String("label", label.Label), mlog.Int("pr", pr.Number))
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, finalMessage); err != nil {
