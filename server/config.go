@@ -8,19 +8,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
 const (
 	// In seconds
-	defaultRequestTimeout       = 60
-	defaultEETaskTimeout        = 300
-	defaultCronTaskTimeout      = 600
-	defaultBuildAppTimeout      = 7200
-	defaultBuildSpinmintTimeout = 7200
+	defaultRequestTimeout  = 60
+	defaultEETaskTimeout   = 300
+	defaultCronTaskTimeout = 600
+	defaultBuildAppTimeout = 7200
 )
 
 type LabelResponse struct {
@@ -32,18 +29,11 @@ type Repository struct {
 	Owner                      string
 	Name                       string
 	BuildStatusContext         string
-	JenkinsServer              string
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
 	JobName                    string
 	GreetingTeam               string   // GreetingTeam is the GitHub team responsible for triaging non-member PRs for this repo.
 	GreetingLabels             []string // GreetingLabels are the labels applied automatically to non-member PRs for this repo.
-}
-
-type JenkinsCredentials struct {
-	URL      string
-	Username string
-	APIToken string
 }
 
 type Integration struct {
@@ -74,8 +64,7 @@ type Config struct {
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
 
-	TickRateMinutes        int
-	SpinmintExpirationHour int
+	TickRateMinutes int
 
 	DriverName string
 	DataSource string
@@ -84,18 +73,6 @@ type Config struct {
 
 	BlockPRMergeLabels []string
 	AutoPRMergeLabel   string
-
-	SetupSpinmintTag                   string
-	SetupSpinmintMessage               string
-	SetupSpinmintDoneMessage           string
-	SetupSpinmintFailedMessage         string
-	DestroyedSpinmintMessage           string
-	DestroyedExpirationSpinmintMessage string
-	SpinmintsUseHTTPS                  bool
-
-	SetupSpinmintUpgradeTag         string
-	SetupSpinmintUpgradeMessage     string
-	SetupSpinmintUpgradeDoneMessage string
 
 	BuildAppTag           string
 	BuildAppInitMessage   string
@@ -131,29 +108,8 @@ type Config struct {
 
 	IssueLabelsToCleanUp []string
 
-	JenkinsCredentials map[string]*JenkinsCredentials
-
-	DockerRegistryURL string
-	DockerUsername    string
-	DockerPassword    string
-
 	BlockListPathsGlobal  []string
 	BlockListPathsPerRepo map[string][]string // BlockListPathsPerRepo is a per repository list of blocked files
-
-	AWSCredentials struct {
-		ID     string
-		Secret string
-		Token  string
-	}
-
-	AWSRegion        string
-	AWSImageID       string
-	AWSKeyName       string
-	AWSInstanceType  string
-	AWSHostedZoneID  string
-	AWSSecurityGroup string
-	AWSDnsSuffix     string
-	AWSSubNetID      string
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
@@ -220,20 +176,4 @@ func GetRepository(repositories []*Repository, owner, name string) (*Repository,
 	}
 
 	return nil, false
-}
-
-func (s *Server) GetAwsConfig() *aws.Config {
-	var creds *credentials.Credentials = nil
-	if s.Config.AWSCredentials.ID != "" {
-		creds = credentials.NewStaticCredentials(
-			s.Config.AWSCredentials.ID,
-			s.Config.AWSCredentials.Secret,
-			s.Config.AWSCredentials.Token,
-		)
-	}
-
-	return &aws.Config{
-		Credentials: creds,
-		Region:      &s.Config.AWSRegion,
-	}
 }

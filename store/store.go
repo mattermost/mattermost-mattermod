@@ -10,7 +10,6 @@ import (
 type Store interface {
 	PullRequest() PullRequestStore
 	Issue() IssueStore
-	Spinmint() SpinmintStore
 	Close()
 	DropAllTables()
 }
@@ -24,11 +23,4 @@ type PullRequestStore interface {
 type IssueStore interface {
 	Save(issue *model.Issue) (*model.Issue, error)
 	Get(repoOwner, repoName string, number int) (*model.Issue, error)
-}
-
-type SpinmintStore interface {
-	Save(spinmint *model.Spinmint) (*model.Spinmint, error)
-	Delete(instanceID string) error
-	Get(prNumber int, repoName string) (*model.Spinmint, error)
-	List() ([]*model.Spinmint, error)
 }

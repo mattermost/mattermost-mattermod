@@ -77,10 +77,6 @@ func main() {
 		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
-	if err != nil {
-		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
-	}
 	_, err = c.AddFunc("@every 30m", func() {
 		err2 := s.AutoMergePR()
 		if err2 != nil {
