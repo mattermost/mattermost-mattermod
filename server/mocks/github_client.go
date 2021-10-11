@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	github "github.com/google/go-github/v33/github"
+	github "github.com/google/go-github/v39/github"
 )
 
 // MockChecksService is a mock of ChecksService interface.
@@ -596,9 +596,9 @@ func (mr *MockRepositoriesServiceMockRecorder) Get(ctx, owner, repo interface{})
 }
 
 // GetBranch mocks base method.
-func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, branch string) (*github.Branch, *github.Response, error) {
+func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, branch string, followRedirects bool) (*github.Branch, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBranch", ctx, owner, repo, branch)
+	ret := m.ctrl.Call(m, "GetBranch", ctx, owner, repo, branch, followRedirects)
 	ret0, _ := ret[0].(*github.Branch)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -606,9 +606,9 @@ func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, br
 }
 
 // GetBranch indicates an expected call of GetBranch.
-func (mr *MockRepositoriesServiceMockRecorder) GetBranch(ctx, owner, repo, branch interface{}) *gomock.Call {
+func (mr *MockRepositoriesServiceMockRecorder) GetBranch(ctx, owner, repo, branch, followRedirects interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), ctx, owner, repo, branch)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), ctx, owner, repo, branch, followRedirects)
 }
 
 // GetCombinedStatus mocks base method.
