@@ -3,15 +3,12 @@ module github.com/mattermost/mattermost-mattermod
 go 1.16
 
 require (
-	github.com/aws/aws-sdk-go v1.31.5
-	github.com/cpanato/golang-jenkins v0.0.0-20181010175751-6a66fc16d07d
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3
 	github.com/google/go-github/v33 v33.0.0
 	github.com/gorilla/mux v1.7.4
-	github.com/heroku/docker-registry-client v0.0.0-20190909225348-afc9e1acc3d5
 	github.com/jarcoal/httpmock v1.0.5
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f

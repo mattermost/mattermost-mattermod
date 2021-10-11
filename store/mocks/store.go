@@ -87,20 +87,6 @@ func (mr *MockStoreMockRecorder) PullRequest() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullRequest", reflect.TypeOf((*MockStore)(nil).PullRequest))
 }
 
-// Spinmint mocks base method.
-func (m *MockStore) Spinmint() store.SpinmintStore {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Spinmint")
-	ret0, _ := ret[0].(store.SpinmintStore)
-	return ret0
-}
-
-// Spinmint indicates an expected call of Spinmint.
-func (mr *MockStoreMockRecorder) Spinmint() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Spinmint", reflect.TypeOf((*MockStore)(nil).Spinmint))
-}
-
 // MockPullRequestStore is a mock of PullRequestStore interface.
 type MockPullRequestStore struct {
 	ctrl     *gomock.Controller
@@ -220,86 +206,4 @@ func (m *MockIssueStore) Save(issue *model.Issue) (*model.Issue, error) {
 func (mr *MockIssueStoreMockRecorder) Save(issue interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockIssueStore)(nil).Save), issue)
-}
-
-// MockSpinmintStore is a mock of SpinmintStore interface.
-type MockSpinmintStore struct {
-	ctrl     *gomock.Controller
-	recorder *MockSpinmintStoreMockRecorder
-}
-
-// MockSpinmintStoreMockRecorder is the mock recorder for MockSpinmintStore.
-type MockSpinmintStoreMockRecorder struct {
-	mock *MockSpinmintStore
-}
-
-// NewMockSpinmintStore creates a new mock instance.
-func NewMockSpinmintStore(ctrl *gomock.Controller) *MockSpinmintStore {
-	mock := &MockSpinmintStore{ctrl: ctrl}
-	mock.recorder = &MockSpinmintStoreMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSpinmintStore) EXPECT() *MockSpinmintStoreMockRecorder {
-	return m.recorder
-}
-
-// Delete mocks base method.
-func (m *MockSpinmintStore) Delete(instanceID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", instanceID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Delete indicates an expected call of Delete.
-func (mr *MockSpinmintStoreMockRecorder) Delete(instanceID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockSpinmintStore)(nil).Delete), instanceID)
-}
-
-// Get mocks base method.
-func (m *MockSpinmintStore) Get(prNumber int, repoName string) (*model.Spinmint, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", prNumber, repoName)
-	ret0, _ := ret[0].(*model.Spinmint)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Get indicates an expected call of Get.
-func (mr *MockSpinmintStoreMockRecorder) Get(prNumber, repoName interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockSpinmintStore)(nil).Get), prNumber, repoName)
-}
-
-// List mocks base method.
-func (m *MockSpinmintStore) List() ([]*model.Spinmint, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List")
-	ret0, _ := ret[0].([]*model.Spinmint)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// List indicates an expected call of List.
-func (mr *MockSpinmintStoreMockRecorder) List() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSpinmintStore)(nil).List))
-}
-
-// Save mocks base method.
-func (m *MockSpinmintStore) Save(spinmint *model.Spinmint) (*model.Spinmint, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", spinmint)
-	ret0, _ := ret[0].(*model.Spinmint)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Save indicates an expected call of Save.
-func (mr *MockSpinmintStoreMockRecorder) Save(spinmint interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSpinmintStore)(nil).Save), spinmint)
 }

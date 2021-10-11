@@ -19,6 +19,11 @@ import (
 )
 
 func main() {
+	var exitCode = 1
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
 	var configFile string
 	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
 	flag.Parse()
@@ -26,11 +31,13 @@ func main() {
 	config, err := server.GetConfig(configFile)
 	if err != nil {
 		mlog.Error("Unable to load Job Server config", mlog.Err(err), mlog.String("file", configFile))
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("Unable to configure logging", mlog.Err(err))
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 
 	// Metrics system
@@ -43,7 +50,9 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("Unable to start Job Server", mlog.Err(err))
-		os.Exit(1)
+		metricsServer.Stop()
+		exitCode = 1
+		return
 	}
 
 	mlog.Info("Starting Job Server")
@@ -55,7 +64,8 @@ func main() {
 		defer cancel()
 		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
 			mlog.Error("error while shutting logging", mlog.Err(err2))
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 	}()
 
@@ -76,10 +86,6 @@ func main() {
 		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
-	if err != nil {
-		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
-	}
 	_, err = c.AddFunc("@every 30m", func() {
 		err2 := s.AutoMergePR()
 		if err2 != nil {
