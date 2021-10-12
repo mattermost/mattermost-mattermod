@@ -4,6 +4,8 @@
 // migrations/000001_base.up.sql (3.007kB)
 // migrations/000002_add_milestone.down.sql (958B)
 // migrations/000002_add_milestone.up.sql (1.069kB)
+// migrations/000003_drop_spinmint_table.down.sql (332B)
+// migrations/000003_drop_spinmint_table.up.sql (49B)
 
 package migrations
 
@@ -152,6 +154,46 @@ func _000002_add_milestoneUpSql() (*asset, error) {
 	return a, nil
 }
 
+var __000003_drop_spinmint_tableDownSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x84\xd0\xc1\x4b\xc3\x30\x14\xc7\xf1\x7b\xfe\x8a\xdf\xb1\x05\x0f\xb6\x38\x18\x8c\x1d\xd2\xee\x6d\x3e\x6c\x53\x49\x33\x70\xb7\xa4\x5b\xd4\x1e\x9a\x8d\x9a\xe9\xbf\x2f\x55\x50\xc1\xc1\xee\x9f\xef\x83\xf7\x2b\x68\xc3\x6a\x21\x44\xa9\x49\x1a\x82\x91\x45\x45\xe0\x35\x54\x63\x40\x4f\xdc\x9a\x16\xb6\x3d\xf5\x61\xe8\x43\xb4\x02\x48\x04\x00\x58\x0e\x6f\xd1\x85\xbd\xe7\x83\xc5\xbb\x1b\xf7\xaf\x6e\x4c\xb2\x7c\x9e\x7e\x75\x6a\x5b\x55\x37\xdf\x4e\xfb\xd3\xb1\xf9\x08\x7e\xfc\x65\xf9\x6c\x96\x62\x45\x6b\xb9\xad\xfe\x51\xe5\x06\x7f\x5d\xaa\xf3\xd0\x4d\x17\xfb\x10\x93\x2c\xbb\x48\xca\xd1\xbb\xe8\x0f\x32\x5a\x74\xfd\xcb\x04\xf3\xdb\x4b\xf0\x51\x73\x2d\xf5\x0e\x0f\xb4\x4b\xfe\x3e\x95\x0a\x20\x05\xa9\x0d\x2b\x5a\x72\x08\xc7\x55\xf1\x53\x97\xf7\x52\xb7\x64\x96\xe7\xf8\x3c\x1f\xba\xbb\x69\xbc\xa6\xae\xd9\x2c\x3e\x03\x00\x00\xff\xff\xf7\x0e\xa6\xce\x4c\x01\x00\x00")
+
+func _000003_drop_spinmint_tableDownSqlBytes() ([]byte, error) {
+	return bindataRead(
+		__000003_drop_spinmint_tableDownSql,
+		"000003_drop_spinmint_table.down.sql",
+	)
+}
+
+func _000003_drop_spinmint_tableDownSql() (*asset, error) {
+	bytes, err := _000003_drop_spinmint_tableDownSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "000003_drop_spinmint_table.down.sql", size: 0, mode: os.FileMode(0644), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x52, 0xed, 0xc6, 0x89, 0x7, 0x19, 0x3b, 0x68, 0x70, 0x22, 0xcc, 0x3b, 0xd2, 0x93, 0x97, 0xab, 0x5, 0x4f, 0x22, 0xd5, 0xf7, 0x84, 0xe5, 0xc, 0x43, 0xfe, 0x50, 0x4d, 0x18, 0x6a, 0x49, 0x35}}
+	return a, nil
+}
+
+var __000003_drop_spinmint_tableUpSql = []byte("\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\x72\x72\x75\xf7\xf4\xb3\xe6\xe2\x72\x09\xf2\x0f\x50\x08\x71\x74\xf2\x71\x55\xf0\x74\x53\x70\x8d\xf0\x0c\x0e\x09\x56\x48\x08\x2e\xc8\xcc\xcb\xcd\xcc\x2b\x49\xb0\xe6\xe2\x72\xf6\xf7\xf5\xf5\x0c\xb1\x06\x04\x00\x00\xff\xff\xe6\x87\xad\xaf\x31\x00\x00\x00")
+
+func _000003_drop_spinmint_tableUpSqlBytes() ([]byte, error) {
+	return bindataRead(
+		__000003_drop_spinmint_tableUpSql,
+		"000003_drop_spinmint_table.up.sql",
+	)
+}
+
+func _000003_drop_spinmint_tableUpSql() (*asset, error) {
+	bytes, err := _000003_drop_spinmint_tableUpSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "000003_drop_spinmint_table.up.sql", size: 0, mode: os.FileMode(0644), modTime: time.Unix(0, 0)}
+	a := &asset{bytes: bytes, info: info, digest: [32]uint8{0x2d, 0xda, 0x7b, 0x68, 0xe9, 0x59, 0x60, 0xd5, 0xf3, 0x53, 0x1c, 0xdd, 0x26, 0x89, 0xdc, 0x6e, 0x5, 0x53, 0xd3, 0x2d, 0x9d, 0x53, 0xf4, 0x7e, 0xdf, 0x2a, 0x1c, 0xb0, 0xae, 0xb4, 0xf7, 0xc0}}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -243,10 +285,12 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"000001_base.down.sql":          _000001_baseDownSql,
-	"000001_base.up.sql":            _000001_baseUpSql,
-	"000002_add_milestone.down.sql": _000002_add_milestoneDownSql,
-	"000002_add_milestone.up.sql":   _000002_add_milestoneUpSql,
+	"000001_base.down.sql":                _000001_baseDownSql,
+	"000001_base.up.sql":                  _000001_baseUpSql,
+	"000002_add_milestone.down.sql":       _000002_add_milestoneDownSql,
+	"000002_add_milestone.up.sql":         _000002_add_milestoneUpSql,
+	"000003_drop_spinmint_table.down.sql": _000003_drop_spinmint_tableDownSql,
+	"000003_drop_spinmint_table.up.sql":   _000003_drop_spinmint_tableUpSql,
 }
 
 // AssetDebug is true if the assets were built with the debug flag enabled.
@@ -297,6 +341,8 @@ var _bintree = &bintree{nil, map[string]*bintree{
 	"000001_base.up.sql": {_000001_baseUpSql, map[string]*bintree{}},
 	"000002_add_milestone.down.sql": {_000002_add_milestoneDownSql, map[string]*bintree{}},
 	"000002_add_milestone.up.sql": {_000002_add_milestoneUpSql, map[string]*bintree{}},
+	"000003_drop_spinmint_table.down.sql": {_000003_drop_spinmint_tableDownSql, map[string]*bintree{}},
+	"000003_drop_spinmint_table.up.sql": {_000003_drop_spinmint_tableUpSql, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.

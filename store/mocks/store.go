@@ -84,17 +84,3 @@ func (mr *MockStoreMockRecorder) PullRequest() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullRequest", reflect.TypeOf((*MockStore)(nil).PullRequest))
 }
-
-// Spinmint mocks base method
-func (m *MockStore) Spinmint() store.SpinmintStore {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Spinmint")
-	ret0, _ := ret[0].(store.SpinmintStore)
-	return ret0
-}
-
-// Spinmint indicates an expected call of Spinmint
-func (mr *MockStoreMockRecorder) Spinmint() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Spinmint", reflect.TypeOf((*MockStore)(nil).Spinmint))
-}
