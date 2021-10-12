@@ -20,6 +20,12 @@ import (
 const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://developers.mattermost.com/contribute/server/style-guide/#log-levels) before merging this change."
 
 func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
+	for _, m := range s.OrgMembers {
+		if pr.Username == m {
+			return nil
+		}
+	}
+
 	b, err := getRawDiff(ctx, diffURL)
 	if err != nil {
 		return fmt.Errorf("could not retrieve diff: %w", err)
