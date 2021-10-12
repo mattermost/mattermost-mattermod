@@ -20,10 +20,10 @@ import (
 const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://developers.mattermost.com/contribute/server/style-guide/#log-levels) before merging this change."
 
 func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
-	for _, m := range s.OrgMembers {
-		if pr.Username == m {
-			return nil
-		}
+	// Do not review this for organization members. This was in use for a while
+	// and we can assume that people in the organization should be aware of the gudieline.
+	if s.IsOrgMember(pr.Username) {
+		return nil
 	}
 
 	b, err := getRawDiff(ctx, diffURL)
