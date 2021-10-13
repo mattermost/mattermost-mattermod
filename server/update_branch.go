@@ -25,7 +25,7 @@ type updateError struct {
 func (e *updateError) Error() string {
 	switch e.source {
 	case msgCommenterPermission:
-		return "commenter does not have permissions"
+		return commenterNoPermissions
 	case msgOrganizationPermission:
 		return "we don't have permissions"
 	case msgUpdatePullRequest:

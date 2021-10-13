@@ -18,6 +18,7 @@ const (
 	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
+	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
@@ -80,6 +81,17 @@ type Config struct {
 	BuildAppFailedMessage string
 	BuildAppBranchPrefix  string
 	BuildAppJobs          []*BuildAppJob
+
+	E2EGitHubLabel        string
+	E2EGitLabURL          string
+	E2EGitLabToken        string
+	E2EGitLabProject      string
+	E2EWebappRef          string
+	E2EWebappReponame     string
+	E2EServerRef          string
+	E2EServerReponame     string
+	E2EEnterpriseRef      string
+	E2EEnterpriseReponame string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string

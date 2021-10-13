@@ -337,12 +337,12 @@ type bintree struct {
 }
 
 var _bintree = &bintree{nil, map[string]*bintree{
-	"000001_base.down.sql": {_000001_baseDownSql, map[string]*bintree{}},
-	"000001_base.up.sql": {_000001_baseUpSql, map[string]*bintree{}},
-	"000002_add_milestone.down.sql": {_000002_add_milestoneDownSql, map[string]*bintree{}},
-	"000002_add_milestone.up.sql": {_000002_add_milestoneUpSql, map[string]*bintree{}},
+	"000001_base.down.sql":                {_000001_baseDownSql, map[string]*bintree{}},
+	"000001_base.up.sql":                  {_000001_baseUpSql, map[string]*bintree{}},
+	"000002_add_milestone.down.sql":       {_000002_add_milestoneDownSql, map[string]*bintree{}},
+	"000002_add_milestone.up.sql":         {_000002_add_milestoneUpSql, map[string]*bintree{}},
 	"000003_drop_spinmint_table.down.sql": {_000003_drop_spinmint_tableDownSql, map[string]*bintree{}},
-	"000003_drop_spinmint_table.up.sql": {_000003_drop_spinmint_tableUpSql, map[string]*bintree{}},
+	"000003_drop_spinmint_table.up.sql":   {_000003_drop_spinmint_tableUpSql, map[string]*bintree{}},
 }}
 
 // RestoreAsset restores an asset under the given directory.
