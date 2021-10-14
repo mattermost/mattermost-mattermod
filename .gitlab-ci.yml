@@ -1,3 +1,3 @@
 include:
-  - project: 'ci/mattermod'
+  - project: 'mattermost/ci/mattermod'
     file: '/all.yml'
