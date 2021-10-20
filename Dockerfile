@@ -1,6 +1,4 @@
-FROM golang:1.17.2-alpine AS builder
-
-RUN apk add --update --no-cache ca-certificates bash make gcc musl-dev git openssh wget curl
+FROM golang:1.17.2 AS builder
 
 ENV HUB_VERSION 2.14.2
 WORKDIR /opt/hub
