@@ -47,7 +47,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
-		os.Exit(1)
+		os.Exit(1) // nolint
 	}
 
 	mlog.Info("Starting Mattermod Server")

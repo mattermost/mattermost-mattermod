@@ -38,9 +38,9 @@ type Repository struct {
 
 type Integration struct {
 	RepositoryName  string
-	Files           []string
 	IntegrationLink string
 	Message         string
+	Files           []string
 }
 
 type BuildAppJob struct {
@@ -49,6 +49,7 @@ type BuildAppJob struct {
 	ExpectedArtifacts int
 }
 
+// nolint:govet
 type Config struct {
 	ListenAddress               string
 	MattermodURL                string
@@ -115,14 +116,14 @@ type Config struct {
 	MattermostWebhookFooter string
 
 	LogSettings struct {
-		EnableConsole   bool
-		ConsoleJSON     bool
+		AdvancedLogging mlog.LogTargetCfg
 		ConsoleLevel    string
-		EnableFile      bool
-		FileJSON        bool
 		FileLevel       string
 		FileLocation    string
-		AdvancedLogging mlog.LogTargetCfg
+		EnableConsole   bool
+		ConsoleJSON     bool
+		EnableFile      bool
+		FileJSON        bool
 	}
 
 	DaysUntilStale    int
