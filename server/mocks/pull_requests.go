@@ -82,6 +82,22 @@ func (mr *MockPullRequestsServiceMockRecorder) List(arg0, arg1, arg2, arg3 inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockPullRequestsService)(nil).List), arg0, arg1, arg2, arg3)
 }
 
+// ListCommits mocks base method
+func (m *MockPullRequestsService) ListCommits(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.ListOptions) ([]*github.RepositoryCommit, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListCommits", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].([]*github.RepositoryCommit)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListCommits indicates an expected call of ListCommits
+func (mr *MockPullRequestsServiceMockRecorder) ListCommits(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCommits", reflect.TypeOf((*MockPullRequestsService)(nil).ListCommits), arg0, arg1, arg2, arg3, arg4)
+}
+
 // ListFiles mocks base method
 func (m *MockPullRequestsService) ListFiles(arg0 context.Context, arg1, arg2 string, arg3 int, arg4 *github.ListOptions) ([]*github.CommitFile, *github.Response, error) {
 	m.ctrl.T.Helper()
