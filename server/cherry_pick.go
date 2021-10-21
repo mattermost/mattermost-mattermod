@@ -32,6 +32,7 @@ type cherryPickRequest struct {
 	pr        *model.PullRequest
 	milestone *int
 	version   string
+	beta      bool
 }
 
 func (s *Server) listenCherryPickRequests() {
@@ -44,7 +45,17 @@ func (s *Server) listenCherryPickRequests() {
 			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*2*time.Second)
 			defer cancel()
 			pr := job.pr
-			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
+			cmdOut := ""
+			var err error
+			if job.beta {
+				cp := NewCherryPickerWithOptions(CPOptions{
+					RepoOwner: pr.RepoOwner,
+					RepoName:  pr.RepoName,
+				})
+				err = cp.CreateCherryPickPRWithContext(ctx, pr.Number, strings.TrimSpace(job.version))
+			} else {
+				cmdOut, err = s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
+			}
 			if err != nil {
 				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
 				if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); cErr != nil {
@@ -106,10 +117,19 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 	default:
 	}
 
+	// If the first argument in the command is beta, set the beta flag to
+	// test the new cherry-picking code:
+	beta := false
+	if args[0] == "beta" {
+		args = args[1:]
+		beta = true
+	}
+
 	select {
 	case s.cherryPickRequests <- &cherryPickRequest{
 		pr:      pr,
 		version: strings.TrimSpace(args[1]),
+		beta:    beta,
 	}:
 		msg = cherryPickScheduledMsg
 	default:
