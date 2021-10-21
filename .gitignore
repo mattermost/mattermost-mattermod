@@ -52,3 +52,5 @@ out/
 dist/
 
 .idea/
+.vscode
+tmp
