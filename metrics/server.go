@@ -16,18 +16,18 @@ import (
 )
 
 type Server struct {
+	server *http.Server
+
 	port     string
 	handlers []Handler
-
-	server *http.Server
 }
 
 // Handler is the representation of an HTTP handler that would be
 // used by the metrics server to expose the metrics
 type Handler struct {
+	Handler     http.Handler
 	Path        string
 	Description string
-	Handler     http.Handler
 }
 
 // NewServer creates a new metrics server.

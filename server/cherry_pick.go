@@ -30,8 +30,8 @@ const (
 
 type cherryPickRequest struct {
 	pr        *model.PullRequest
-	version   string
 	milestone *int
+	version   string
 }
 
 func (s *Server) listenCherryPickRequests() {

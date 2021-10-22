@@ -30,6 +30,7 @@ import (
 )
 
 // Server is the mattermod server.
+// nolint:govet
 type Server struct {
 	Config                *Config
 	Store                 store.Store
@@ -48,8 +49,8 @@ type Server struct {
 }
 
 type pingResponse struct {
-	Uptime string        `json:"uptime"`
 	Info   *version.Info `json:"info"`
+	Uptime string        `json:"uptime"`
 }
 
 const (

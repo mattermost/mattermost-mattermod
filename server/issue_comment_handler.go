@@ -18,10 +18,10 @@ import (
 )
 
 type issueCommentEvent struct {
-	Action     string                     `json:"action"`
 	Comment    *github.PullRequestComment `json:"comment"`
 	Issue      *github.Issue              `json:"issue"`
 	Repository *github.Repository         `json:"repository"`
+	Action     string                     `json:"action"`
 }
 
 func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request) {
