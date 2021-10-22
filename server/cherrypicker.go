@@ -38,8 +38,8 @@ Cherry pick of #%d on %s.
 // CherryPicker captures the cherry-pick creation logic in go
 type CherryPicker struct {
 	impl    cherryPickerImplementation
-	options CPOptions
 	state   CPState
+	options CPOptions
 }
 
 // NewCherryPicker returns a cherrypicker with default opts
@@ -135,7 +135,7 @@ func (cp *CherryPicker) CreateCherryPickPR(prNumber int, branch string) error {
 }
 
 // CreateCherryPickPR creates a cherry-pick PR to the the given branch
-func (cp *CherryPicker) CreateCherryPickPRWithContext(ctx context.Context, prNumber int, branch string) (err error) {
+func (cp *CherryPicker) CreateCherryPickPRWithContext(ctx context.Context, prNumber int, branch string) error {
 	if err := cp.impl.initialize(ctx, &cp.state, &cp.options); err != nil {
 		return errors.Wrap(err, "verifying environment")
 	}
@@ -179,9 +179,9 @@ func (cp *CherryPicker) CreateCherryPickPRWithContext(ctx context.Context, prNum
 	// the `merge_commit_sha` but we have to find out which parent's tree we want
 	// to generate the diff from:
 	if mergeMode == MMMERGE {
-		parent, err := cp.impl.findCommitPatchTree(ctx, &cp.state, &cp.options, pr, commits)
-		if err != nil {
-			return errors.Wrap(err, "searching for parent patch tree")
+		parent, err2 := cp.impl.findCommitPatchTree(ctx, &cp.state, &cp.options, pr, commits)
+		if err2 != nil {
+			return errors.Wrap(err2, "searching for parent patch tree")
 		}
 		cpError = cp.impl.cherrypickMergeCommit(
 			&cp.state, &cp.options, branch, []string{pr.MergeCommitSHA}, parent,
@@ -192,9 +192,9 @@ func (cp *CherryPicker) CreateCherryPickPRWithContext(ctx context.Context, prNum
 	// merge commit and go back in the git log to find the previous trees and
 	// CP the commits where they merged
 	if mergeMode == MMREBASE {
-		rebaseCommits, err := cp.impl.GetRebaseCommits(ctx, &cp.state, &cp.options, pr, commits)
-		if err != nil {
-			return errors.Wrapf(err, "while getting commits in rebase from PR #%d", pr.Number)
+		rebaseCommits, err2 := cp.impl.GetRebaseCommits(ctx, &cp.state, &cp.options, pr, commits)
+		if err2 != nil {
+			return errors.Wrapf(err2, "while getting commits in rebase from PR #%d", pr.Number)
 		}
 
 		if len(rebaseCommits) == 0 {
@@ -210,7 +210,7 @@ func (cp *CherryPicker) CreateCherryPickPRWithContext(ctx context.Context, prNum
 		return errors.Errorf("while cherrypicking pull request %d of type %s", pr.Number, mergeMode)
 	}
 
-	if err := cp.impl.pushFeatureBranch(&cp.state, &cp.options, featureBranch); err != nil {
+	if err = cp.impl.pushFeatureBranch(&cp.state, &cp.options, featureBranch); err != nil {
 		return errors.Wrap(err, "pushing branch to git remote")
 	}
 

@@ -73,10 +73,10 @@ func TestGetPRMergeMode(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		PrNumber       int
-		ExpectedLength int
 		MergeCommitSHA string
 		ExpectedMode   string
+		PrNumber       int
+		ExpectedLength int
 	}{
 		{
 			PrNumber:       18746, // This PR has 10 commits, and was rebased
