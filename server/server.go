@@ -36,6 +36,7 @@ type Server struct {
 	GithubClient          *GithubClient
 	CircleCiClient        CircleCIService
 	CircleCiClientV2      CircleCIService
+	GitLabCIClientV4      *GitLabClient
 	OrgMembers            []string
 	commentLock           sync.Mutex
 	StartTime             time.Time
@@ -79,6 +80,10 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
+	if err != nil {
+		return nil, err
+	}
+	s.GitLabCIClientV4, err = NewGitLabClient(s.Config.GitLabInternalToken, s.Config.GitLabInternalURL)
 	if err != nil {
 		return nil, err
 	}

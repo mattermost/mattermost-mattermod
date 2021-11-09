@@ -64,6 +64,8 @@ type Config struct {
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
+	GitLabInternalURL           string
+	GitLabInternalToken         string
 
 	TickRateMinutes int
 
@@ -82,16 +84,14 @@ type Config struct {
 	BuildAppBranchPrefix  string
 	BuildAppJobs          []*BuildAppJob
 
-	E2EGitHubLabel        string
-	E2EGitLabURL          string
-	E2EGitLabToken        string
-	E2EGitLabProject      string
-	E2EWebappRef          string
-	E2EWebappReponame     string
-	E2EServerRef          string
-	E2EServerReponame     string
-	E2EEnterpriseRef      string
-	E2EEnterpriseReponame string
+	E2EDockerRepo          string
+	E2EGitLabProject       string
+	E2EWebappRef           string
+	E2EServerRef           string
+	E2EWebappReponame      string
+	E2EServerReponame      string
+	E2EWebappStatusContext string
+	E2EServerStatusContext string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string

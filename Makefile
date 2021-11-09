@@ -124,6 +124,7 @@ mocks:
 	which mockgen || echo "Please install with \"go install github.com/golang/mock/mockgen@v1.6.0\""
 	mockgen -package=mocks -source=server/circleci.go -destination=server/mocks/circleci.go
 	mockgen -package=mocks -source=server/github_client.go -destination=server/mocks/github_client.go
+	mockgen -package=mocks -source=server/gitlab.go -destination=server/mocks/gitlab.go
 	mockgen -package=mocks -source=server/metrics.go -destination=server/mocks/metrics.go
 	mockgen -package=mocks -source=store/store.go -destination=store/mocks/store.go
 

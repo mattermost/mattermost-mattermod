@@ -101,7 +101,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 
 	if ev.HasE2ECancel() {
 		s.Metrics.IncreaseWebhookRequest("e2e_cancel")
-		if err := s.handleE2ECancel(ctx, commenter, pr, ev.Comment.GetBody()); err != nil {
+		if err := s.handleE2ECancel(ctx, commenter, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("e2e_cancel")
 			errs = append(errs, fmt.Errorf("error e2e cancel: %w", err))
 		}

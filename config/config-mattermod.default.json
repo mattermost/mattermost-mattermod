@@ -10,6 +10,8 @@
     "Org": "",
     "Username": "",
     "CircleCIToken": "",
+    "GitLabInternalURL": "",
+    "GitLabInternalToken": "",
 
     "DriverName": "mysql",
     "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
@@ -55,13 +57,14 @@
             "ExpectedArtifacts": 0
         }
     ],
-    "E2EGitHubLabel": "Run E2E Testing",
-    "E2EGitLabURL": "https://git.internal.mattermost.com",
-    "E2EGitLabToken": "TBDByReleaseTeam",
-    "E2EGitLabProject": "mattermost%2Fci%2Fcypress-ui-automation",
-    "E2EWebappRef": "e2e-webapp-pr",
-    "E2EServerRef": "e2e-server-pr",
-    "E2EEnterpriseRef": "e2e-enterprise-pr",
+    "E2EGitHubLabel": "",
+    "E2EGitLabProject": "",
+    "E2EWebappRef": "",
+    "E2EServerRef": "",
+    "E2EEnterpriseRef": "",
+    "E2EWebappReponame": "",
+    "E2EServerReponame": "",
+    "E2EEnterpriseReponame": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
