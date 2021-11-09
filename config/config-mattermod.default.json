@@ -57,14 +57,14 @@
             "ExpectedArtifacts": 0
         }
     ],
-    "E2EGitHubLabel": "",
+    "E2EDockerRepo": "",
     "E2EGitLabProject": "",
     "E2EWebappRef": "",
     "E2EServerRef": "",
-    "E2EEnterpriseRef": "",
     "E2EWebappReponame": "",
     "E2EServerReponame": "",
-    "E2EEnterpriseReponame": "",
+    "E2EWebappStatusContext": "",
+    "E2EServerStatusContext": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
