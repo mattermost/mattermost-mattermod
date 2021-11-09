@@ -80,7 +80,7 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	}
 
 	greetingRequest := github.ReviewersRequest{
-		Reviewers: []string{repo.GreetingTeam},
+		TeamReviewers: []string{repo.GreetingTeam},
 	}
 
 	_, _, err := s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)

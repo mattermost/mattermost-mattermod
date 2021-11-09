@@ -19,10 +19,10 @@ import (
 )
 
 type issueEvent struct {
-	Action string             `json:"action"`
 	Label  *github.Label      `json:"label"`
 	Repo   *github.Repository `json:"repository"`
 	Issue  *github.Issue      `json:"issue"`
+	Action string             `json:"action"`
 }
 
 func (s *Server) issueEventHandler(w http.ResponseWriter, r *http.Request) {

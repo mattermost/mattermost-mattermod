@@ -13,25 +13,25 @@ const (
 )
 
 type PullRequest struct {
+	Merged              *bool
+	MaintainerCanModify *bool
+	MilestoneNumber     *int64
+	MilestoneTitle      *string
+	CreatedAt           time.Time
 	RepoOwner           string
 	RepoName            string
 	FullName            string
-	Number              int
 	Username            string
 	Ref                 string
 	Sha                 string
-	Labels              StringArray
 	State               string
 	BuildStatus         string
 	BuildConclusion     string
 	BuildLink           string
 	URL                 string
-	CreatedAt           time.Time
-	Merged              *bool
 	MergeCommitSHA      string `db:"-"`
-	MaintainerCanModify *bool
-	MilestoneNumber     *int64
-	MilestoneTitle      *string
+	Labels              StringArray
+	Number              int
 }
 
 // GetMerged returns the Merged field if it's non-nil, zero value otherwise.

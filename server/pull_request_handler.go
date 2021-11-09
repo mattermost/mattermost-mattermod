@@ -19,13 +19,13 @@ import (
 )
 
 type pullRequestEvent struct {
-	Action        string              `json:"action"`
-	PRNumber      int                 `json:"number"`
 	PullRequest   *github.PullRequest `json:"pull_request"`
 	Issue         *github.Issue       `json:"issue"`
 	Label         *github.Label       `json:"label"`
 	Repo          *github.Repository  `json:"repository"`
 	RepositoryURL string              `json:"repository_url"`
+	Action        string              `json:"action"`
+	PRNumber      int                 `json:"number"`
 }
 
 func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request) {

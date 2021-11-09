@@ -19,11 +19,6 @@ import (
 )
 
 func main() {
-	var exitCode = 1
-	defer func() {
-		os.Exit(exitCode)
-	}()
-
 	var configFile string
 	flag.StringVar(&configFile, "config", "config-mattermod.json", "")
 	flag.Parse()
@@ -31,13 +26,11 @@ func main() {
 	config, err := server.GetConfig(configFile)
 	if err != nil {
 		mlog.Error("Unable to load Job Server config", mlog.Err(err), mlog.String("file", configFile))
-		exitCode = 1
-		return
+		os.Exit(1)
 	}
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("Unable to configure logging", mlog.Err(err))
-		exitCode = 1
-		return
+		os.Exit(1) // nolint
 	}
 
 	// Metrics system
@@ -50,9 +43,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("Unable to start Job Server", mlog.Err(err))
-		metricsServer.Stop()
-		exitCode = 1
-		return
+		os.Exit(1) // nolint
 	}
 
 	mlog.Info("Starting Job Server")
@@ -64,8 +55,7 @@ func main() {
 		defer cancel()
 		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
 			mlog.Error("error while shutting logging", mlog.Err(err2))
-			exitCode = 1
-			return
+			os.Exit(1)
 		}
 	}()
 

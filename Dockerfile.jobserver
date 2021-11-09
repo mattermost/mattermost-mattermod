@@ -1,6 +1,4 @@
-FROM golang:1.16.7-alpine AS builder
-
-RUN apk add --update --no-cache ca-certificates bash make gcc musl-dev git openssh wget curl
+FROM golang:1.17.2 AS builder
 
 WORKDIR /go/src/mattermod
 
@@ -9,7 +7,7 @@ COPY go.sum .
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 make build-jobserver
+RUN make build-jobserver
 
 ################
 

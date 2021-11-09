@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -25,22 +25,15 @@ func init() {
 }
 
 func main() {
-	var exitCode = 1
-	defer func() {
-		os.Exit(exitCode)
-	}()
-
 	flag.Parse()
 
 	config, err := server.GetConfig(configFile)
 	if err != nil {
 		mlog.Error("unable to load server config", mlog.Err(err), mlog.String("file", configFile))
-		exitCode = 1
 		return
 	}
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("unable to configure logging", mlog.Err(err))
-		exitCode = 1
 		return
 	}
 
@@ -54,7 +47,6 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
-		exitCode = 1
 		return
 	}
 
@@ -75,7 +67,6 @@ func main() {
 			code = 1
 		}
 		if code != 0 {
-			exitCode = code
 			return
 		}
 	}()

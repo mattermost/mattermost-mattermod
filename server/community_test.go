@@ -243,7 +243,7 @@ func TestAssignGreeter(t *testing.T) {
 		}
 		userLogin := BAR
 		greetingRequest := github.ReviewersRequest{
-			Reviewers: []string{repo.GreetingTeam},
+			TeamReviewers: []string{repo.GreetingTeam},
 		}
 
 		ctrl := gomock.NewController(t)

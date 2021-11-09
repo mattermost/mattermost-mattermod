@@ -56,6 +56,7 @@ func TestReviewMlog(t *testing.T) {
 		RepoOwner: "mattertestmost",
 		RepoName:  "mattermosttest",
 		Number:    1,
+		Username:  "testuser",
 	}
 
 	node := "test-node"
@@ -139,6 +140,16 @@ func TestReviewMlog(t *testing.T) {
 
 		prs.EXPECT().CreateReview(ctx, pr.RepoOwner, pr.RepoName, pr.Number, review).Times(1).Return(nil, nil, nil)
 		err := s.reviewMlog(ctx, pr, node, ts.URL)
+		require.NoError(t, err)
+	})
+
+	t.Run("Should not comment on organization member PRs", func(t *testing.T) {
+		s.OrgMembers = append(s.OrgMembers, "testuser")
+		t.Cleanup(func() {
+			s.OrgMembers = s.OrgMembers[:len(s.OrgMembers)-1]
+		})
+
+		err := s.reviewMlog(context.Background(), pr, node, "")
 		require.NoError(t, err)
 	})
 }
