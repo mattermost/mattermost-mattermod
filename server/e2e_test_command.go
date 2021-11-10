@@ -17,7 +17,7 @@ const (
 	e2eTestMsgCIFailing           = "The command /e2e-test requires all PR checks to pass."
 	e2eTestMsgUnknownPRState      = "Failed to check whether PR checks passed. E2E testing isn't triggered. Please retry later."
 	e2eTestMsgPRInfo              = "Failed to get the PR information required to trigger testing. Please retry later."
-	e2eTestMsgUnknownTriggerRepo  = "Looks like triggering e2e testing pipelines for this repo is not set up. \n Please contact your administrator of choice."
+	e2eTestMsgUnknownTriggerRepo  = "The ability to trigger E2E testing pipelines for this repository isn't set up. \n Please contact a maintainer."
 	e2eTestMsgTrigger             = "Failed to trigger E2E testing pipeline."
 	e2eTestMsgCompanionBranch     = "Failed to locate companion branch."
 	e2eTestMsgSameEnvs            = "Looks like a pipeline with the same environment variables is already running. \n Please cancel it first with /e2e-cancel or be more specific with environment variables."
