@@ -28,7 +28,7 @@ const (
 	e2eTestFmtSuccess = "%v\n%v"
 )
 
-func (e *e2eTestError) Error() string {
+func (e *E2ETestError) Error() string {
 	switch e.source {
 	case e2eTestMsgCommenterPermission:
 		return "commenter does not have permissions"
@@ -51,7 +51,7 @@ func (e *e2eTestError) Error() string {
 	}
 }
 
-type e2eTestError struct {
+type E2ETestError struct {
 	source string
 }
 
@@ -64,12 +64,12 @@ type E2ETestTriggerInfo struct {
 	ServerSHA    string
 	WebappBranch string
 	WebappSHA    string
-	EnvVars      map[string]string
+	EnvVars      *map[string]string
 	BuildTag     string
 }
 
 func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.PullRequest, commentBody string) error {
-	var e2eTestErr *e2eTestError
+	var e2eTestErr *E2ETestError
 	defer func() {
 		if e2eTestErr != nil {
 			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e2eTestErr.source); err != nil {
@@ -78,18 +78,18 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		}
 	}()
 	if !s.IsOrgMember(commenter) {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgCommenterPermission}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgCommenterPermission}
 		return e2eTestErr
 	}
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 
 	isCIPassing, err := s.areChecksSuccessfulForPR(ctx, pr)
 	if err != nil {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgUnknownPRState}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgUnknownPRState}
 		return e2eTestErr
 	}
 	if !isCIPassing {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgCIFailing}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgCIFailing}
 		return e2eTestErr
 	}
 
@@ -113,7 +113,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 
 	info, err := s.getPRInfoForE2ETest(ctx, pr, opts)
 	if err != nil {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgPRInfo}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgPRInfo}
 		return e2eTestErr
 	}
 
@@ -127,13 +127,13 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		return err
 	}
 	if has {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgSameEnvs}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgSameEnvs}
 		return e2eTestErr
 	}
 
 	url, err := s.triggerE2EGitLabPipeline(ctx, info)
 	if err != nil {
-		e2eTestErr = &e2eTestError{source: e2eTestMsgTrigger}
+		e2eTestErr = &E2ETestError{source: e2eTestMsgTrigger}
 		return e2eTestErr
 	}
 	endMsg := fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, url)
@@ -144,27 +144,31 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	return nil
 }
 
-func parseE2ETestCommentForOpts(commentBody string) map[string]string {
-	commentBody = strings.Split(commentBody, "\n")[0]
-	commentBody = strings.TrimSuffix(commentBody, " ")
+// Example commands:
+// /e2e-test
+// /e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
+func parseE2ETestCommentForOpts(commentBody string) *map[string]string {
+	cmd := strings.Split(commentBody, "\n")[0]
+	cmd = strings.TrimSuffix(cmd, " ")
 
-	if !strings.Contains(commentBody, " ") && !strings.Contains(commentBody, "=") {
+	if !strings.Contains(cmd, " ") && !strings.Contains(cmd, "=") {
 		mlog.Debug("E2E comment does not contain options")
 		return nil
 	}
 
 	var opts = make(map[string]string)
-	for _, envAssignment := range strings.Split(commentBody, " ")[1:] {
-		sAssignment := strings.SplitAfterN(envAssignment, string('='), 2)
-		sAssignment[0] = strings.TrimSuffix(sAssignment[0], "=")
-		if _, exists := opts[sAssignment[0]]; exists {
-			break
+	optsAfterBaseCmd := strings.Split(cmd, " ")[1:]
+	for _, opt := range optsAfterBaseCmd {
+		optSplitInAssignment := strings.SplitAfterN(opt, string('='), 2)
+		envKey := strings.TrimSuffix(optSplitInAssignment[0], "=")
+		if _, exists := opts[envKey]; exists {
+			continue
 		}
-		envVar, envValue := sAssignment[0], sAssignment[1]
-		opts[envVar] = strings.Trim(envValue, "\"")
+		envValue := optSplitInAssignment[1]
+		opts[envKey] = strings.Trim(envValue, "\"")
 	}
 
-	return opts
+	return &opts
 }
 
 // We ignore forks for now, since the build tag will still be built for forks.
@@ -172,7 +176,7 @@ func parseE2ETestCommentForOpts(commentBody string) map[string]string {
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-cycle.sh requires webapp to be cloned
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-server.sh requires server to be cloned
 // getPRInfoForE2ETest returns information needed to trigger E2E testing
-func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, opts map[string]string) (*E2ETestTriggerInfo, error) {
+func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, opts *map[string]string) (*E2ETestTriggerInfo, error) {
 	info := &E2ETestTriggerInfo{
 		TriggerPR:   pr.Number,
 		TriggerRepo: pr.RepoName,
@@ -187,7 +191,7 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 	case s.Config.E2EWebappReponame:
 		info.ServerBranch, info.ServerSHA, err = s.getBranchAndSHAWithSameName(ctx, s.Config.Org, s.Config.E2EServerReponame, pr.Ref)
 		if err != nil {
-			e2eTestErr := &e2eTestError{source: e2eTestMsgCompanionBranch}
+			e2eTestErr := &E2ETestError{source: e2eTestMsgCompanionBranch}
 			return nil, fmt.Errorf("%s: %w", e2eTestErr, err)
 		}
 		if info.ServerBranch == "" {
@@ -205,7 +209,7 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 	case s.Config.E2EServerReponame:
 		info.WebappBranch, info.WebappSHA, err = s.getBranchAndSHAWithSameName(ctx, s.Config.Org, s.Config.E2EWebappReponame, pr.Ref)
 		if err != nil {
-			e2eTestErr := &e2eTestError{source: e2eTestMsgCompanionBranch}
+			e2eTestErr := &E2ETestError{source: e2eTestMsgCompanionBranch}
 			return nil, fmt.Errorf("%s: %w", e2eTestErr, err)
 		}
 		if info.WebappBranch == "" {
@@ -222,7 +226,7 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 		info.ServerSHA = pr.Sha
 	}
 	if info.RefToTrigger == "" {
-		e2eTestErr := &e2eTestError{source: e2eTestMsgUnknownTriggerRepo}
+		e2eTestErr := &E2ETestError{source: e2eTestMsgUnknownTriggerRepo}
 		return nil, fmt.Errorf("%s: %w", e2eTestErr, err)
 	}
 
@@ -244,9 +248,12 @@ func (s *Server) getBranchAndSHAWithSameName(ctx context.Context, owner string, 
 	return ghBranch.GetName(), ghBranch.GetCommit().GetSHA(), nil
 }
 
-func formatOpts(opts map[string]string) string {
+func formatOpts(opts *map[string]string) string {
+	if nil == opts {
+		return ""
+	}
 	var optMsg string
-	for k, v := range opts {
+	for k, v := range *opts {
 		optMsg += fmt.Sprintf("%v=%v\n", k, v)
 	}
 	return optMsg

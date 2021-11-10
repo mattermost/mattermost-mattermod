@@ -64,8 +64,8 @@ func TestHandleE2ECanceling(t *testing.T) {
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
 		err := s.handleE2ECancel(ctx, "someone", pr)
 		require.Error(t, err)
-		require.IsType(t, &e2eCancelError{}, err)
-		require.Equal(t, err.(*e2eCancelError).source, *msg)
+		require.IsType(t, &E2ECancelError{}, err)
+		require.Equal(t, err.(*E2ECancelError).source, *msg)
 	})
 	t.Run("nothing to cancel", func(t *testing.T) {
 		s.OrgMembers = make([]string, 1)
@@ -133,8 +133,8 @@ func TestHandleE2ECanceling(t *testing.T) {
 		glPS.EXPECT().GetPipelineVariables(gomock.Any(), pipsR[0].ID, gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipEnvs2, r, nil)
 		err := s.handleE2ECancel(ctx, userHandle, pr)
 		require.Error(t, err)
-		require.IsType(t, &e2eCancelError{}, err)
-		require.Equal(t, err.(*e2eCancelError).source, *msg)
+		require.IsType(t, &E2ECancelError{}, err)
+		require.Equal(t, err.(*E2ECancelError).source, *msg)
 	})
 	t.Run("pipeline canceled", func(t *testing.T) {
 		s.OrgMembers = make([]string, 1)

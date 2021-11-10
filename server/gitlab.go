@@ -41,34 +41,44 @@ type PipelinesService interface {
 }
 
 func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (string, error) {
-	createOpts := &gitlab.CreatePipelineOptions{
-		Ref: &info.RefToTrigger,
-		Variables: []*gitlab.PipelineVariable{
-			{
-				Key:   "REF_MATTERMOST_WEBAPP",
-				Value: info.WebappBranch,
-			},
-			{
-				Key:   "SHA_MATTERMOST_WEBAPP",
-				Value: info.WebappSHA,
-			},
-			{
-				Key:   "REF_MATTERMOST_SERVER",
-				Value: info.ServerBranch,
-			},
-			{
-				Key:   "SHA_MATTERMOST_SERVER",
-				Value: info.WebappSHA,
-			},
-			{
-				Key:   envKeyBuildTag,
-				Value: info.BuildTag,
-			},
-			{
-				Key:   envKeyPRNumber,
-				Value: strconv.Itoa(info.TriggerPR),
-			},
+	defaultEnvs := []*gitlab.PipelineVariable{
+		{
+			Key:   "REF_MATTERMOST_WEBAPP",
+			Value: info.WebappBranch,
 		},
+		{
+			Key:   "SHA_MATTERMOST_WEBAPP",
+			Value: info.WebappSHA,
+		},
+		{
+			Key:   "REF_MATTERMOST_SERVER",
+			Value: info.ServerBranch,
+		},
+		{
+			Key:   "SHA_MATTERMOST_SERVER",
+			Value: info.ServerSHA,
+		},
+		{
+			Key:   envKeyBuildTag,
+			Value: info.BuildTag,
+		},
+		{
+			Key:   envKeyPRNumber,
+			Value: strconv.Itoa(info.TriggerPR),
+		},
+	}
+	var customEnvs []*gitlab.PipelineVariable
+	if info.EnvVars != nil {
+		for k, v := range *info.EnvVars {
+			customEnvs = append(customEnvs, &gitlab.PipelineVariable{
+				Key:   k,
+				Value: v,
+			})
+		}
+	}
+	createOpts := &gitlab.CreatePipelineOptions{
+		Ref:       &info.RefToTrigger,
+		Variables: append(defaultEnvs, customEnvs...),
 	}
 	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EGitLabProject, createOpts, gitlab.WithContext(ctx))
 	if err != nil {
@@ -150,8 +160,8 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 		return false, nil
 	}
 	i := 0
-	matching := len(info.EnvVars)
-	for k, v := range info.EnvVars {
+	matching := len(*info.EnvVars)
+	for k, v := range *info.EnvVars {
 		for _, glVar := range glVars {
 			if glVar.Key == envKeyPRNumber {
 				pr, err := strconv.Atoi(glVar.Value)

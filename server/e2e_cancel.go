@@ -14,11 +14,11 @@ const (
 	e2eCancelMsgNothingToCancel     = "Looks like nothing had to be canceled. "
 )
 
-type e2eCancelError struct {
+type E2ECancelError struct {
 	source string
 }
 
-func (e *e2eCancelError) Error() string {
+func (e *E2ECancelError) Error() string {
 	switch e.source {
 	case e2eCancelMsgCommenterPermission:
 		return commenterNoPermissions
@@ -32,7 +32,7 @@ func (e *e2eCancelError) Error() string {
 }
 
 func (s *Server) handleE2ECancel(ctx context.Context, commenter string, pr *model.PullRequest) error {
-	var e2eErr *e2eCancelError
+	var e2eErr *E2ECancelError
 	defer func() {
 		if e2eErr != nil {
 			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e2eErr.source); err != nil {
@@ -43,19 +43,19 @@ func (s *Server) handleE2ECancel(ctx context.Context, commenter string, pr *mode
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	if !s.IsOrgMember(commenter) {
 		mlog.Warn("E2E cancellation tried by non org member")
-		e2eErr = &e2eCancelError{source: e2eCancelMsgCommenterPermission}
+		e2eErr = &E2ECancelError{source: e2eCancelMsgCommenterPermission}
 		return e2eErr
 	}
 	urls, err := s.cancelPipelinesForPR(ctx, &pr.Ref, &pr.Number)
 	if err != nil {
 		mlog.Warn("E2E cancellation failed")
-		e2eErr = &e2eCancelError{source: e2eCancelMsgFailedCancellation}
+		e2eErr = &E2ECancelError{source: e2eCancelMsgFailedCancellation}
 		return e2eErr
 	}
 
-	if len(urls) == 0 || urls == nil {
+	if urls == nil {
 		mlog.Warn("E2E cancellation has no cancellable pipeline")
-		e2eErr = &e2eCancelError{source: e2eCancelMsgNothingToCancel}
+		e2eErr = &E2ECancelError{source: e2eCancelMsgNothingToCancel}
 		return e2eErr
 	}
 	var fURLs string

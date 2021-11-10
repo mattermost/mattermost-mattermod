@@ -22,44 +22,61 @@ import (
 )
 
 const (
-	commandE2ETestBase    = "/e2e-test"
-	prNumber              = 123
-	eSHA                  = "abcdefg"
-	eBranch               = "branchA"
-	ghBranchNotFoundError = "throwing a GitHub error when branch not found"
+	commandE2ETestBase     = "/e2e-test"
+	commandE2ETestAdvanced = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
+	prNumber               = 123
+	eSHA                   = "abcdefg"
+	eBranch                = "branchA"
+	ghBranchNotFoundError  = "throwing a GitHub error when branch not found"
 )
 
 func TestParseE2ETestCommentForOpts(t *testing.T) {
 	t.Run("command with newline", func(t *testing.T) {
 		commentBody := "/e2e-test\nOther commenting after command \n Even other comment"
-		opts := parseE2ETestCommentForOpts(commentBody)
-		assert.Equal(t, 0, len(opts))
+		aOpts := parseE2ETestCommentForOpts(commentBody)
+		assert.Nil(t, aOpts)
 
 		commentBody = "/e2e-test INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
-		opts = parseE2ETestCommentForOpts(commentBody)
-		assert.Equal(t, 2, len(opts))
-
-		commentBody = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
-		opts = parseE2ETestCommentForOpts(commentBody)
-		assert.Equal(t, 3, len(opts))
-	})
-	t.Run("command with space at end", func(t *testing.T) {
-		commentBody := "/e2e-test "
-		aOpts := parseE2ETestCommentForOpts(commentBody)
-		assert.Equal(t, 0, len(aOpts))
-
-		commentBody = "/e2e-test INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
 		aOpts = parseE2ETestCommentForOpts(commentBody)
-		assert.Equal(t, 2, len(aOpts))
+		eOpts := &map[string]string{
+			"INCLUDE_FILE": "new_message_spec.js",
+			"EXCLUDE_FILE": "something_to_exclude_spec.js",
+		}
+		assert.Equal(t, 2, len(*aOpts))
+		assert.EqualValues(t, eOpts, aOpts)
 
-		commentBody = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
+		commentBody = commandE2ETestAdvanced
 		aOpts = parseE2ETestCommentForOpts(commentBody)
-		eOpts := map[string]string{
+		eOpts = &map[string]string{
 			"MM_ENV":       "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			"INCLUDE_FILE": "new_message_spec.js",
 			"EXCLUDE_FILE": "something_to_exclude_spec.js",
 		}
-		assert.Equal(t, 3, len(aOpts))
+		assert.Equal(t, 3, len(*aOpts))
+		assert.EqualValues(t, eOpts, aOpts)
+	})
+	t.Run("command with space at end", func(t *testing.T) {
+		commentBody := "/e2e-test "
+		aOpts := parseE2ETestCommentForOpts(commentBody)
+		assert.Nil(t, aOpts)
+
+		commentBody = "/e2e-test INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
+		aOpts = parseE2ETestCommentForOpts(commentBody)
+		eOpts := &map[string]string{
+			"INCLUDE_FILE": "new_message_spec.js",
+			"EXCLUDE_FILE": "something_to_exclude_spec.js",
+		}
+		assert.Equal(t, 2, len(*aOpts))
+		assert.EqualValues(t, eOpts, aOpts)
+
+		commentBody = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
+		aOpts = parseE2ETestCommentForOpts(commentBody)
+		eOpts = &map[string]string{
+			"MM_ENV":       "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
+			"INCLUDE_FILE": "new_message_spec.js",
+			"EXCLUDE_FILE": "something_to_exclude_spec.js",
+		}
+		assert.Equal(t, 3, len(*aOpts))
 		assert.EqualValues(t, eOpts, aOpts)
 	})
 }
@@ -103,13 +120,6 @@ func TestHandleE2ETesting(t *testing.T) {
 
 	t.Run("happy trigger from webapp", func(t *testing.T) {
 		commentBody := commandE2ETestBase
-		opts := parseE2ETestCommentForOpts(commentBody)
-		var eOptMsg string
-		for _, m := range opts {
-			for k, v := range m {
-				eOptMsg += fmt.Sprintf("%v=%v\n", k, v)
-			}
-		}
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
 		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
@@ -189,7 +199,102 @@ func TestHandleE2ETesting(t *testing.T) {
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
 
-		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, eOptMsg))}
+		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, ""))}
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
+		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
+		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentEnd).Times(1).Return(nil, nil, nil)
+		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
+		require.NoError(t, err)
+	})
+	t.Run("happy trigger from webapp with options", func(t *testing.T) {
+		commentBody := commandE2ETestAdvanced
+		s.OrgMembers = make([]string, 1)
+		s.OrgMembers[0] = userHandle
+		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
+		pr := &model.PullRequest{
+			RepoOwner: userHandle,
+			RepoName:  s.Config.E2EWebappReponame,
+			Number:    prNumber,
+			Ref:       eBranch,
+			Sha:       eSHA,
+		}
+		pipsC := []*gitlab.PipelineInfo{
+			{
+				ID:     0,
+				Ref:    s.Config.E2EWebappRef,
+				Status: string(gitlab.Created),
+			},
+		}
+		pipsP := []*gitlab.PipelineInfo{
+			{
+				ID:     1,
+				Ref:    s.Config.E2EWebappRef,
+				Status: string(gitlab.Pending),
+			},
+		}
+		notSameEnvs0 := []*gitlab.PipelineVariable{
+			{
+				Key:   envKeyPRNumber,
+				Value: "124",
+			},
+			{
+				Key:   envKeyBuildTag,
+				Value: eBuildTag,
+			},
+		}
+		notSameEnvs1 := []*gitlab.PipelineVariable{
+			{
+				Key:   envKeyPRNumber,
+				Value: strconv.Itoa(prNumber),
+			},
+			{
+				Key:   envKeyBuildTag,
+				Value: s.Config.E2EDockerRepo + ":" + "otherSHA"[0:7],
+			},
+		}
+		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
+		pr.FullName = organization + "/" + userHandle
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				State: github.String(statePending),
+			}, nil, nil)
+		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
+			{
+				State:   github.String(stateSuccess),
+				Context: &s.Config.E2EWebappStatusContext,
+			},
+		}, nil, nil)
+		rs.EXPECT().GetBranch(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EServerReponame, pr.Ref, false).Times(1).Return(
+			nil,
+			&github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
+			errors.New(ghBranchNotFoundError),
+		)
+		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, pr.RepoName, pr.Number).Times(1).Return(
+			&github.PullRequest{
+				Number: &pr.Number,
+				Base: &github.PullRequestBranch{
+					Ref: github.String("release-6.0"),
+				},
+			},
+			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+			nil,
+		)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsC, nil, nil)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsP, nil, nil)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(nil, nil, nil)
+		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
+		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
+
+		opts := &map[string]string{
+			"MM_ENV":       "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
+			"INCLUDE_FILE": "new_message_spec.js",
+			"EXCLUDE_FILE": "something_to_exclude_spec.js",
+		}
+		optMsg := formatOpts(opts)
+		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, optMsg))}
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
 		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
 		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
@@ -199,13 +304,6 @@ func TestHandleE2ETesting(t *testing.T) {
 	})
 	t.Run("happy trigger from server", func(t *testing.T) {
 		commentBody := commandE2ETestBase
-		opts := parseE2ETestCommentForOpts(commentBody)
-		var eOptMsg string
-		for _, m := range opts {
-			for k, v := range m {
-				eOptMsg += fmt.Sprintf("%v=%v\n", k, v)
-			}
-		}
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
 		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
@@ -285,7 +383,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
 
-		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, eOptMsg))}
+		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, ""))}
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
 		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
 		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
@@ -304,8 +402,8 @@ func TestHandleE2ETesting(t *testing.T) {
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, "someone", pr, commentBody)
 		require.Error(t, err)
-		require.IsType(t, &e2eTestError{}, err)
-		require.Equal(t, err.(*e2eTestError).source, *msg)
+		require.IsType(t, &E2ETestError{}, err)
+		require.Equal(t, err.(*E2ETestError).source, *msg)
 	})
 	t.Run("pr not ready", func(t *testing.T) {
 		*msg = e2eTestMsgCIFailing
@@ -327,8 +425,8 @@ func TestHandleE2ETesting(t *testing.T) {
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.Error(t, err)
-		require.IsType(t, &e2eTestError{}, err)
-		require.Equal(t, err.(*e2eTestError).source, *msg)
+		require.IsType(t, &E2ETestError{}, err)
+		require.Equal(t, err.(*E2ETestError).source, *msg)
 	})
 	t.Run("webapp do not trigger with same envs", func(t *testing.T) {
 		*msg = e2eTestMsgSameEnvs
@@ -501,7 +599,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.Error(t, err)
-		require.IsType(t, &e2eTestError{}, err)
-		require.Equal(t, err.(*e2eTestError).source, *msg)
+		require.IsType(t, &E2ETestError{}, err)
+		require.Equal(t, err.(*E2ETestError).source, *msg)
 	})
 }
