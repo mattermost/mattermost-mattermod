@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	e2eTestMsgCommenterPermission = "Looks like you don't have permissions to trigger this command.\n Only available for org members"
-	e2eTestMsgCIFailing           = "Command e2e-test requires PR checks to pass."
-	e2eTestMsgUnknownPRState      = "Failed to check if PR checks passed. I will not try to trigger e2e testing. Please retry in a bit."
-	e2eTestMsgPRInfo              = "Failed to get the PR information required to trigger testing. Please retry in a bit."
+	e2eTestMsgCommenterPermission = "You don't have permissions to trigger this command.\n It's only available for organization members."
+	e2eTestMsgCIFailing           = "The command /e2e-test requires all PR checks to pass."
+	e2eTestMsgUnknownPRState      = "Failed to check whether PR checks passed. E2E testing isn't triggered. Please retry later."
+	e2eTestMsgPRInfo              = "Failed to get the PR information required to trigger testing. Please retry later."
 	e2eTestMsgUnknownTriggerRepo  = "Looks like triggering e2e testing pipelines for this repo is not set up. \n Please contact your administrator of choice."
-	e2eTestMsgTrigger             = "Failed to trigger e2e testing pipeline."
-	e2eTestMsgCompanionBranch     = "Failed while trying to locate companion branch."
+	e2eTestMsgTrigger             = "Failed to trigger E2E testing pipeline."
+	e2eTestMsgCompanionBranch     = "Failed to locate companion branch."
 	e2eTestMsgSameEnvs            = "Looks like a pipeline with the same environment variables is already running. \n Please cancel it first with /e2e-cancel or be more specific with environment variables."
 
 	e2eTestMsgOpts    = "Triggering e2e testing with options:"
