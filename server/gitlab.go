@@ -69,7 +69,7 @@ func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTrig
 	}
 	var customEnvs []*gitlab.PipelineVariable
 	if info.EnvVars != nil {
-		for k, v := range *info.EnvVars {
+		for k, v := range info.EnvVars {
 			customEnvs = append(customEnvs, &gitlab.PipelineVariable{
 				Key:   k,
 				Value: v,
@@ -160,8 +160,8 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 		return false, nil
 	}
 	i := 0
-	matching := len(*info.EnvVars)
-	for k, v := range *info.EnvVars {
+	matching := len(info.EnvVars)
+	for k, v := range info.EnvVars {
 		for _, glVar := range glVars {
 			if glVar.Key == envKeyPRNumber {
 				pr, err := strconv.Atoi(glVar.Value)

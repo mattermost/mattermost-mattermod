@@ -64,7 +64,7 @@ type E2ETestTriggerInfo struct {
 	ServerSHA    string
 	WebappBranch string
 	WebappSHA    string
-	EnvVars      *map[string]string
+	EnvVars      map[string]string
 	BuildTag     string
 }
 
@@ -181,8 +181,11 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 		TriggerPR:   pr.Number,
 		TriggerRepo: pr.RepoName,
 		TriggerSHA:  pr.Sha,
-		EnvVars:     opts,
 		BuildTag:    s.Config.E2EDockerRepo + pr.Sha[0:7],
+	}
+
+	if opts != nil {
+		info.EnvVars = *opts
 	}
 
 	info.RefToTrigger = ""
