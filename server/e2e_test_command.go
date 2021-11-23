@@ -109,7 +109,6 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	}
 
 	opts := parseE2ETestCommentForOpts(commentBody)
-	optMsg := formatOpts(opts)
 
 	info, err := s.getPRInfoForE2ETest(ctx, pr, opts)
 	if err != nil {
@@ -117,7 +116,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		return e2eTestErr
 	}
 
-	initMsg := fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, optMsg)
+	initMsg := fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, opts)
 	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, initMsg); cErr != nil {
 		mlog.Warn("Error while commenting", mlog.Err(cErr))
 	}
@@ -249,15 +248,4 @@ func (s *Server) getBranchAndSHAWithSameName(ctx context.Context, owner string, 
 		return "", "", errors.New("unexpected failure case")
 	}
 	return ghBranch.GetName(), ghBranch.GetCommit().GetSHA(), nil
-}
-
-func formatOpts(opts *map[string]string) string {
-	if nil == opts {
-		return ""
-	}
-	var optMsg string
-	for k, v := range *opts {
-		optMsg += fmt.Sprintf("%v=%v\n", k, v)
-	}
-	return optMsg
 }
