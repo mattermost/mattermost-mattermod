@@ -20,7 +20,7 @@ const (
 	e2eTestMsgUnknownTriggerRepo  = "The ability to trigger E2E testing pipelines for this repository isn't set up. \n Please contact a maintainer."
 	e2eTestMsgTrigger             = "Failed to trigger E2E testing pipeline."
 	e2eTestMsgCompanionBranch     = "Failed to locate companion branch."
-	e2eTestMsgSameEnvs            = "Looks like a pipeline with the same environment variables is already running. \n Please cancel it first with /e2e-cancel or be more specific with environment variables."
+	e2eTestMsgSameEnvs            = "A pipeline with the same environment variables is already running. \n Please cancel it first with /e2e-cancel, or specify different environment variables."
 
 	e2eTestMsgOpts    = "Triggering e2e testing with options:"
 	e2eTestFmtOpts    = "%v\n```%v```"
