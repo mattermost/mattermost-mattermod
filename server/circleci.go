@@ -99,7 +99,7 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowID
 	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
 
-	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess)
+	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess, 5*time.Second)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return err

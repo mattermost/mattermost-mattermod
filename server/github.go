@@ -331,8 +331,8 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 	return nil
 }
 
-func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
-	ticker := time.NewTicker(30 * time.Second) // extended to 30 seconds to go with the secondary rate limit interval of GitHub
+func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, t time.Duration) error {
+	ticker := time.NewTicker(t)
 	for {
 		select {
 		case <-ctx.Done():
