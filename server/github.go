@@ -332,7 +332,7 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 }
 
 func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(30 * time.Second) // extended to 30 seconds to go with the secondary rate limit interval of GitHub
 	for {
 		select {
 		case <-ctx.Done():
