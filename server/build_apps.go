@@ -21,7 +21,7 @@ func (s *Server) buildApp(pr *model.PullRequest) {
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 	// will generate the string refs/heads/build-pr-1222-8bfcb54
 	ref := fmt.Sprintf("refs/heads/%s%d-%s", s.Config.BuildAppBranchPrefix, prNumber, pr.Sha[0:7])
-	isReadyToBeBuilt, err := s.areChecksSuccessfulForPr(ctx, pr, s.Config.Org)
+	isReadyToBeBuilt, err := s.areChecksSuccessfulForPR(ctx, pr)
 	if err != nil {
 		msg := fmt.Sprintf("Failed to retrieve the status of the PR. Error:  \n```%s```", err.Error())
 		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {

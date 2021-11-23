@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 )
 
 const (
@@ -25,7 +25,7 @@ type updateError struct {
 func (e *updateError) Error() string {
 	switch e.source {
 	case msgCommenterPermission:
-		return "commenter does not have permissions"
+		return commenterNoPermissions
 	case msgOrganizationPermission:
 		return "we don't have permissions"
 	case msgUpdatePullRequest:

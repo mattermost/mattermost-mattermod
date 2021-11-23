@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
@@ -105,7 +105,7 @@ func (s *Server) getPRInfo(ctx context.Context, pr *model.PullRequest) (info *EE
 }
 
 func (s *Server) getBranchWithSameName(ctx context.Context, remote string, repo string, ref string) (branch string, err error) {
-	ghBranch, r, err := s.GithubClient.Repositories.GetBranch(ctx, remote, repo, ref)
+	ghBranch, r, err := s.GithubClient.Repositories.GetBranch(ctx, remote, repo, ref, false)
 	if err != nil {
 		if r == nil || r.StatusCode != http.StatusNotFound {
 			return "", fmt.Errorf("error trying to get branch %s for repo %s: %w",

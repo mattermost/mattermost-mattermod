@@ -10,6 +10,8 @@
     "Org": "",
     "Username": "",
     "CircleCIToken": "",
+    "GitLabInternalURL": "",
+    "GitLabInternalToken": "",
 
     "DriverName": "mysql",
     "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
@@ -55,6 +57,14 @@
             "ExpectedArtifacts": 0
         }
     ],
+    "E2EDockerRepo": "",
+    "E2EGitLabProject": "",
+    "E2EWebappRef": "",
+    "E2EServerRef": "",
+    "E2EWebappReponame": "",
+    "E2EServerReponame": "",
+    "E2EWebappStatusContext": "",
+    "E2EServerStatusContext": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",

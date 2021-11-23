@@ -18,6 +18,7 @@ const (
 	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
+	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
@@ -64,6 +65,8 @@ type Config struct {
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
+	GitLabInternalURL           string
+	GitLabInternalToken         string
 
 	TickRateMinutes int
 
@@ -81,6 +84,15 @@ type Config struct {
 	BuildAppFailedMessage string
 	BuildAppBranchPrefix  string
 	BuildAppJobs          []*BuildAppJob
+
+	E2EDockerRepo          string
+	E2EGitLabProject       string
+	E2EWebappRef           string
+	E2EServerRef           string
+	E2EWebappReponame      string
+	E2EServerReponame      string
+	E2EWebappStatusContext string
+	E2EServerStatusContext string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string

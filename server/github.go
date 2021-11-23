@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -309,9 +309,9 @@ func (s *Server) deleteRef(ctx context.Context, repoOwner string, repoName strin
 	return nil
 }
 
-func (s *Server) areChecksSuccessfulForPr(ctx context.Context, pr *model.PullRequest, org string) (bool, error) {
+func (s *Server) areChecksSuccessfulForPR(ctx context.Context, pr *model.PullRequest) (bool, error) {
 	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, org, pr.RepoName, pr.Sha, nil)
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, s.Config.Org, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err
