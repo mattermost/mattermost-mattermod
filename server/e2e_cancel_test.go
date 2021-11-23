@@ -20,9 +20,11 @@ import (
 func TestHandleE2ECanceling(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	const userHandle = "user"
-	const organization = "mattertest"
-	const prNumber = 123
+	const (
+	   userHandle = "user"
+	   organization = "mattertest"
+	   prNumber = 123
+	)
 	s := Server{
 		Config: &Config{
 			Org:                    organization,
