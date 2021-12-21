@@ -103,7 +103,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 
 	ctx2, cancel := context.WithTimeout(context.Background(), defaultE2ETestTimeout*time.Second)
 	defer cancel()
-	err = s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess)
+	err = s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, 30*time.Second) // 30 seconds to consider GitHub's secondary rate limit
 	if err != nil {
 		return err
 	}

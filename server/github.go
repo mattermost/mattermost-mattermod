@@ -331,8 +331,8 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 	return nil
 }
 
-func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
-	ticker := time.NewTicker(5 * time.Second)
+func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, t time.Duration) error {
+	ticker := time.NewTicker(t)
 	for {
 		select {
 		case <-ctx.Done():
