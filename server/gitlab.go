@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	envKeyPRNumber = "PR_NUMBER"
-	envKeyBuildTag = "BUILD_TAG"
+	envKeyPRNumber     = "PR_NUMBER"
+	envKeyBuildTag     = "BUILD_TAG"
+	variableTypeEnvVar = "env_var"
 )
 
 type GitLabClient struct {
@@ -43,36 +44,43 @@ type PipelinesService interface {
 func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (string, error) {
 	defaultEnvs := []*gitlab.PipelineVariable{
 		{
-			Key:   "REF_MATTERMOST_WEBAPP",
-			Value: info.WebappBranch,
+			Key:          "REF_MATTERMOST_WEBAPP",
+			Value:        info.WebappBranch,
+			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:   "SHA_MATTERMOST_WEBAPP",
-			Value: info.WebappSHA,
+			Key:          "SHA_MATTERMOST_WEBAPP",
+			Value:        info.WebappSHA,
+			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:   "REF_MATTERMOST_SERVER",
-			Value: info.ServerBranch,
+			Key:          "REF_MATTERMOST_SERVER",
+			Value:        info.ServerBranch,
+			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:   "SHA_MATTERMOST_SERVER",
-			Value: info.ServerSHA,
+			Key:          "SHA_MATTERMOST_SERVER",
+			Value:        info.ServerSHA,
+			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:   envKeyBuildTag,
-			Value: info.BuildTag,
+			Key:          envKeyBuildTag,
+			Value:        info.BuildTag,
+			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:   envKeyPRNumber,
-			Value: strconv.Itoa(info.TriggerPR),
+			Key:          envKeyPRNumber,
+			Value:        strconv.Itoa(info.TriggerPR),
+			VariableType: variableTypeEnvVar,
 		},
 	}
 	var customEnvs []*gitlab.PipelineVariable
 	if info.EnvVars != nil {
 		for k, v := range info.EnvVars {
 			customEnvs = append(customEnvs, &gitlab.PipelineVariable{
-				Key:   k,
-				Value: v,
+				Key:          k,
+				Value:        v,
+				VariableType: variableTypeEnvVar,
 			})
 		}
 	}
