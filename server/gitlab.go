@@ -195,16 +195,16 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 	return false, nil
 }
 
-func (s *Server) cancelPipelinesForPR(ctx context.Context, prRef *string, prNumber *int) ([]*string, error) { // pending, created, running
-	pipInfosC, err := s.findCancellablePipelines(ctx, gitlab.Created, prRef, prNumber)
+func (s *Server) cancelPipelinesForPR(ctx context.Context, e2eProjectRef *string, prNumber *int) ([]*string, error) { // pending, created, running
+	pipInfosC, err := s.findCancellablePipelines(ctx, gitlab.Created, e2eProjectRef, prNumber)
 	if err != nil {
 		return nil, err
 	}
-	pipInfosP, err := s.findCancellablePipelines(ctx, gitlab.Pending, prRef, prNumber)
+	pipInfosP, err := s.findCancellablePipelines(ctx, gitlab.Pending, e2eProjectRef, prNumber)
 	if err != nil {
 		return nil, err
 	}
-	pipInfosR, err := s.findCancellablePipelines(ctx, gitlab.Running, prRef, prNumber)
+	pipInfosR, err := s.findCancellablePipelines(ctx, gitlab.Running, e2eProjectRef, prNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -238,10 +238,10 @@ func (s *Server) cancelPipelinesForPR(ctx context.Context, prRef *string, prNumb
 	return urls, nil
 }
 
-func (s *Server) findCancellablePipelines(ctx context.Context, state gitlab.BuildStateValue, prRef *string, prNumber *int) ([]*gitlab.PipelineInfo, error) {
+func (s *Server) findCancellablePipelines(ctx context.Context, state gitlab.BuildStateValue, e2eProjectRef *string, prNumber *int) ([]*gitlab.PipelineInfo, error) {
 	listOpts := &gitlab.ListProjectPipelinesOptions{
 		Status: gitlab.BuildState(state),
-		Ref:    prRef,
+		Ref:    e2eProjectRef,
 	}
 	pips, _, err := s.GitLabCIClientV4.Pipelines.ListProjectPipelines(s.Config.E2EGitLabProject, listOpts, gitlab.WithContext(ctx))
 	if err != nil {

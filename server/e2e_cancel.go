@@ -46,7 +46,14 @@ func (s *Server) handleE2ECancel(ctx context.Context, commenter string, pr *mode
 		e2eErr = &E2ECancelError{source: e2eCancelMsgCommenterPermission}
 		return e2eErr
 	}
-	urls, err := s.cancelPipelinesForPR(ctx, &pr.Ref, &pr.Number)
+	var e2eProjectRef string
+	switch pr.RepoName {
+	case s.Config.E2EWebappReponame:
+		e2eProjectRef = s.Config.E2EWebappRef
+	case s.Config.E2EServerReponame:
+		e2eProjectRef = s.Config.E2EWebappRef
+	}
+	urls, err := s.cancelPipelinesForPR(ctx, &e2eProjectRef, &pr.Number)
 	if err != nil {
 		mlog.Warn("E2E cancellation failed")
 		e2eErr = &E2ECancelError{source: e2eCancelMsgFailedCancellation}
