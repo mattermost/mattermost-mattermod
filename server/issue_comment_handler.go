@@ -163,5 +163,5 @@ func (e *issueCommentEvent) HasE2ETest() bool {
 
 // HasE2ECancel is true if body contains "/e2e-cancel"
 func (e *issueCommentEvent) HasE2ECancel() bool {
-	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
+	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
 }
