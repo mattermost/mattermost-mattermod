@@ -17,6 +17,11 @@ linters-settings:
       - fieldalignment
   misspell:
     locale: US
+  gosec:
+    # To specify a set of rules to explicitly exclude.
+    # Available rules: https://github.com/securego/gosec#available-rules
+    excludes:
+      - G204
 
 linters:
   disable-all: true
