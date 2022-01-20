@@ -1,4 +1,4 @@
-FROM golang:1.17.5 AS builder
+FROM golang:1.17.6 AS builder
 
 ENV HUB_VERSION 2.14.2
 WORKDIR /opt/hub
