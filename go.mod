@@ -6,7 +6,7 @@ require (
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v39 v39.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/jarcoal/httpmock v1.1.0
@@ -21,7 +21,7 @@ require (
 	github.com/sourcegraph/go-diff v0.6.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xanzy/go-gitlab v0.51.1
-	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 )
