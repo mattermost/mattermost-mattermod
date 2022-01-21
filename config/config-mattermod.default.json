@@ -14,7 +14,7 @@
     "GitLabInternalToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
+    "DataSource": "mattermod:mattermod@tcp(mysql:3306)/mattermod?parseTime=true&multiStatements=true",
 
     "TickRateMinutes": 15,
 
