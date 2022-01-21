@@ -18,7 +18,7 @@ require (
 	github.com/prometheus/client_golang v1.7.1
 	github.com/prometheus/client_model v0.2.0
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sourcegraph/go-diff v0.5.1
+	github.com/sourcegraph/go-diff v0.6.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xanzy/go-gitlab v0.51.1
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
@@ -31,7 +31,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
@@ -55,5 +54,4 @@ require (
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
-	sourcegraph.com/sqs/pbtypes v0.0.0-20180604144634-d3ebe8f20ae4 // indirect
 )
