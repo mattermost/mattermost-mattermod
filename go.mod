@@ -8,7 +8,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3
 	github.com/google/go-github/v39 v39.2.0
-	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/mux v1.8.0
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
