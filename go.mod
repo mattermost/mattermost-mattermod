@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/golang/mock v1.4.3
 	github.com/google/go-github/v39 v39.2.0
