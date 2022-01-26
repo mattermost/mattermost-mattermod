@@ -340,7 +340,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return errors.New("timed out waiting for status " + statusContext)
 		case <-ticker.C:
 			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
-			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
+			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Ref, nil)
 			if err != nil {
 				return err
 			}

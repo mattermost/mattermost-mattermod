@@ -97,6 +97,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			E2EDockerRepo:          "mattermost/mm-ee-test",
 			E2EServerStatusContext: "ee/circleci",
 			E2EWebappStatusContext: "ci/circleci: build-docker",
+			E2ETestTimeout:         70,
 		},
 		GithubClient:     &GithubClient{},
 		GitLabCIClientV4: &GitLabClient{},
@@ -166,13 +167,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
-		rs.EXPECT().
-			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
-			Times(1).
-			Return(&github.CombinedStatus{
-				State: github.String(statePending),
-			}, nil, nil)
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
+		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
@@ -187,7 +182,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			&github.PullRequest{
 				Number: &pr.Number,
 				Base: &github.PullRequestBranch{
-					Ref: github.String("release-6.0"),
+					Ref: github.String("master"),
 				},
 			},
 			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
@@ -199,8 +194,6 @@ func TestHandleE2ETesting(t *testing.T) {
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
 
-		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, nil))}
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
 		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
 		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentEnd).Times(1).Return(nil, nil, nil)
@@ -255,18 +248,19 @@ func TestHandleE2ETesting(t *testing.T) {
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
-		rs.EXPECT().
-			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
-			Times(1).
-			Return(&github.CombinedStatus{
-				State: github.String(statePending),
-			}, nil, nil)
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
+		first := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
+			{
+				State:   github.String(stateError),
+				Context: &s.Config.E2EWebappStatusContext,
+			},
+		}, nil, nil)
+		second := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
 			},
 		}, nil, nil)
+		gomock.InOrder(first, second)
 		rs.EXPECT().GetBranch(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EServerReponame, pr.Ref, false).Times(1).Return(
 			nil,
 			&github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
@@ -276,7 +270,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			&github.PullRequest{
 				Number: &pr.Number,
 				Base: &github.PullRequestBranch{
-					Ref: github.String("release-6.0"),
+					Ref: github.String("master"),
 				},
 			},
 			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
@@ -350,43 +344,81 @@ func TestHandleE2ETesting(t *testing.T) {
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
 		rs.EXPECT().
-			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EServerReponame, gomock.Any(), nil).
+			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).
 			Times(1).
-			Return(&github.CombinedStatus{
-				State: github.String(statePending),
-			}, nil, nil)
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
-			{
-				State:   github.String(stateSuccess),
-				Context: &s.Config.E2EServerStatusContext,
-			},
-		}, nil, nil)
-		rs.EXPECT().GetBranch(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, pr.Ref, false).Times(1).Return(
-			nil,
-			&github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
-			errors.New(ghBranchNotFoundError),
-		)
-		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, pr.RepoName, pr.Number).Times(1).Return(
-			&github.PullRequest{
-				Number: &pr.Number,
-				Base: &github.PullRequestBranch{
-					Ref: github.String("release-6.0"),
+			Return([]*github.RepoStatus{
+				{
+					State:   github.String(stateSuccess),
+					Context: &s.Config.E2EServerStatusContext,
 				},
-			},
-			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
-			nil,
-		)
-		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsC, nil, nil)
-		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsP, nil, nil)
-		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(nil, nil, nil)
-		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
-		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
+			}, nil, nil)
+		rs.EXPECT().
+			GetBranch(
+				gomock.AssignableToTypeOf(ctxInterface),
+				s.Config.Org,
+				s.Config.E2EWebappReponame,
+				pr.Ref,
+				false,
+			).
+			Times(1).
+			Return(
+				nil,
+				&github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
+				errors.New(ghBranchNotFoundError),
+			)
+		prs.EXPECT().
+			Get(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, pr.RepoName, pr.Number).
+			Times(1).
+			Return(
+				&github.PullRequest{
+					Number: &pr.Number,
+					Base: &github.PullRequestBranch{
+						Ref: github.String("master"),
+					},
+				},
+				&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+				nil,
+			)
+		glPS.EXPECT().
+			ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(pipsC, nil, nil)
+		glPS.EXPECT().
+			ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(pipsP, nil, nil)
+		glPS.EXPECT().
+			ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(nil, nil, nil)
+		glPS.EXPECT().
+			GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(notSameEnvs0, nil, nil)
+		glPS.EXPECT().
+			GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(notSameEnvs1, nil, nil)
 
 		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, nil))}
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
-		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface),
+				pr.RepoOwner,
+				pr.RepoName,
+				pr.Number,
+				commentInit,
+			).
+			Times(1).
+			Return(nil, nil, nil)
+		glPS.EXPECT().
+			CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).
+			Times(1).
+			Return(p, nil, nil)
 		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentEnd).Times(1).Return(nil, nil, nil)
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentEnd).
+			Times(1).
+			Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.NoError(t, err)
 	})
@@ -396,9 +428,14 @@ func TestHandleE2ETesting(t *testing.T) {
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
-			Number:    123,
+			Number:    prNumber,
+			Ref:       eBranch,
+			Sha:       eSHA,
 		}
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).
+			Times(1).
+			Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, "someone", pr, commentBody)
 		require.Error(t, err)
 		require.IsType(t, &E2ETestError{}, err)
@@ -409,19 +446,28 @@ func TestHandleE2ETesting(t *testing.T) {
 		commentBody := commandE2ETestBase
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
+		s.Config.E2ETestTimeout = 40
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
-			Number:    123,
+			Number:    prNumber,
+			Ref:       eBranch,
+			Sha:       eSHA,
 		}
 		pr.FullName = organization + "/" + userHandle
 		rs.EXPECT().
-			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
+			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).
 			Times(1).
-			Return(&github.CombinedStatus{
-				State: github.String(stateError), // statePending can run e2e-test (block-pr-merge.go)
+			Return([]*github.RepoStatus{
+				{
+					State:   github.String(stateError),
+					Context: &s.Config.E2EWebappStatusContext,
+				},
 			}, nil, nil)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).
+			Times(1).
+			Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.Error(t, err)
 		require.IsType(t, &E2ETestError{}, err)
@@ -559,13 +605,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			},
 		}
 		pr.FullName = organization + "/" + userHandle
-		rs.EXPECT().
-			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
-			Times(1).
-			Return(&github.CombinedStatus{
-				State: github.String(statePending),
-			}, nil, nil)
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
+		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
@@ -580,7 +620,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			&github.PullRequest{
 				Number: &pr.Number,
 				Base: &github.PullRequestBranch{
-					Ref: github.String("release-6.0"),
+					Ref: github.String("master"),
 				},
 			},
 			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},

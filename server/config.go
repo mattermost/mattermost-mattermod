@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -18,7 +19,6 @@ const (
 	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
-	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
@@ -93,6 +93,7 @@ type Config struct {
 	E2EServerReponame      string
 	E2EWebappStatusContext string
 	E2EServerStatusContext string
+	E2ETestTimeout         time.Duration
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
