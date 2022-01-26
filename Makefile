@@ -35,6 +35,14 @@ clean:
 check-style: golangci-lint
 	@echo Checking for style guide compliance
 
+.PHONY: check-deps
+check-deps:
+	$(GO) mod tidy -v
+	@if [ -n "$$(command git --no-pager diff --exit-code go.mod go.sum)" ]; then \
+		echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; \
+		exit 1; \
+	fi
+
 ## Run golangci-lint on codebase.
 .PHONY: golangci-lint
 golangci-lint:
