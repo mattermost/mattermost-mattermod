@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/xanzy/go-gitlab"
 
@@ -97,16 +98,15 @@ func TestHandleE2ETesting(t *testing.T) {
 			E2EDockerRepo:          "mattermost/mm-ee-test",
 			E2EServerStatusContext: "ee/circleci",
 			E2EWebappStatusContext: "ci/circleci: build-docker",
-			E2ETestTimeout:         70,
+			E2ETestDeadline:        5 * time.Second,
+			E2EGitHubRateLimitHack: 1 * time.Second,
 		},
 		GithubClient:     &GithubClient{},
 		GitLabCIClientV4: &GitLabClient{},
 	}
 
-	ctx := context.Background()
-
-	msg := new(string)
-	comment := &github.IssueComment{Body: msg}
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
 	is := mocks.NewMockIssuesService(ctrl)
 	rs := mocks.NewMockRepositoriesService(ctrl)
 	prs := mocks.NewMockPullRequestsService(ctrl)
@@ -423,7 +423,8 @@ func TestHandleE2ETesting(t *testing.T) {
 		require.NoError(t, err)
 	})
 	t.Run("random user", func(t *testing.T) {
-		*msg = e2eTestMsgCommenterPermission
+		s.OrgMembers = make([]string, 1)
+		s.OrgMembers[0] = userHandle
 		commentBody := commandE2ETestBase
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
@@ -433,20 +434,24 @@ func TestHandleE2ETesting(t *testing.T) {
 			Sha:       eSHA,
 		}
 		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).
+			CreateComment(
+				gomock.AssignableToTypeOf(ctxInterface),
+				pr.RepoOwner,
+				pr.RepoName,
+				pr.Number,
+				&github.IssueComment{Body: github.String(e2eTestMsgCommenterPermission)},
+			).
 			Times(1).
 			Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, "someone", pr, commentBody)
 		require.Error(t, err)
 		require.IsType(t, &E2ETestError{}, err)
-		require.Equal(t, err.(*E2ETestError).source, *msg)
+		require.Equal(t, err.(*E2ETestError).source, e2eTestMsgCommenterPermission)
 	})
 	t.Run("pr not ready", func(t *testing.T) {
-		*msg = e2eTestMsgCIFailing
 		commentBody := commandE2ETestBase
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
-		s.Config.E2ETestTimeout = 40
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
@@ -457,7 +462,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		pr.FullName = organization + "/" + userHandle
 		rs.EXPECT().
 			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).
-			Times(1).
+			Times(6).
 			Return([]*github.RepoStatus{
 				{
 					State:   github.String(stateError),
@@ -465,16 +470,21 @@ func TestHandleE2ETesting(t *testing.T) {
 				},
 			}, nil, nil)
 		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).
+			CreateComment(
+				gomock.AssignableToTypeOf(ctxInterface),
+				pr.RepoOwner,
+				pr.RepoName,
+				pr.Number,
+				&github.IssueComment{Body: github.String(e2eTestMsgCIFailing)},
+			).
 			Times(1).
 			Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.Error(t, err)
 		require.IsType(t, &E2ETestError{}, err)
-		require.Equal(t, err.(*E2ETestError).source, *msg)
+		require.Equal(t, err.(*E2ETestError).source, e2eTestMsgCIFailing)
 	})
 	t.Run("webapp do not trigger with same envs", func(t *testing.T) {
-		*msg = e2eTestMsgSameEnvs
 		eEnvKey0 := "MM_ENV"
 		eEnvValue0 := "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true"
 		eEnvKey1 := "INCLUDE_FILE"
@@ -635,10 +645,16 @@ func TestHandleE2ETesting(t *testing.T) {
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(sameEnvs, nil, nil)
 
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, gomock.Any()).Times(1).Return(nil, nil, nil)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(1).Return(nil, nil, nil)
+		is.EXPECT().CreateComment(
+			gomock.AssignableToTypeOf(ctxInterface),
+			pr.RepoOwner,
+			pr.RepoName,
+			pr.Number,
+			&github.IssueComment{Body: github.String(e2eTestMsgSameEnvs)},
+		).Times(1).Return(nil, nil, nil)
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.Error(t, err)
 		require.IsType(t, &E2ETestError{}, err)
-		require.Equal(t, err.(*E2ETestError).source, *msg)
+		require.Equal(t, err.(*E2ETestError).source, e2eTestMsgSameEnvs)
 	})
 }

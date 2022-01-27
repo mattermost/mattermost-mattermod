@@ -94,7 +94,10 @@ In order to test Mattermod locally a couple of steps are needed.
 
 4. We also need to have a MySQL DB instance running. If you are using docker, use the following command:
 ```
-docker run --name mattermod-mysql -p 3306:3306 -e MYSQL_ROOT_PASSWORD=mattermod -e MYSQL_USER=mattermod -e MYSQL_PASSWORD=mattermod -e MYSQL_DATABASE=mattermod -d mysql:5.7 > /dev/null;
+$ docker --version # 20.10.7
+$ docker-compose version # 1.25.0
+$ ./scripts/test.sh
+$ ./scripts/cleanup.sh
 ```
 
 5. Now we need to populate `config-mattermod.json` with the right values.

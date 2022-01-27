@@ -93,7 +93,8 @@ type Config struct {
 	E2EServerReponame      string
 	E2EWebappStatusContext string
 	E2EServerStatusContext string
-	E2ETestTimeout         time.Duration
+	E2ETestDeadline        time.Duration
+	E2EGitHubRateLimitHack time.Duration
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string

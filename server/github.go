@@ -331,15 +331,15 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 	return nil
 }
 
-func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, t time.Duration) error {
-	ticker := time.NewTicker(t)
+func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, interval time.Duration) error {
+	ticker := time.NewTicker(interval)
 	for {
 		select {
 		case <-ctx.Done():
 			ticker.Stop()
-			return errors.New("timed out waiting for status " + statusContext)
-		case <-ticker.C:
-			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
+			return ctx.Err()
+		case t := <-ticker.C:
+			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext), mlog.String("ticker", t.String()))
 			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Ref, nil)
 			if err != nil {
 				return err
@@ -348,6 +348,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			hasStatus := false
 			for _, status := range statuses {
 				if *status.Context == statusContext && *status.State == statusState {
+					mlog.Debug("Got successfully context status", mlog.String("context", statusContext), mlog.String("state", statusState), mlog.String("ticker", t.String()))
 					hasStatus = true
 				}
 			}

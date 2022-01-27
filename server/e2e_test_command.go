@@ -242,9 +242,9 @@ func (s *Server) waitForImageStatus(pr *model.PullRequest) (bool, error) {
 		ghStatusContext = s.Config.E2EServerStatusContext
 	}
 
-	ctx2, cancel := context.WithTimeout(context.Background(), s.Config.E2ETestTimeout*time.Second)
+	ctx2, cancel := context.WithDeadline(context.Background(), time.Now().Add(s.Config.E2ETestDeadline))
 	defer cancel()
-	err := s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, 30*time.Second) // 30 seconds to consider GitHub's secondary rate limit
+	err := s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, s.Config.E2EGitHubRateLimitHack)
 	if err != nil {
 		return false, err
 	}

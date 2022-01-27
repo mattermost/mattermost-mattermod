@@ -1,0 +1,9 @@
+FROM golang:1.17.6
+
+WORKDIR /go/src/mattermod
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod vendor
+
+COPY . .
