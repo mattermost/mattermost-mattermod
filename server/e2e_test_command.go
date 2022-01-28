@@ -14,7 +14,7 @@ import (
 
 const (
 	e2eTestMsgCommenterPermission = "You don't have permissions to trigger this command.\n It's only available for organization members."
-	e2eTestMsgCIFailing           = "The command /e2e-test requires all PR checks to pass."
+	e2eTestMsgCIFailing           = "The command /e2e-test requires the build docker check to pass."
 	e2eTestMsgPRInfo              = "Failed to get the PR information required to trigger testing. Please retry later."
 	e2eTestMsgUnknownTriggerRepo  = "The ability to trigger E2E testing pipelines for this repository isn't set up. \n Please contact a maintainer."
 	e2eTestMsgTrigger             = "Failed to trigger E2E testing pipeline."

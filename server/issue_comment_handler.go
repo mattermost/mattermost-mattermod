@@ -156,9 +156,9 @@ func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
 }
 
-// HasE2ETest is true if body contains "/e2e-test"
+// HasE2ETest is true if body is prefixed with "/e2e-test"
 func (e *issueCommentEvent) HasE2ETest() bool {
-	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/e2e-test")
+	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-test")
 }
 
 // HasE2ECancel is true if body is prefixed with "/e2e-cancel"
