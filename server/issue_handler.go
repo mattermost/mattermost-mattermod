@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
 type issueEvent struct {
-	Action string             `json:"action"`
 	Label  *github.Label      `json:"label"`
 	Repo   *github.Repository `json:"repository"`
 	Issue  *github.Issue      `json:"issue"`
+	Action string             `json:"action"`
 }
 
 func (s *Server) issueEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +108,7 @@ func (s *Server) handleIssueLabeled(ctx context.Context, issue *model.Issue, add
 	}
 
 	for _, label := range s.Config.IssueLabels {
-		finalMessage := strings.Replace(label.Message, "USERNAME", issue.Username, -1)
+		finalMessage := strings.ReplaceAll(label.Message, "USERNAME", issue.Username)
 		if label.Label == addedLabel && !messageByUserContains(comments, s.Config.Username, finalMessage) {
 			mlog.Info("Posted message for label on PR", mlog.String("label", label.Label), mlog.Int("issue", issue.Number))
 			if err = s.sendGitHubComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, finalMessage); err != nil {

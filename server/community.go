@@ -9,11 +9,13 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
+
+const contributorLabel = "Contributor"
 
 func (s *Server) addHacktoberfestLabel(ctx context.Context, pr *model.PullRequest) {
 	if pr.State == model.StateClosed {
@@ -78,7 +80,7 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	}
 
 	greetingRequest := github.ReviewersRequest{
-		Reviewers: []string{repo.GreetingTeam},
+		TeamReviewers: []string{repo.GreetingTeam},
 	}
 
 	_, _, err := s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
@@ -89,20 +91,33 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 	return nil
 }
 
+// assignGreetingLabels adds the initial set of labels a PR or issue
+// get when initially opened.
 func (s *Server) assignGreetingLabels(ctx context.Context, pr *model.PullRequest, repo *Repository) error {
-	// Only assign labels for non-member PRs
-	if s.IsOrgMember(pr.Username) {
+	// Exclude PRs coming from members of the org and our bots:
+	if s.IsOrgMember(pr.Username) || s.IsBotUserFromCLAExclusionsList(pr.Username) {
 		return nil
 	}
 
-	// Is repo configured to setup labels for non-member PRs?
-	if len(repo.GreetingLabels) == 0 {
-		return nil
+	// Check if the repository has the contributor label already
+	labels := repo.GreetingLabels
+	cLabelFound := false
+	for _, l := range labels {
+		if l == contributorLabel {
+			cLabelFound = true
+			break
+		}
 	}
 
-	// Assign labels
-	_, _, err := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, repo.GreetingLabels)
-	if err != nil {
+	// ... if not, add it as a greeting label
+	if !cLabelFound {
+		labels = append(labels, contributorLabel)
+	}
+
+	// Assign greeting labels
+	if _, _, err := s.GithubClient.Issues.AddLabelsToIssue(
+		ctx, pr.RepoOwner, pr.RepoName, pr.Number, labels,
+	); err != nil {
 		return errors.Wrapf(err, "couldn't apply greeting labels to %s #%d", pr.RepoName, pr.Number)
 	}
 	return nil

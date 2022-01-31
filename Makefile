@@ -35,6 +35,14 @@ clean:
 check-style: golangci-lint
 	@echo Checking for style guide compliance
 
+.PHONY: check-deps
+check-deps:
+	$(GO) mod tidy -v
+	@if [ -n "$$(command git --no-pager diff --exit-code go.mod go.sum)" ]; then \
+		echo "There are unused dependencies that should be removed. Please execute `go mod tidy` to fix it."; \
+		exit 1; \
+	fi
+
 ## Run golangci-lint on codebase.
 .PHONY: golangci-lint
 golangci-lint:
@@ -121,20 +129,12 @@ push-jobserver:
 ## Generate mocks.
 .PHONY: mocks
 mocks:
-	go install github.com/golang/mock/mockgen
-	mockgen -package mocks -destination server/mocks/checks.go github.com/mattermost/mattermost-mattermod/server ChecksService
-	mockgen -package mocks -destination server/mocks/issues.go github.com/mattermost/mattermost-mattermod/server IssuesService
-	mockgen -package mocks -destination server/mocks/teams.go github.com/mattermost/mattermost-mattermod/server TeamsService
-	mockgen -package mocks -destination server/mocks/git.go github.com/mattermost/mattermost-mattermod/server GitService
-	mockgen -package mocks -destination server/mocks/organizations.go github.com/mattermost/mattermost-mattermod/server OrganizationsService
-	mockgen -package mocks -destination server/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/server PullRequestsService
-	mockgen -package mocks -destination server/mocks/repositories.go github.com/mattermost/mattermost-mattermod/server RepositoriesService
-	mockgen -package mocks -destination server/mocks/provider.go github.com/mattermost/mattermost-mattermod/server MetricsProvider
-	mockgen -package mocks -destination server/mocks/circleci.go github.com/mattermost/mattermost-mattermod/server CircleCIService
-	mockgen -package mocks -destination store/mocks/store.go github.com/mattermost/mattermost-mattermod/store Store
-	mockgen -package mocks -destination store/mocks/pull_requests.go github.com/mattermost/mattermost-mattermod/store PullRequestStore
-	mockgen -package mocks -destination store/mocks/issue.go github.com/mattermost/mattermost-mattermod/store IssueStore
-	mockgen -package mocks -destination store/mocks/spinmint.go github.com/mattermost/mattermost-mattermod/store SpinmintStore
+	go install github.com/golang/mock/mockgen@v1.6.0
+	mockgen -package=mocks -source=server/circleci.go -destination=server/mocks/circleci.go
+	mockgen -package=mocks -source=server/github_client.go -destination=server/mocks/github_client.go
+	mockgen -package=mocks -source=server/gitlab.go -destination=server/mocks/gitlab.go
+	mockgen -package=mocks -source=server/metrics.go -destination=server/mocks/metrics.go
+	mockgen -package=mocks -source=store/store.go -destination=store/mocks/store.go
 
 #####################
 ## Release targets ##

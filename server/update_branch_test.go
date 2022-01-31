@@ -13,7 +13,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/stretchr/testify/require"
 )
 

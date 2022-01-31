@@ -30,7 +30,7 @@ func main() {
 	}
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("Unable to configure logging", mlog.Err(err))
-		os.Exit(1)
+		os.Exit(1) // nolint
 	}
 
 	// Metrics system
@@ -43,7 +43,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("Unable to start Job Server", mlog.Err(err))
-		os.Exit(1)
+		os.Exit(1) // nolint
 	}
 
 	mlog.Info("Starting Job Server")
@@ -76,10 +76,6 @@ func main() {
 		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
 	}
 
-	_, err = c.AddFunc("@every 2h", s.CheckTestServerLifeTime)
-	if err != nil {
-		mlog.Error("failed adding CheckTestServerLifeTime cron", mlog.Err(err))
-	}
 	_, err = c.AddFunc("@every 30m", func() {
 		err2 := s.AutoMergePR()
 		if err2 != nil {

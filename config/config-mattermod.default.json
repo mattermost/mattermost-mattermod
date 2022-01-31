@@ -10,19 +10,19 @@
     "Org": "",
     "Username": "",
     "CircleCIToken": "",
+    "GitLabInternalURL": "",
+    "GitLabInternalToken": "",
 
     "DriverName": "mysql",
-    "DataSource": "mattermod:mattermod@tcp(127.0.0.1:3306)/mattermod?parseTime=true&multiStatements=true",
+    "DataSource": "mattermod:mattermod@tcp(mysql:3306)/mattermod?parseTime=true&multiStatements=true",
 
     "TickRateMinutes": 15,
-    "SpinmintExpirationHour": 72,
 
     "Repositories": [
         {
             "Owner": "",
             "Name": "",
             "BuildStatusContext": "",
-            "JenkinsServer": "jenkins",
             "JobName": "",
             "InstanceSetupUpgradeScript": "",
             "InstanceSetupScript": "",
@@ -41,30 +41,30 @@
     "AutoAssignerTeam": "",
     "AutoAssignerTeamID": 0,
 
-    "SetupSpinmintTag": "",
-    "SetupSpinmintMessage": "",
-    "SetupSpinmintDoneMessage": "",
-    "SetupSpinmintFailedMessage": "",
-    "DestroyedSpinmintMessage": "",
-    "DestroyedExpirationSpinmintMessage": "",
-    "SpinmintsUseHttps": false,
-    "SetupSpinmintUpgradeTag": "",
-    "SetupSpinmintUpgradeMessage": "",
-    "SetupSpinmintUpgradeDoneMessage": "",
-    "BuildMobileAppTag": "",
-    "BuildMobileAppInitMessage": "",
-    "BuildMobileAppDoneMessage": "",
-    "BuildMobileAppFailedMessage": "",
-    "BuildMobileAppJobs": [
+    "BuildAppTag": "",
+    "BuildAppInitMessage": "",
+    "BuildAppDoneMessage": "",
+    "BuildAppFailedMessage": "",
+    "BuildAppJobs": [
         {
             "JobName": "",
+            "RepoName": "",
             "ExpectedArtifacts": 0
         },
         {
             "JobName": "",
+            "RepoName": "",
             "ExpectedArtifacts": 0
         }
     ],
+    "E2EDockerRepo": "",
+    "E2EGitLabProject": "",
+    "E2EWebappRef": "",
+    "E2EServerRef": "",
+    "E2EWebappReponame": "",
+    "E2EServerReponame": "",
+    "E2EWebappStatusContext": "",
+    "E2EServerStatusContext": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
@@ -97,29 +97,6 @@
     ],
 
     "IssueLabelsToCleanUp": [],
-
-    "JenkinsCredentials": {
-        "jenkins": {
-            "URL": "",
-            "Username": "",
-            "ApiToken": ""
-        }
-    },
-
-    "AWSCredentials": {
-        "Id": "",
-        "Secret": "",
-        "Token": ""
-    },
-
-    "AWSRegion": "",
-    "AWSImageId": "",
-    "AWSKeyName": "",
-    "AWSInstanceType": "",
-    "AWSHostedZoneId": "",
-    "AWSSecurityGroup": "",
-    "AWSSubNetId": "",
-    "AWSDnsSuffix": "",
 
     "MattermostWebhookURL": "",
     "MattermostWebhookFooter": "",

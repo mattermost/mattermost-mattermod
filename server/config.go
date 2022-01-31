@@ -8,19 +8,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
 const (
 	// In seconds
-	defaultRequestTimeout       = 60
-	defaultEETaskTimeout        = 300
-	defaultCronTaskTimeout      = 600
-	defaultBuildMobileTimeout   = 7200
-	defaultBuildSpinmintTimeout = 2700
+	defaultRequestTimeout  = 60
+	defaultEETaskTimeout   = 300
+	defaultCronTaskTimeout = 600
+	defaultBuildAppTimeout = 7200
+	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
@@ -32,7 +30,6 @@ type Repository struct {
 	Owner                      string
 	Name                       string
 	BuildStatusContext         string
-	JenkinsServer              string
 	InstanceSetupScript        string
 	InstanceSetupUpgradeScript string
 	JobName                    string
@@ -40,24 +37,20 @@ type Repository struct {
 	GreetingLabels             []string // GreetingLabels are the labels applied automatically to non-member PRs for this repo.
 }
 
-type JenkinsCredentials struct {
-	URL      string
-	Username string
-	APIToken string
-}
-
 type Integration struct {
 	RepositoryName  string
-	Files           []string
 	IntegrationLink string
 	Message         string
+	Files           []string
 }
 
-type BuildMobileAppJob struct {
+type BuildAppJob struct {
 	JobName           string
+	RepoName          string
 	ExpectedArtifacts int
 }
 
+// nolint:govet
 type Config struct {
 	ListenAddress               string
 	MattermodURL                string
@@ -72,9 +65,10 @@ type Config struct {
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
 	CircleCIToken               string
+	GitLabInternalURL           string
+	GitLabInternalToken         string
 
-	TickRateMinutes        int
-	SpinmintExpirationHour int
+	TickRateMinutes int
 
 	DriverName string
 	DataSource string
@@ -84,24 +78,21 @@ type Config struct {
 	BlockPRMergeLabels []string
 	AutoPRMergeLabel   string
 
-	SetupSpinmintTag                   string
-	SetupSpinmintMessage               string
-	SetupSpinmintDoneMessage           string
-	SetupSpinmintFailedMessage         string
-	DestroyedSpinmintMessage           string
-	DestroyedExpirationSpinmintMessage string
-	SpinmintsUseHTTPS                  bool
+	BuildAppTag           string
+	BuildAppInitMessage   string
+	BuildAppDoneMessage   string
+	BuildAppFailedMessage string
+	BuildAppBranchPrefix  string
+	BuildAppJobs          []*BuildAppJob
 
-	SetupSpinmintUpgradeTag         string
-	SetupSpinmintUpgradeMessage     string
-	SetupSpinmintUpgradeDoneMessage string
-
-	BuildMobileAppTag           string
-	BuildMobileAppInitMessage   string
-	BuildMobileAppDoneMessage   string
-	BuildMobileAppFailedMessage string
-	BuildMobileAppBranchPrefix  string
-	BuildMobileAppJobs          []*BuildMobileAppJob
+	E2EDockerRepo          string
+	E2EGitLabProject       string
+	E2EWebappRef           string
+	E2EServerRef           string
+	E2EWebappReponame      string
+	E2EServerReponame      string
+	E2EWebappStatusContext string
+	E2EServerStatusContext string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
@@ -130,42 +121,21 @@ type Config struct {
 
 	IssueLabelsToCleanUp []string
 
-	JenkinsCredentials map[string]*JenkinsCredentials
-
-	DockerRegistryURL string
-	DockerUsername    string
-	DockerPassword    string
-
 	BlockListPathsGlobal  []string
 	BlockListPathsPerRepo map[string][]string // BlockListPathsPerRepo is a per repository list of blocked files
-
-	AWSCredentials struct {
-		ID     string
-		Secret string
-		Token  string
-	}
-
-	AWSRegion        string
-	AWSImageID       string
-	AWSKeyName       string
-	AWSInstanceType  string
-	AWSHostedZoneID  string
-	AWSSecurityGroup string
-	AWSDnsSuffix     string
-	AWSSubNetID      string
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string
 
 	LogSettings struct {
-		EnableConsole   bool
-		ConsoleJSON     bool
+		AdvancedLogging mlog.LogTargetCfg
 		ConsoleLevel    string
-		EnableFile      bool
-		FileJSON        bool
 		FileLevel       string
 		FileLocation    string
-		AdvancedLogging mlog.LogTargetCfg
+		EnableConsole   bool
+		ConsoleJSON     bool
+		EnableFile      bool
+		FileJSON        bool
 	}
 
 	DaysUntilStale    int
@@ -223,20 +193,4 @@ func GetRepository(repositories []*Repository, owner, name string) (*Repository,
 	}
 
 	return nil, false
-}
-
-func (s *Server) GetAwsConfig() *aws.Config {
-	var creds *credentials.Credentials = nil
-	if s.Config.AWSCredentials.ID != "" {
-		creds = credentials.NewStaticCredentials(
-			s.Config.AWSCredentials.ID,
-			s.Config.AWSCredentials.Secret,
-			s.Config.AWSCredentials.Token,
-		)
-	}
-
-	return &aws.Config{
-		Credentials: creds,
-		Region:      &s.Config.AWSRegion,
-	}
 }

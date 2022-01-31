@@ -10,19 +10,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
 const (
-	statePending = "pending"
-	stateSuccess = "success"
-	stateError   = "error"
+	statePending  = "pending"
+	stateSuccess  = "success"
+	stateError    = "error"
+	prEventOpened = "opened"
 )
 
-func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
+func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
 		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
@@ -74,12 +75,15 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		}
 	}
 
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		return nil, err
-	}
+	// if is opened it might not have any label yet
+	if action != prEventOpened {
+		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		if err != nil {
+			return nil, err
+		}
 
-	pr.Labels = labelsToStringArray(labels)
+		pr.Labels = labelsToStringArray(labels)
+	}
 
 	if _, err := s.Store.PullRequest().Save(pr); err != nil {
 		return nil, err
@@ -196,14 +200,10 @@ func (s *Server) GetUpdateChecks(ctx context.Context, owner, repoName string, pr
 		return nil, err
 	}
 
-	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub)
+	pr, err := s.GetPullRequestFromGithub(ctx, prGitHub, "")
 	if err != nil {
 		mlog.Error("pr_error", mlog.Err(err))
 		return nil, err
-	}
-
-	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		mlog.Error(err.Error())
 	}
 
 	return pr, nil
@@ -309,9 +309,9 @@ func (s *Server) deleteRef(ctx context.Context, repoOwner string, repoName strin
 	return nil
 }
 
-func (s *Server) areChecksSuccessfulForPr(ctx context.Context, pr *model.PullRequest, org string) (bool, error) {
+func (s *Server) areChecksSuccessfulForPR(ctx context.Context, pr *model.PullRequest) (bool, error) {
 	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, org, pr.RepoName, pr.Sha, nil)
+	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, s.Config.Org, pr.RepoName, pr.Sha, nil)
 	if err != nil {
 		mlog.Err(err)
 		return false, err
@@ -331,8 +331,8 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 	return nil
 }
 
-func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string) error {
-	ticker := time.NewTicker(5 * time.Second)
+func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, t time.Duration) error {
+	ticker := time.NewTicker(t)
 	for {
 		select {
 		case <-ctx.Done():

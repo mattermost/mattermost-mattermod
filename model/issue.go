@@ -6,8 +6,8 @@ package model
 type Issue struct {
 	RepoOwner string
 	RepoName  string
-	Number    int
 	Username  string
 	State     string
 	Labels    StringArray
+	Number    int
 }

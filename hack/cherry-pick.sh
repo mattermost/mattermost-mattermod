@@ -70,6 +70,11 @@ Automated cherry pick of #${PULL}
 Cherry pick of #${PULL} on ${rel}.
 
 /cc  @${ORIGINAL_AUTHOR}
+
+\`\`\`release-note
+NONE
+\`\`\`
+
 EOF
 
 hub pull-request -F "${prtext}" -h "${GITHUB_USER}:${NEWBRANCH}" -b "${MAIN_REPO_ORG}:${rel}"

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
@@ -99,7 +99,7 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowID
 	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
 
-	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess)
+	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess, 5*time.Second)
 	if err != nil {
 		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
 		return err
@@ -217,19 +217,16 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 				}
 
 				for _, wf := range wfList.Items {
-					if wf.Name == workflowName {
-						workflowID = wf.ID
-						break
+					if wf.Name == workflowName && wf.ID == id {
+						workflowID = wf.WorkflowID
+						return workflowID, nil
 					}
-				}
-
-				if workflowID != "" {
-					return workflowID, nil
 				}
 
 				if wfList.NextPageToken == "" {
 					break
 				}
+
 				token = wfList.NextPageToken
 			}
 
@@ -250,7 +247,7 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 		case <-ctx.Done():
 			return nil, errors.New("timed out waiting for build")
 		case <-ticker.C:
-			mlog.Debug("Waiting for jobs", mlog.Int("pr", pr.Number), mlog.Int("expected", len(expectedJobNames)))
+			mlog.Debug("Waiting for jobs to complete", mlog.Int("pr", pr.Number), mlog.String("branch", branch), mlog.String("repo", pr.RepoName), mlog.Int("expected", len(expectedJobNames)))
 			var builds []*circleci.Build
 			var err error
 			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
@@ -263,6 +260,10 @@ func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org str
 				if err != nil {
 					return nil, err
 				}
+			}
+
+			for _, build := range builds {
+				mlog.Debug("Job Status", mlog.String("branch", branch), mlog.String("Jobname", build.Workflows.JobName), mlog.String("JobStatus", build.Status))
 			}
 
 			if !areAllExpectedJobs(builds, expectedJobNames) {

@@ -29,7 +29,6 @@ type SQLStore struct {
 	db            *sql.DB
 	pullRequest   PullRequestStore
 	issue         IssueStore
-	spinmint      SpinmintStore
 	SchemaVersion string
 }
 
@@ -63,7 +62,6 @@ func NewSQLStore(driverName, dataSource string) Store {
 
 	sqlStore.pullRequest = NewSQLPullRequestStore(sqlStore)
 	sqlStore.issue = NewSQLIssueStore(sqlStore)
-	sqlStore.spinmint = NewSQLSpinmintStore(sqlStore)
 
 	runMigrations(sqlStore.db)
 
@@ -81,10 +79,6 @@ func (ss *SQLStore) PullRequest() PullRequestStore {
 
 func (ss *SQLStore) Issue() IssueStore {
 	return ss.issue
-}
-
-func (ss *SQLStore) Spinmint() SpinmintStore {
-	return ss.spinmint
 }
 
 func (ss *SQLStore) DropAllTables() {

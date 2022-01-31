@@ -9,7 +9,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/go-circleci"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -188,11 +188,23 @@ func TestWaitForWorkflowID(t *testing.T) {
 				ProjectSlug: "github/mattermost/mattermod",
 			},
 		},
+		NextPageToken: "token2",
+	}
+	wfList3 := &circleci.WorkflowList{
+		Items: []circleci.WorkflowItem{
+			{
+				ID:          "pipelineID",
+				WorkflowID:  "foo",
+				Name:        "targetName",
+				ProjectSlug: "github/mattermost/mattermod",
+			},
+		},
 		NextPageToken: "",
 	}
 	circleCIService := mocks.NewMockCircleCIService(ctrl)
 	circleCIService.EXPECT().GetPipelineWorkflowWithContext(gomock.AssignableToTypeOf(ctxInterface), "pipelineID", "").Return(wfList1, nil)
 	circleCIService.EXPECT().GetPipelineWorkflowWithContext(gomock.AssignableToTypeOf(ctxInterface), "pipelineID", "token").Return(wfList2, nil)
+	circleCIService.EXPECT().GetPipelineWorkflowWithContext(gomock.AssignableToTypeOf(ctxInterface), "pipelineID", "token2").Return(wfList3, nil)
 
 	s := Server{
 		CircleCiClientV2: circleCIService,
@@ -200,5 +212,5 @@ func TestWaitForWorkflowID(t *testing.T) {
 
 	res, err := s.waitForWorkflowID(context.Background(), "pipelineID", "targetName")
 	require.NoError(t, err)
-	assert.Equal(t, "targetID", res)
+	assert.Equal(t, "foo", res)
 }

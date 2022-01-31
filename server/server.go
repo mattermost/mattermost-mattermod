@@ -20,8 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
@@ -31,6 +30,7 @@ import (
 )
 
 // Server is the mattermod server.
+// nolint:govet
 type Server struct {
 	Config             *Config
 	Store              store.Store
@@ -38,34 +38,24 @@ type Server struct {
 	CircleCiClient     CircleCIService
 	CircleCiClientV2   CircleCIService
 	OrgMembers         []string
-	Builds             buildsInterface
 	commentLock        sync.Mutex
 	StartTime          time.Time
-	awsSession         *session.Session
 	Metrics            MetricsProvider
 	commandRequests    chan *commandRequest
 	commandStopChan    chan struct{}
 	commandStoppedChan chan struct{}
+	GitLabCIClientV4   *GitLabClient
 
 	server *http.Server
 }
 
 type pingResponse struct {
-	Uptime string        `json:"uptime"`
 	Info   *version.Info `json:"info"`
+	Uptime string        `json:"uptime"`
 }
 
 const (
-	instanceIDMessage = "Instance ID: "
-	logFilename       = "mattermod.log"
-
-	// buildOverride overrides the buildsInterface of the server for development
-	// and testing.
-	buildOverride = "MATTERMOD_BUILD_OVERRIDE"
-
-	templateSpinmintLink = "SPINMINT_LINK"
-	templateInstanceID   = "INSTANCE_ID"
-	templateInternalIP   = "INTERNAL_IP"
+	logFilename = "mattermod.log"
 
 	serverRepoName = "mattermost-server"
 )
@@ -94,18 +84,9 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	awsSession, err := session.NewSession()
+	s.GitLabCIClientV4, err = NewGitLabClient(s.Config.GitLabInternalToken, s.Config.GitLabInternalURL)
 	if err != nil {
 		return nil, err
-	}
-	s.awsSession = awsSession
-
-	s.Builds = &Builds{}
-	if os.Getenv(buildOverride) != "" {
-		mlog.Warn("Using mocked build tools")
-		s.Builds = &MockedBuilds{
-			Version: os.Getenv(buildOverride),
-		}
 	}
 
 	r := mux.NewRouter()
@@ -245,7 +226,7 @@ func (s *Server) Tick() {
 			time.Sleep(200 * time.Millisecond)
 
 			for _, ghPullRequest := range ghPullRequests {
-				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest)
+				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest, "")
 				if errPR != nil {
 					mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 					s.Metrics.IncreaseCronTaskErrors("tick")

@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/sourcegraph/go-diff/diff"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -20,6 +20,12 @@ import (
 const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://developers.mattermost.com/contribute/server/style-guide/#log-levels) before merging this change."
 
 func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, diffURL string) error {
+	// Do not review this for organization members. This was in use for a while
+	// and we can assume that people in the organization should be aware of the gudieline.
+	if s.IsOrgMember(pr.Username) {
+		return nil
+	}
+
 	b, err := getRawDiff(ctx, diffURL)
 	if err != nil {
 		return fmt.Errorf("could not retrieve diff: %w", err)

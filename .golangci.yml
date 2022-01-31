@@ -10,13 +10,18 @@ linters-settings:
     simplify: true
   goimports:
     local-prefixes: github.com/mattermost/mattermod
-  golint:
-    min-confidence: 0
   govet:
     check-shadowing: true
     enable-all: true
+    disable:
+      - fieldalignment
   misspell:
     locale: US
+  gosec:
+    # To specify a set of rules to explicitly exclude.
+    # Available rules: https://github.com/securego/gosec#available-rules
+    excludes:
+      - G204
 
 linters:
   disable-all: true
@@ -28,14 +33,13 @@ linters:
     - gocritic
     - gofmt
     - goimports
-    - golint
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - misspell
     - nakedret
+    - revive
     - staticcheck
     - structcheck
     - stylecheck

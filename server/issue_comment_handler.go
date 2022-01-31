@@ -12,16 +12,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
+const (
+	commenterNoPermissions = "commenter does not have permissions"
+)
+
 type issueCommentEvent struct {
-	Action     string                     `json:"action"`
 	Comment    *github.PullRequestComment `json:"comment"`
 	Issue      *github.Issue              `json:"issue"`
 	Repository *github.Repository         `json:"repository"`
+	Action     string                     `json:"action"`
 }
 
 func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,6 +91,22 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	if ev.HasE2ETest() {
+		s.Metrics.IncreaseWebhookRequest("e2e_test")
+		if err := s.handleE2ETest(ctx, commenter, pr, ev.Comment.GetBody()); err != nil {
+			s.Metrics.IncreaseWebhookErrors("e2e_test")
+			errs = append(errs, fmt.Errorf("error e2e test: %w", err))
+		}
+	}
+
+	if ev.HasE2ECancel() {
+		s.Metrics.IncreaseWebhookRequest("e2e_cancel")
+		if err := s.handleE2ECancel(ctx, commenter, pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors("e2e_cancel")
+			errs = append(errs, fmt.Errorf("error e2e cancel: %w", err))
+		}
+	}
+
 	for _, err := range errs {
 		mlog.Error("Error handling PR comment", mlog.Err(err))
 	}
@@ -134,4 +154,14 @@ func (e *issueCommentEvent) HasAutoAssign() bool {
 // HasUpdateBranch is true if body contains "/update-branch"
 func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
+}
+
+// HasE2ETest is true if body contains "/e2e-test"
+func (e *issueCommentEvent) HasE2ETest() bool {
+	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/e2e-test")
+}
+
+// HasE2ECancel is true if body is prefixed with "/e2e-cancel"
+func (e *issueCommentEvent) HasE2ECancel() bool {
+	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
 }

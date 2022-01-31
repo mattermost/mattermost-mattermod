@@ -18,7 +18,7 @@ import (
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-github/v33/github"
+	"github.com/google/go-github/v39/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -127,7 +127,7 @@ func TestIssueEventHandler(t *testing.T) {
 	})
 
 	t.Run("Should be able to parse url", func(t *testing.T) {
-		url := "https://github.com/owner/repo/pull/1" //we are not parsing issue number
+		url := "https://github.com/owner/repo/pull/1" // we are not parsing issue number
 
 		is.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "owner", "repo", 0, nil).
 			Times(1).
@@ -238,7 +238,7 @@ func TestIssueEventHandler(t *testing.T) {
 			[]*github.IssueComment{
 				{
 					Body: &body,
-					User: &github.User{ //somebody else is commented
+					User: &github.User{ // somebody else is commented
 						Login: &login,
 					},
 				},

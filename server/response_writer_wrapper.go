@@ -12,10 +12,10 @@ import (
 
 type responseWriterWrapper struct {
 	http.ResponseWriter
-	statusCode        int
-	statusCodeWritten bool
 	hijacker          http.Hijacker
 	flusher           http.Flusher
+	statusCode        int
+	statusCodeWritten bool
 }
 
 // NewWrappedWriter creates a new http.ResponseWriter that provides

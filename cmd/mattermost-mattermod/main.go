@@ -30,11 +30,11 @@ func main() {
 	config, err := server.GetConfig(configFile)
 	if err != nil {
 		mlog.Error("unable to load server config", mlog.Err(err), mlog.String("file", configFile))
-		os.Exit(1)
+		return
 	}
 	if err = server.SetupLogging(config); err != nil {
 		mlog.Error("unable to configure logging", mlog.Err(err))
-		os.Exit(1)
+		return
 	}
 
 	// Metrics system
@@ -47,7 +47,7 @@ func main() {
 	s, err := server.New(config, metricsProvider)
 	if err != nil {
 		mlog.Error("unable to start server", mlog.Err(err))
-		os.Exit(1)
+		return
 	}
 
 	mlog.Info("Starting Mattermod Server")
@@ -67,7 +67,7 @@ func main() {
 			code = 1
 		}
 		if code != 0 {
-			os.Exit(code)
+			return
 		}
 	}()
 
