@@ -44,11 +44,7 @@ func (s *Server) handleCommandRequest(ctx context.Context, commenter, command, b
 	args := strings.Split(body[commandIndex:], " ")
 	mlog.Info("Command & Args", mlog.String("Command, ", command), mlog.String("Args", body))
 
-	if !pr.GetMerged() {
-		return nil
-	}
-
-	if len(args) < 2 {
+	if pr.GetMerged() {
 		return nil
 	}
 
@@ -58,10 +54,18 @@ func (s *Server) handleCommandRequest(ctx context.Context, commenter, command, b
 	default:
 	}
 
+	version := "0"
+	if command == CherryPick {
+		if len(args) < 2 {
+			return nil
+		}
+		version = strings.TrimSpace(args[1])
+	}
+
 	select {
 	case s.commandRequests <- &commandRequest{
 		pr:      pr,
-		version: strings.TrimSpace(args[1]),
+		version: version,
 		command: command,
 		cmdArgs: args,
 	}:

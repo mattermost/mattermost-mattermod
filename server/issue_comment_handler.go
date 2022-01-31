@@ -107,6 +107,14 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	if ev.HasGoImportsLocal() {
+		s.Metrics.IncreaseWebhookRequest(GoImportsLocal)
+		if err := s.handleCommandRequest(ctx, commenter, GoImportsLocal, ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors(GoImportsLocal)
+			errs = append(errs, fmt.Errorf("error running goimports local: %w", err))
+		}
+	}
+
 	for _, err := range errs {
 		mlog.Error("Error handling PR comment", mlog.Err(err))
 	}
@@ -164,4 +172,9 @@ func (e *issueCommentEvent) HasE2ETest() bool {
 // HasE2ECancel is true if body is prefixed with "/e2e-cancel"
 func (e *issueCommentEvent) HasE2ECancel() bool {
 	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
+}
+
+// HasGoImportsLocal is true if body is prefixed with "/goimports-local"
+func (e *issueCommentEvent) HasGoImportsLocal() bool {
+	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/goimports-local")
 }
