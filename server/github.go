@@ -340,7 +340,7 @@ func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statu
 			return ctx.Err()
 		case t := <-ticker.C:
 			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext), mlog.String("ticker", t.String()))
-			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Ref, nil)
+			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
 			if err != nil {
 				return err
 			}
