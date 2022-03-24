@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -o errexit
+set -o xtrace
 set -o pipefail
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
