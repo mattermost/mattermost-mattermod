@@ -167,7 +167,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
+		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
@@ -284,13 +284,13 @@ func TestHandleE2ETesting(t *testing.T) {
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
-		first := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
+		first := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateError),
 				Context: &s.Config.E2EWebappStatusContext,
 			},
 		}, nil, nil)
-		second := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
+		second := rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
@@ -416,7 +416,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
 		pr.FullName = organization + "/" + userHandle
 		rs.EXPECT().
-			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).
+			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).
 			Times(1).
 			Return([]*github.RepoStatus{
 				{
@@ -601,7 +601,7 @@ func TestHandleE2ETesting(t *testing.T) {
 		}
 		pr.FullName = organization + "/" + userHandle
 		rs.EXPECT().
-			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).
+			ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).
 			Times(5).
 			Return([]*github.RepoStatus{
 				{
@@ -792,7 +792,7 @@ func TestHandleE2ETesting(t *testing.T) {
 			},
 		}
 		pr.FullName = organization + "/" + userHandle
-		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Ref, nil).Times(1).Return([]*github.RepoStatus{
+		rs.EXPECT().ListStatuses(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Sha, nil).Times(1).Return([]*github.RepoStatus{
 			{
 				State:   github.String(stateSuccess),
 				Context: &s.Config.E2EWebappStatusContext,
