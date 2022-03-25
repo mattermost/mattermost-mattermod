@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -13,7 +14,8 @@ import (
 
 const (
 	e2eTestMsgCommenterPermission = "You don't have permissions to trigger this command.\n It's only available for organization members."
-	e2eTestMsgCIFailing           = "The command /e2e-test requires the build docker check to pass."
+	e2eTestMsgCIFailing           = "The command /e2e-test requires all PR checks to pass."
+	e2eTestMsgUnknownPRState      = "Failed to check whether PR checks passed. E2E testing isn't triggered. Please retry later."
 	e2eTestMsgPRInfo              = "Failed to get the PR information required to trigger testing. Please retry later."
 	e2eTestMsgUnknownTriggerRepo  = "The ability to trigger E2E testing pipelines for this repository isn't set up. \n Please contact a maintainer."
 	e2eTestMsgTrigger             = "Failed to trigger E2E testing pipeline."
@@ -32,6 +34,8 @@ func (e *E2ETestError) Error() string {
 		return "commenter does not have permissions"
 	case e2eTestMsgCIFailing:
 		return "PR checks needs to be passing"
+	case e2eTestMsgUnknownPRState:
+		return "unknown PR state"
 	case e2eTestMsgPRInfo:
 		return "could not fetch PR info"
 	case e2eTestMsgUnknownTriggerRepo:
@@ -79,11 +83,27 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	}
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
 
-	passes, err := s.waitForImageStatus(pr)
-	if !passes {
+	isCIPassing, err := s.areChecksSuccessfulForPR(ctx, pr)
+	if err != nil {
+		e2eTestErr = &E2ETestError{source: e2eTestMsgUnknownPRState}
+		return e2eTestErr
+	}
+	if !isCIPassing {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgCIFailing}
 		return e2eTestErr
 	}
+
+	ghStatusContext := ""
+	switch prRepoName {
+	case s.Config.E2EWebappReponame:
+		ghStatusContext = s.Config.E2EWebappStatusContext
+	case s.Config.E2EServerReponame:
+		ghStatusContext = s.Config.E2EServerStatusContext
+	}
+
+	ctx2, cancel := context.WithTimeout(context.Background(), defaultE2ETestTimeout*time.Second)
+	defer cancel()
+	err = s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, 30*time.Second) // 30 seconds to consider GitHub's secondary rate limit
 	if err != nil {
 		return err
 	}
@@ -230,23 +250,4 @@ func (s *Server) getBranchAndSHAWithSameName(ctx context.Context, owner string, 
 		return "", "", errors.New("unexpected failure case")
 	}
 	return ghBranch.GetName(), ghBranch.GetCommit().GetSHA(), nil
-}
-
-func (s *Server) waitForImageStatus(pr *model.PullRequest) (bool, error) {
-	ghStatusContext := ""
-	switch pr.RepoName {
-	case s.Config.E2EWebappReponame:
-		ghStatusContext = s.Config.E2EWebappStatusContext
-	case s.Config.E2EServerReponame:
-		ghStatusContext = s.Config.E2EServerStatusContext
-	}
-
-	ctx2, cancel := context.WithTimeout(context.Background(), s.Config.E2ETestDeadline)
-	defer cancel()
-	err := s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, s.Config.E2EGitHubRateLimitHack)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
