@@ -45,45 +45,45 @@ func TestHandleCherryPick(t *testing.T) {
 	t.Run("should ignore for non org members", func(t *testing.T) {
 		*msg = msgCommenterPermission
 
-		err := s.handleCherryPick(context.Background(), "non-org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "non-org-member", CherryPick, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
 	t.Run("should ignore not merged PRs", func(t *testing.T) {
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CherryPick, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 	})
 
 	t.Run("should ignore when server is closing", func(t *testing.T) {
-		s.cherryPickStopChan = make(chan struct{})
-		s.cherryPickRequests = make(chan *cherryPickRequest, 1)
+		s.commandStopChan = make(chan struct{})
+		s.commandRequests = make(chan *commandRequest, 1)
 		pr.Merged = NewBool(true)
-		close(s.cherryPickStopChan)
-		close(s.cherryPickRequests)
+		close(s.commandStopChan)
+		close(s.commandRequests)
 
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CherryPick, "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "server is closing")
 	})
 
 	t.Run("should fail on too many cherry pick tasks", func(t *testing.T) {
-		s.cherryPickStopChan = make(chan struct{})
-		s.cherryPickRequests = make(chan *cherryPickRequest, 1)
+		s.commandStopChan = make(chan struct{})
+		s.commandRequests = make(chan *commandRequest, 1)
 		pr.Merged = NewBool(true)
 
 		*msg = cherryPickScheduledMsg
 
-		err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err := s.handleCommandRequest(context.Background(), "org-member", CherryPick, "/cherry-pick release-5.28", pr)
 		require.NoError(t, err)
 
 		*msg = tooManyCherryPickMsg
 
-		err = s.handleCherryPick(context.Background(), "org-member", "/cherry-pick release-5.28", pr)
+		err = s.handleCommandRequest(context.Background(), "org-member", CherryPick, "/cherry-pick release-5.28", pr)
 		require.EqualError(t, err, "too many requests")
 	})
 
 	t.Run("should not panic on empty requests", func(t *testing.T) {
 		require.NotPanics(t, func() {
-			err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
+			err := s.handleCommandRequest(context.Background(), "org-member", CherryPick, "/cherry-pick", pr)
 			require.NoError(t, err)
 		})
 	})
@@ -97,13 +97,4 @@ func TestGetMilestone(t *testing.T) {
 	title = "v5.1.0"
 	milestone = getMilestone(title)
 	assert.Equal(t, "release-5.1", milestone)
-}
-
-func TestGetCommand(t *testing.T) {
-	raw := "PR looks good to go. /cherry-pick release-5.28"
-	command := getCommand(raw)
-	assert.Equal(t, "/cherry-pick release-5.28", command)
-
-	command = getCommand(command)
-	assert.Equal(t, "/cherry-pick release-5.28", command)
 }

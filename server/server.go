@@ -32,19 +32,19 @@ import (
 // Server is the mattermod server.
 // nolint:govet
 type Server struct {
-	Config                *Config
-	Store                 store.Store
-	GithubClient          *GithubClient
-	CircleCiClient        CircleCIService
-	CircleCiClientV2      CircleCIService
-	GitLabCIClientV4      *GitLabClient
-	OrgMembers            []string
-	commentLock           sync.Mutex
-	StartTime             time.Time
-	Metrics               MetricsProvider
-	cherryPickRequests    chan *cherryPickRequest
-	cherryPickStopChan    chan struct{}
-	cherryPickStoppedChan chan struct{}
+	Config             *Config
+	Store              store.Store
+	GithubClient       *GithubClient
+	CircleCiClient     CircleCIService
+	CircleCiClientV2   CircleCIService
+	OrgMembers         []string
+	commentLock        sync.Mutex
+	StartTime          time.Time
+	Metrics            MetricsProvider
+	commandRequests    chan *commandRequest
+	commandStopChan    chan struct{}
+	commandStoppedChan chan struct{}
+	GitLabCIClientV4   *GitLabClient
 
 	server *http.Server
 }
@@ -62,13 +62,13 @@ const (
 
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
-		Config:                config,
-		Store:                 store.NewSQLStore(config.DriverName, config.DataSource),
-		StartTime:             time.Now(),
-		Metrics:               metrics,
-		cherryPickRequests:    make(chan *cherryPickRequest, 20),
-		cherryPickStopChan:    make(chan struct{}),
-		cherryPickStoppedChan: make(chan struct{}),
+		Config:             config,
+		Store:              store.NewSQLStore(config.DriverName, config.DataSource),
+		StartTime:          time.Now(),
+		Metrics:            metrics,
+		commandRequests:    make(chan *commandRequest, 20),
+		commandStopChan:    make(chan struct{}),
+		commandStoppedChan: make(chan struct{}),
 	}
 
 	ghClient, err := NewGithubClient(s.Config.GithubAccessToken, s.Config.GitHubTokenReserve, s.Metrics)
@@ -122,12 +122,12 @@ func (s *Server) Start() {
 		os.Exit(1)
 	}()
 
-	go s.listenCherryPickRequests()
+	go s.listenCommandRequests()
 }
 
 // Stop stops a server
 func (s *Server) Stop() error {
-	s.finishCherryPickRequests()
+	s.finishCommandRequests()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

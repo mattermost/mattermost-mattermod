@@ -68,9 +68,9 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if ev.HasCherryPick() {
-		s.Metrics.IncreaseWebhookRequest("cherry_pick")
-		if err := s.handleCherryPick(ctx, commenter, ev.Comment.GetBody(), pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("cherry_pick")
+		s.Metrics.IncreaseWebhookRequest(CherryPick)
+		if err := s.handleCommandRequest(ctx, commenter, CherryPick, ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors(CherryPick)
 			errs = append(errs, fmt.Errorf("error cherry picking: %w", err))
 		}
 	}
@@ -104,6 +104,14 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		if err := s.handleE2ECancel(ctx, commenter, pr); err != nil {
 			s.Metrics.IncreaseWebhookErrors("e2e_cancel")
 			errs = append(errs, fmt.Errorf("error e2e cancel: %w", err))
+		}
+	}
+
+	if ev.HasGoImportsLocal() {
+		s.Metrics.IncreaseWebhookRequest(GoImportsLocal)
+		if err := s.handleCommandRequest(ctx, commenter, GoImportsLocal, ev.Comment.GetBody(), pr); err != nil {
+			s.Metrics.IncreaseWebhookErrors(GoImportsLocal)
+			errs = append(errs, fmt.Errorf("error running goimports local: %w", err))
 		}
 	}
 
@@ -164,4 +172,9 @@ func (e *issueCommentEvent) HasE2ETest() bool {
 // HasE2ECancel is true if body is prefixed with "/e2e-cancel"
 func (e *issueCommentEvent) HasE2ECancel() bool {
 	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
+}
+
+// HasGoImportsLocal is true if body is prefixed with "/goimports-local"
+func (e *issueCommentEvent) HasGoImportsLocal() bool {
+	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/goimports-local")
 }
