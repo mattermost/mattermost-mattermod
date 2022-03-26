@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	github "github.com/google/go-github/v39/github"
+	github "github.com/google/go-github/v43/github"
 )
 
 // MockChecksService is a mock of ChecksService interface.

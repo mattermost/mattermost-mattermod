@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v43/github"
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/require"
 

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/die-net/lrucache"
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v43/github"
 	"github.com/m4ns0ur/httpcache"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"

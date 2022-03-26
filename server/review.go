@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v43/github"
 	"github.com/sourcegraph/go-diff/diff"
 
 	"github.com/mattermost/mattermost-mattermod/model"
