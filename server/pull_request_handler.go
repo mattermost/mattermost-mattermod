@@ -193,7 +193,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Error("Could not check changes for PR", mlog.Err(err))
 	} else if changed {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
-                triggerE2ETestFromPRChange(ctx, pr, eventSender)
+                s.triggerE2ETestFromPRChange(ctx, pr, eventSender)
 	}
 }
 
@@ -518,32 +518,24 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 	return false
 }
 
-func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *model.PullRequest, reviews []*PullRequestReview) bool {
+func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *github.PullRequest, reviews []*github.PullRequestReview) bool {
 	containsE2ELabel := false
 	isPRApprovedAtLeastOnce := false
 	isPRMergeable := false
 	isPRReady := false
 	for _, label := range pr.Labels {
-		if label == s.Config.E2ETriggerLabel {
+		if *label.Name == s.Config.E2ETriggerLabel {
 			containsE2ELabel = true
 			break
 		}
 	}
 	for _, review := range reviews {
-		if review.State == "approved" {
+		if *review.State == "approved" {
 			isPRApprovedAtLeastOnce = true
 			break
 		}
 	}
-	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-        if err != nil {
-                mlog.Error("Error in getting the PR info",
-                        mlog.Int("pr", pr.Number),
-                        mlog.String("repo", pr.RepoName),
-                        mlog.Err(err))
-                return false, err
-        }
-	if ghPR.GetState() == model.StateOpen && ghPR.GetMergeableState() != "clean" {
+	if pr.GetState() == "open" && pr.GetMergeableState() != "clean" {
                 isPRMergeable = true
         }
         // TODO check, is the pipeline ready to run?
@@ -559,8 +551,22 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 	                mlog.Err(err))
 	        return err
 	}
-	if s.shouldTriggerE2ETest(ctx, pr, prReviews) {
-		err := s.handleE2ETest(ctx, eventSender, pr, nil)
+	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+        if err != nil {
+                mlog.Error("Error in getting the PR info",
+                        mlog.Int("pr", pr.Number),
+                        mlog.String("repo", pr.RepoName),
+                        mlog.Err(err))
+                return err
+        }
+	if s.shouldTriggerE2ETest(ctx, ghPR, prReviews) {
+		err := s.handleE2ETest(ctx, eventSender, pr, "")
+		if err != nil {
+			mlog.Error("Error in triggering the E2E test from PR event",
+				mlog.Int("pr", pr.Number),
+				mlog.String("repo", pr.RepoName),
+				mlog.Err(err))
+		}
 	}
 	return err
 }
