@@ -65,6 +65,7 @@
     "E2EServerReponame": "",
     "E2EWebappStatusContext": "",
     "E2EServerStatusContext": "",
+    "E2ETriggerLabel": "QA review/deferred",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",

@@ -18,14 +18,19 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
+type pullRequestEventSender struct {
+	Login string `json:"login"`
+}
+
 type pullRequestEvent struct {
-	PullRequest   *github.PullRequest `json:"pull_request"`
-	Issue         *github.Issue       `json:"issue"`
-	Label         *github.Label       `json:"label"`
-	Repo          *github.Repository  `json:"repository"`
-	RepositoryURL string              `json:"repository_url"`
-	Action        string              `json:"action"`
-	PRNumber      int                 `json:"number"`
+	PullRequest   *github.PullRequest     `json:"pull_request"`
+	Issue         *github.Issue           `json:"issue"`
+	Label         *github.Label           `json:"label"`
+	Repo          *github.Repository      `json:"repository"`
+	RepositoryURL string                  `json:"repository_url"`
+	Action        string                  `json:"action"`
+	PRNumber      int                     `json:"number"`
+	Sender        *pullRequestEventSender `json:"sender"`
 }
 
 func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +43,8 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
+	eventSender := event.Sender.Login
+	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action), mlog.String("sender", eventSender))
 
 	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest, event.Action)
 	if err != nil {
@@ -187,6 +193,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Error("Could not check changes for PR", mlog.Err(err))
 	} else if changed {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
+                triggerE2ETestFromPRChange(ctx, pr, eventSender)
 	}
 }
 
@@ -509,6 +516,53 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 		}
 	}
 	return false
+}
+
+func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *model.PullRequest, reviews []*PullRequestReview) bool {
+	containsE2ELabel := false
+	isPRApprovedAtLeastOnce := false
+	isPRMergeable := false
+	isPRReady := false
+	for _, label := range pr.Labels {
+		if label == s.Config.E2ETriggerLabel {
+			containsE2ELabel = true
+			break
+		}
+	}
+	for _, review := range reviews {
+		if review.State == "approved" {
+			isPRApprovedAtLeastOnce = true
+			break
+		}
+	}
+	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
+        if err != nil {
+                mlog.Error("Error in getting the PR info",
+                        mlog.Int("pr", pr.Number),
+                        mlog.String("repo", pr.RepoName),
+                        mlog.Err(err))
+                return false, err
+        }
+	if ghPR.GetState() == model.StateOpen && ghPR.GetMergeableState() != "clean" {
+                isPRMergeable = true
+        }
+        // TODO check, is the pipeline ready to run?
+	return containsE2ELabel && isPRApprovedAtLeastOnce && isPRMergeable && isPRReady
+}
+
+func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest, eventSender string) error {
+	prReviews, _, err := s.GithubClient.PullRequests.ListReviews(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+	if err != nil {
+	        mlog.Error("Error getting reviews for the PR",
+	                mlog.Int("pr", pr.Number),
+	                mlog.String("repo", pr.RepoName),
+	                mlog.Err(err))
+	        return err
+	}
+	if s.shouldTriggerE2ETest(ctx, pr, prReviews) {
+		err := s.handleE2ETest(ctx, eventSender, pr, nil)
+	}
+	return err
 }
 
 func (s *Server) getPRFromIssueCommentEvent(ctx context.Context, event *issueCommentEvent) (*model.PullRequest, error) {
