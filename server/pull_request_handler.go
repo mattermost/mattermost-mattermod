@@ -18,6 +18,12 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
+const (
+	// Underscores are not accepted as github usernames, so it'll never
+	// check positive during GitHub permission checks
+	pullRequestEventSenderAbsent = "_"
+)
+
 type pullRequestEventSender struct {
 	Login string `json:"login"`
 }
@@ -33,6 +39,14 @@ type pullRequestEvent struct {
 	Sender        *pullRequestEventSender `json:"sender"`
 }
 
+func (event *pullRequestEvent) GetSender() *pullRequestEventSender {
+	if event.Sender != nil {
+		return event.Sender
+	} else {
+		return &pullRequestEventSender{pullRequestEventSenderAbsent}
+	}
+}
+
 func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
 	defer cancel()
@@ -43,7 +57,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	eventSender := event.Sender.Login
+	eventSender := event.GetSender().Login
 	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action), mlog.String("sender", eventSender))
 
 	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest, event.Action)
@@ -152,6 +166,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
 		}
+                s.triggerE2ETestFromPRChange(ctx, pr, eventSender)
 	case "unlabeled":
 		if event.Label == nil {
 			mlog.Error("Unlabel event received, but label object was empty")
@@ -193,7 +208,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		mlog.Error("Could not check changes for PR", mlog.Err(err))
 	} else if changed {
 		mlog.Info("pr has changes", mlog.Int("pr", pr.Number))
-                s.triggerE2ETestFromPRChange(ctx, pr, eventSender)
 	}
 }
 
@@ -522,7 +536,6 @@ func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *github.PullReques
 	containsE2ELabel := false
 	isPRApprovedAtLeastOnce := false
 	isPRMergeable := false
-	isPRReady := false
 	for _, label := range pr.Labels {
 		if *label.Name == s.Config.E2ETriggerLabel {
 			containsE2ELabel = true
@@ -538,11 +551,21 @@ func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *github.PullReques
 	if pr.GetState() == "open" && pr.GetMergeableState() != "clean" {
                 isPRMergeable = true
         }
-        // TODO check, is the pipeline ready to run?
-	return containsE2ELabel && isPRApprovedAtLeastOnce && isPRMergeable && isPRReady
+	return containsE2ELabel && isPRApprovedAtLeastOnce && isPRMergeable
 }
 
 func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest, eventSender string) error {
+	isPRReady, err := s.areChecksSuccessfulForPR(ctx, pr)
+	if err != nil {
+		mlog.Error("Error while checking PR state",
+			mlog.Int("pr", pr.Number),
+                        mlog.String("repo", pr.RepoName),
+                        mlog.Err(err))
+		return err
+	}
+	if isPRReady == false {
+		return nil
+	}
 	prReviews, _, err := s.GithubClient.PullRequests.ListReviews(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
 	if err != nil {
 	        mlog.Error("Error getting reviews for the PR",
@@ -566,9 +589,10 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 				mlog.Int("pr", pr.Number),
 				mlog.String("repo", pr.RepoName),
 				mlog.Err(err))
+			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func (s *Server) getPRFromIssueCommentEvent(ctx context.Context, event *issueCommentEvent) (*model.PullRequest, error) {
