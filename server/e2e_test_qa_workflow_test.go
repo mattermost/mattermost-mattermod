@@ -38,6 +38,52 @@ func TestE2EQAWorkflow(t *testing.T) {
         }
 	s.Config.Org = "mattertest"
 	s.Config.E2ETriggerLabel = "QA review/deferred"
+	// Ensure that "mattermod" is not part of the Org.
+	// Needed for checking entry into the handleE2ETest function
+	s.OrgMembers = []string{}
+
+	eventAction := "labeled"
+	eventLabelShouldTrigger := s.Config.E2ETriggerLabel
+	eventLabelShouldNotTrigger := "NotTheValidLabel"
+	event := pullRequestEvent{
+	        Action: eventAction,
+		Label: &github.Label{
+			Name: &eventLabelShouldTrigger,
+		},
+	        PRNumber: 1,
+	        PullRequest: &github.PullRequest{
+	                Number: github.Int(1),
+	                Base: &github.PullRequestBranch{
+	                        Repo: &github.Repository{
+	                                Owner: &github.User{
+	                                        Login: github.String("mattertest"),
+	                                },
+	                                Name: github.String("mattermod"),
+	                        },
+	                },
+	                Head: &github.PullRequestBranch{
+	                        SHA: github.String("sha"),
+	                },
+	        },
+		Sender: &pullRequestEventSender{
+			Login: "ghUser",
+		},
+	}
+	prState := "open"
+	prMergeableState := "clean"
+	prApprovalState := "approved"
+	prApprovalReviews := []*github.PullRequestReview{
+		&github.PullRequestReview{
+                        State: &prApprovalState,
+                },
+	}
+	prGhModel := github.PullRequest{
+		Labels: []*github.Label{event.Label},
+		State: &prState,
+		MergeableState: &prMergeableState,
+	}
+	e2eTestUnauthorizedCommentBody := e2eTestMsgCommenterPermission
+	e2eTestUnauthorizedComment := &github.IssueComment{Body: &e2eTestUnauthorizedCommentBody}
 
         rs := mocks.NewMockRepositoriesService(ctrl)
         s.GithubClient.Repositories = rs
@@ -67,32 +113,6 @@ func TestE2EQAWorkflow(t *testing.T) {
         defer ts.Close()
 
         t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
-		eventAction := "labeled"
-		event := pullRequestEvent{
-		        Action: eventAction,
-			Label: &github.Label{
-				Name: &s.Config.E2ETriggerLabel,
-			},
-		        PRNumber: 1,
-		        PullRequest: &github.PullRequest{
-		                Number: github.Int(1),
-		                Base: &github.PullRequestBranch{
-		                        Repo: &github.Repository{
-		                                Owner: &github.User{
-		                                        Login: github.String("mattertest"),
-		                                },
-		                                Name: github.String("mattermod"),
-		                        },
-		                },
-		                Head: &github.PullRequestBranch{
-		                        SHA: github.String("sha"),
-		                },
-		        },
-			Sender: &pullRequestEventSender{
-				Login: "ghUser",
-			},
-		}
-
                 rs.EXPECT().
                         GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
 			AnyTimes().
@@ -112,19 +132,6 @@ func TestE2EQAWorkflow(t *testing.T) {
                         ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
                         Return([]*github.Label{}, nil, nil)
 
-		prState := "open"
-		prMergeableState := "clean"
-		prApprovalState := "approved"
-		prApprovalReviews := []*github.PullRequestReview{
-			&github.PullRequestReview{
-                                State: &prApprovalState,
-                        },
-		}
-		prGhModel := github.PullRequest{
-			Labels: []*github.Label{event.Label},
-			State: &prState,
-			MergeableState: &prMergeableState,
-		}
 		prs.EXPECT().
 			ListReviews(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
 			Return(prApprovalReviews, nil, nil)
@@ -149,19 +156,15 @@ func TestE2EQAWorkflow(t *testing.T) {
                 prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
                         Return(nil, nil)
 
-                b, err := json.Marshal(event)
-                require.NoError(t, err)
-
-		// To verify that we enter the s.handleE2ETest function but not run it,
-		// we simulate a situation where the triggerer is not allowed to make it run,
-		// and triggers the github.IssueComment function to handle that error instead.
-		s.OrgMembers = []string{}
-		msg := e2eTestMsgCommenterPermission
-		comment := &github.IssueComment{Body: &msg}
+		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
+		// The following checks that we actually enter the handleE2ETest function
                 is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, comment).
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
 			Times(1).
 			Return(nil, nil, nil)
+
+                b, err := json.Marshal(event)
+                require.NoError(t, err)
 
                 req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
                 require.NoError(t, err)
@@ -171,32 +174,7 @@ func TestE2EQAWorkflow(t *testing.T) {
                 require.Equal(t, http.StatusOK, resp.StatusCode)
         })
         t.Run("Event has the wrong label, should not trigger E2E test", func(t *testing.T) {
-		eventAction := "labeled"
-		eventLabel := "NotTheQAOne"
-		event := pullRequestEvent{
-		        Action: eventAction,
-			Label: &github.Label{
-				Name: &eventLabel,
-			},
-		        PRNumber: 1,
-		        PullRequest: &github.PullRequest{
-		                Number: github.Int(1),
-		                Base: &github.PullRequestBranch{
-		                        Repo: &github.Repository{
-		                                Owner: &github.User{
-		                                        Login: github.String("mattertest"),
-		                                },
-		                                Name: github.String("mattermod"),
-		                        },
-		                },
-		                Head: &github.PullRequestBranch{
-		                        SHA: github.String("sha"),
-		                },
-		        },
-			Sender: &pullRequestEventSender{
-				Login: "ghUser",
-			},
-		}
+		event.Label.Name = &eventLabelShouldNotTrigger
 
                 rs.EXPECT().
                         GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
@@ -217,19 +195,6 @@ func TestE2EQAWorkflow(t *testing.T) {
                         ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
                         Return([]*github.Label{}, nil, nil)
 
-		prState := "open"
-		prMergeableState := "clean"
-		prApprovalState := "approved"
-		prApprovalReviews := []*github.PullRequestReview{
-			&github.PullRequestReview{
-                                State: &prApprovalState,
-                        },
-		}
-		prGhModel := github.PullRequest{
-			Labels: []*github.Label{event.Label},
-			State: &prState,
-			MergeableState: &prMergeableState,
-		}
 		prs.EXPECT().
 			ListReviews(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
 			Return(prApprovalReviews, nil, nil)
@@ -254,16 +219,14 @@ func TestE2EQAWorkflow(t *testing.T) {
                 prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
                         Return(nil, nil)
 
+		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
+		// The following verifies that we don't enter the handleE2ETest function
+                is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
+			Times(0)
+
                 b, err := json.Marshal(event)
                 require.NoError(t, err)
-
-		s.OrgMembers = []string{}
-		msg := e2eTestMsgCommenterPermission
-		comment := &github.IssueComment{Body: &msg}
-                is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, comment).
-			Times(0).
-			Return(nil, nil, nil)
 
                 req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
                 require.NoError(t, err)
