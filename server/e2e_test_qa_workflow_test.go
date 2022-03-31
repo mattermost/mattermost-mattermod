@@ -112,7 +112,7 @@ func TestE2EQAWorkflow(t *testing.T) {
         ts := httptest.NewServer(http.HandlerFunc(s.pullRequestEventHandler))
         defer ts.Close()
 
-        t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
+	setUpCommonMocks := func() {
                 rs.EXPECT().
                         GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
 			AnyTimes().
@@ -155,6 +155,10 @@ func TestE2EQAWorkflow(t *testing.T) {
 
                 prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
                         Return(nil, nil)
+	}
+
+        t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
+		setUpCommonMocks()
 
 		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
 		// The following checks that we actually enter the handleE2ETest function
@@ -176,48 +180,7 @@ func TestE2EQAWorkflow(t *testing.T) {
         t.Run("Event has the wrong label, should not trigger E2E test", func(t *testing.T) {
 		event.Label.Name = &eventLabelShouldNotTrigger
 
-                rs.EXPECT().
-                        GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
-			AnyTimes().
-                        Return(&github.CombinedStatus{
-                                Statuses: []*github.RepoStatus{
-                                        {
-                                                Context: github.String("something"),
-                                        },
-                                },
-                        }, nil, nil)
-
-                cs.EXPECT().
-                        ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
-                        Return(&github.ListCheckRunsResults{}, nil, nil)
-
-                is.EXPECT().
-                        ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
-                        Return([]*github.Label{}, nil, nil)
-
-		prs.EXPECT().
-			ListReviews(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
-			Return(prApprovalReviews, nil, nil)
-		prs.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1).
-			Return(&prGhModel, nil, nil)
-
-                prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
-                        Return(nil, nil)
-
-                prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
-                        Return(&model.PullRequest{
-                        RepoOwner:           "mattertest",
-                        RepoName:            "mattermod",
-                        CreatedAt:           time.Time{},
-                        Labels:              []string{"old-label"},
-                        Sha:                 "sha",
-                        MaintainerCanModify: NewBool(false),
-                        Merged:              NewBool(false),
-                }, nil)
-
-                prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
-                        Return(nil, nil)
+		setUpCommonMocks()
 
 		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
 		// The following verifies that we don't enter the handleE2ETest function
