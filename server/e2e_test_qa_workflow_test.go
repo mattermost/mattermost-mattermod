@@ -152,6 +152,17 @@ func TestE2EQAWorkflow(t *testing.T) {
                 b, err := json.Marshal(event)
                 require.NoError(t, err)
 
+		// To verify that we enter the s.handleE2ETest function but not run it,
+		// we simulate a situation where the triggerer is not allowed to make it run,
+		// and triggers the github.IssueComment function to handle that error instead.
+		s.OrgMembers = []string{}
+		msg := e2eTestMsgCommenterPermission
+		comment := &github.IssueComment{Body: &msg}
+                is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, comment).
+			Times(1).
+			Return(nil, nil, nil)
+
                 req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
                 require.NoError(t, err)
                 resp, err := http.DefaultClient.Do(req)

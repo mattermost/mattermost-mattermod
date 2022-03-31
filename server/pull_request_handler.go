@@ -548,13 +548,16 @@ func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *github.PullReques
 			break
 		}
 	}
-	if pr.GetState() == "open" && pr.GetMergeableState() != "clean" {
+	if pr.GetState() == "open" && pr.GetMergeableState() == "clean" {
                 isPRMergeable = true
         }
 	return containsE2ELabel && isPRApprovedAtLeastOnce && isPRMergeable
 }
 
 func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest, eventSender string) error {
+	mlog.Debug("Checking if the event should trigger E2E test",
+		mlog.Int("pr", pr.Number),
+                mlog.String("repo", pr.RepoName))
 	isPRReady, err := s.areChecksSuccessfulForPR(ctx, pr)
 	if err != nil {
 		mlog.Error("Error while checking PR state",
@@ -583,6 +586,9 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
                 return err
         }
 	if s.shouldTriggerE2ETest(ctx, ghPR, prReviews) {
+		mlog.Debug("Determined that the event should trigger the E2E test",
+			mlog.Int("pr", pr.Number),
+		        mlog.String("repo", pr.RepoName))
 		err := s.handleE2ETest(ctx, eventSender, pr, "")
 		if err != nil {
 			mlog.Error("Error in triggering the E2E test from PR event",
