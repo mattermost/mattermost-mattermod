@@ -48,7 +48,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	event := pullRequestEvent{
 	        Action: eventAction,
 		Label: &github.Label{
-			Name: &eventLabelShouldTrigger,
+			Name: nil, // changes across tests, must be filled by every test case
 		},
 	        PRNumber: 1,
 	        PullRequest: &github.PullRequest{
@@ -71,6 +71,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	}
 	prState := "open"
 	prMergeableState := "clean"
+	prNotMergeableState := "unclean"
 	prApprovalState := "approved"
 	prApprovalReviews := []*github.PullRequestReview{
 		&github.PullRequestReview{
@@ -80,7 +81,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	prGhModel := github.PullRequest{
 		Labels: []*github.Label{event.Label},
 		State: &prState,
-		MergeableState: &prMergeableState,
+		MergeableState: nil, // changes across tests, must be filled by every test case
 	}
 	e2eTestUnauthorizedCommentBody := e2eTestMsgCommenterPermission
 	e2eTestUnauthorizedComment := &github.IssueComment{Body: &e2eTestUnauthorizedCommentBody}
@@ -169,6 +170,9 @@ func TestE2EQAWorkflow(t *testing.T) {
 	}
 
         t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
+		event.Label.Name = &eventLabelShouldTrigger
+		prGhModel.MergeableState = &prMergeableState
+
 		setUpCommonMocks()
 
 		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
@@ -182,14 +186,25 @@ func TestE2EQAWorkflow(t *testing.T) {
         })
         t.Run("Event has the wrong label, should not trigger E2E test", func(t *testing.T) {
 		event.Label.Name = &eventLabelShouldNotTrigger
+		prGhModel.MergeableState = &prMergeableState
 
 		setUpCommonMocks()
 
-		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
-		// The following verifies that we don't enter the handleE2ETest function
                 is.EXPECT().
 			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
-			Times(0)
+			Times(0) // handleE2ETest function did not run
+
+		runTestEvent()
+        })
+        t.Run("PR is not mergeable, should not trigger E2E test", func(t *testing.T) {
+		event.Label.Name = &eventLabelShouldTrigger
+		prGhModel.MergeableState = &prNotMergeableState
+
+		setUpCommonMocks()
+
+                is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
+			Times(0) // handleE2ETest function did not run
 
 		runTestEvent()
         })

@@ -17,7 +17,7 @@ LDFLAGS +="
 
 GO ?= $(shell command -v go 2> /dev/null)
 
-PACKAGES?=$(shell go list ./...)
+PACKAGES=$(shell go list ./...)
 GOBIN=$(PWD)/bin
 PATH=$(shell printenv PATH):$(GOBIN)
 
