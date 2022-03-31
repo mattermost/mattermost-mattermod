@@ -156,6 +156,17 @@ func TestE2EQAWorkflow(t *testing.T) {
                 prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
                         Return(nil, nil)
 	}
+	runTestEvent := func() {
+                b, err := json.Marshal(event)
+                require.NoError(t, err)
+
+                req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+                require.NoError(t, err)
+                resp, err := http.DefaultClient.Do(req)
+                require.NoError(t, err)
+                defer resp.Body.Close()
+                require.Equal(t, http.StatusOK, resp.StatusCode)
+	}
 
         t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
 		setUpCommonMocks()
@@ -167,15 +178,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 			Times(1).
 			Return(nil, nil, nil)
 
-                b, err := json.Marshal(event)
-                require.NoError(t, err)
-
-                req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
-                require.NoError(t, err)
-                resp, err := http.DefaultClient.Do(req)
-                require.NoError(t, err)
-                defer resp.Body.Close()
-                require.Equal(t, http.StatusOK, resp.StatusCode)
+		runTestEvent()
         })
         t.Run("Event has the wrong label, should not trigger E2E test", func(t *testing.T) {
 		event.Label.Name = &eventLabelShouldNotTrigger
@@ -188,14 +191,6 @@ func TestE2EQAWorkflow(t *testing.T) {
 			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
 			Times(0)
 
-                b, err := json.Marshal(event)
-                require.NoError(t, err)
-
-                req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
-                require.NoError(t, err)
-                resp, err := http.DefaultClient.Do(req)
-                require.NoError(t, err)
-                defer resp.Body.Close()
-                require.Equal(t, http.StatusOK, resp.StatusCode)
+		runTestEvent()
         })
 }
