@@ -39,6 +39,26 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if ev.HasCloudFF() && ev.Action == "created" {
+		issue, err2 := s.GetIssueFromGithub(ctx, ev.Issue)
+		if err2 != nil {
+			mlog.Error("could not get the issue from GitHub", mlog.Err(err2))
+			http.Error(w, "could not get the issue from GitHub", http.StatusInternalServerError)
+			return
+		}
+		if err = s.performFastForwardProcess(ctx, issue, ev.Comment.GetBody()); err != nil {
+			mlog.Error("error while fast forwarding process", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+			_, _, err = s.GithubClient.Issues.CreateComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{
+				Body: github.String("Could not complete the fast-forward process w/o errors. Please perform a manual check on repositores."),
+			})
+			if err != nil {
+				mlog.Error("error creating comment", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+				return
+			}
+		}
+		return
+	}
+
 	// We ignore comments from issues.
 	if !ev.Issue.IsPullRequest() {
 		return

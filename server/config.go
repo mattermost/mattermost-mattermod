@@ -73,7 +73,8 @@ type Config struct {
 	DriverName string
 	DataSource string
 
-	Repositories []*Repository
+	Repositories      []*Repository
+	CloudRepositories []string
 
 	BlockPRMergeLabels []string
 	AutoPRMergeLabel   string
