@@ -46,7 +46,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 			http.Error(w, "could not get the issue from GitHub", http.StatusInternalServerError)
 			return
 		}
-		if err = s.performFastForwardProcess(ctx, issue, ev.Comment.GetBody()); err != nil {
+		if err = s.performFastForwardProcess(ctx, issue, ev.Comment.GetBody(), *ev.Comment.GetUser().Login); err != nil {
 			mlog.Error("error while fast forwarding process", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
 			_, _, err = s.GithubClient.Issues.CreateComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{
 				Body: github.String("Could not complete the fast-forward process w/o errors. Please perform a manual check on repositores."),

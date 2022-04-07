@@ -21,6 +21,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	defer ctrl.Finish()
 
 	cloudRepo1 := "mattermost-server"
+	member := "member-a"
 
 	s := &Server{
 		GithubClient: &GithubClient{},
@@ -35,6 +36,9 @@ func TestPerformFastForwardProcess(t *testing.T) {
 			Org:               "mattermosttest",
 			CloudRepositories: []string{cloudRepo1},
 		},
+		OrgMembers: []string{
+			member,
+		},
 	}
 
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -46,7 +50,18 @@ func TestPerformFastForwardProcess(t *testing.T) {
 
 		ctx := context.Background()
 
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff")
+		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
+		require.NoError(t, err)
+	})
+
+	t.Run("Not org member, do nothing and return", func(t *testing.T) {
+		issue := &model.Issue{
+			State: model.StateClosed,
+		}
+
+		ctx := context.Background()
+
+		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", "contributor-a")
 		require.NoError(t, err)
 	})
 
@@ -62,7 +77,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		s.GithubClient.Issues = is
 
 		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff")
+		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
 		require.NoError(t, err)
 	})
 
@@ -94,7 +109,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		s.GithubClient.Issues = is
 
 		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05")
+		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", member)
 		require.NoError(t, err)
 	})
 
@@ -136,7 +151,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		s.GithubClient.Issues = is
 
 		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05")
+		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", member)
 		require.NoError(t, err)
 	})
 }

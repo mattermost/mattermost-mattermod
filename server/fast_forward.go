@@ -25,13 +25,13 @@ func (e *issueCommentEvent) HasCloudFF() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/cloud-ff")
 }
 
-func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Issue, comment string) error {
+func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Issue, comment, user string) error {
 	if issue.State == model.StateClosed || issue.RepoName != processRepo { // we will perform this only on mm-server issues
 		return nil
 	}
 
-	// Don't apply label if the contributors is a core committer
-	if s.IsOrgMember(issue.Username) {
+	// Don't start process if the user is not a core committer
+	if !s.IsOrgMember(user) {
 		return nil
 	}
 
