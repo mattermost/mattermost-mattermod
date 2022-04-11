@@ -29,6 +29,7 @@ type SQLStore struct {
 	db            *sql.DB
 	pullRequest   PullRequestStore
 	issue         IssueStore
+	lock          LockStore
 	SchemaVersion string
 }
 
@@ -57,15 +58,19 @@ func initConnection(driverName, dataSource string) *SQLStore {
 	return sqlStore
 }
 
-func NewSQLStore(driverName, dataSource string) Store {
+func NewSQLStore(driverName, dataSource string) (Store, error) {
 	sqlStore := initConnection(driverName, dataSource)
 
 	sqlStore.pullRequest = NewSQLPullRequestStore(sqlStore)
 	sqlStore.issue = NewSQLIssueStore(sqlStore)
-
+	var err error
+	sqlStore.lock, err = NewMutexStore("mattermod-lock-key", sqlStore.db)
+	if err != nil {
+		return nil, err
+	}
 	runMigrations(sqlStore.db)
 
-	return sqlStore
+	return sqlStore, nil
 }
 
 func (ss *SQLStore) Close() {
@@ -79,6 +84,10 @@ func (ss *SQLStore) PullRequest() PullRequestStore {
 
 func (ss *SQLStore) Issue() IssueStore {
 	return ss.issue
+}
+
+func (ss *SQLStore) Mutex() LockStore {
+	return ss.lock
 }
 
 func (ss *SQLStore) DropAllTables() {

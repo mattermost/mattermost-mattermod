@@ -6,13 +6,17 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
+	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,8 +44,19 @@ func TestPerformFastForwardProcess(t *testing.T) {
 			member,
 		},
 	}
-
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+
+	lockStoreMock := stmock.NewMockLockStore(ctrl)
+	lockStoreMock.EXPECT().Lock(context.Background()).Return(nil).AnyTimes()
+	lockStoreMock.EXPECT().Unlock().Return(nil).AnyTimes()
+
+	ss := stmock.NewMockStore(ctrl)
+	ss.EXPECT().
+		Mutex().
+		Return(lockStoreMock).
+		AnyTimes()
+
+	s.Store = ss
 
 	t.Run("Closed issue, do nothing and return", func(t *testing.T) {
 		issue := &model.Issue{
@@ -50,7 +65,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 
 		ctx := context.Background()
 
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
+		_, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
 		require.NoError(t, err)
 	})
 
@@ -61,23 +76,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 
 		ctx := context.Background()
 
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", "contributor-a")
-		require.NoError(t, err)
-	})
-
-	t.Run("Not enough args, don't return error but add a comment", func(t *testing.T) {
-		issue := &model.Issue{
-			State:     model.StateOpen,
-			RepoName:  "mattermost-server",
-			RepoOwner: "mattermosttest",
-		}
-		is := mocks.NewMockIssuesService(ctrl)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, gomock.AssignableToTypeOf(reflect.TypeOf(&github.IssueComment{}))).
-			Times(1).Return(nil, nil, nil)
-		s.GithubClient.Issues = is
-
-		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
+		_, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", "contributor-a")
 		require.NoError(t, err)
 	})
 
@@ -88,6 +87,10 @@ func TestPerformFastForwardProcess(t *testing.T) {
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
+		s.GithubClient.Git = gs
+		gs.EXPECT().ListMatchingRefs(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.ReferenceListOptions{
+			Ref: cloudBranchName,
+		}).Times(1).Return(nil, nil, nil)
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, nil, errors.New("some-error"))
 		gs.EXPECT().DeleteRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, errors.New("some-error"))
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
@@ -101,36 +104,96 @@ func TestPerformFastForwardProcess(t *testing.T) {
 				SHA: github.String("some-random-sha"),
 			},
 		}).Times(1).Return(nil, nil, nil)
-		s.GithubClient.Git = gs
-
-		is := mocks.NewMockIssuesService(ctrl)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, gomock.AssignableToTypeOf(reflect.TypeOf(&github.IssueComment{}))).
-			Times(1).Return(nil, nil, nil)
-		s.GithubClient.Issues = is
 
 		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", member)
+		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
 		require.NoError(t, err)
+		require.Len(t, res.Backup, 0)
+		require.Len(t, res.FastForwarded, 1)
 	})
 
-	t.Run("Cloud branch do exist, will create the backup but and going to finish fast forward process", func(t *testing.T) {
+	t.Run("Cloud branch do exist, will not create the backup and skip", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
 			RepoName:  "mattermost-server",
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
+		s.GithubClient.Git = gs
+		gs.EXPECT().ListMatchingRefs(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.ReferenceListOptions{
+			Ref: cloudBranchName,
+		}).Times(1).Return([]*github.Reference{
+			{
+				Ref: github.String("heads/cloud-" + time.Now().Format("2006-01-02") + "-backup"),
+				Object: &github.GitObject{
+					SHA: github.String("some-random-sha"),
+				},
+			},
+		}, nil, nil)
+		now := time.Now()
+		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
+			Author: &github.CommitAuthor{
+				Date: &now,
+			},
+		}, nil, nil)
+
+		ctx := context.Background()
+		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
+		require.NoError(t, err)
+		require.Len(t, res.Backup, 0)
+		require.Len(t, res.Skipped, 1)
+		require.Len(t, res.FastForwarded, 0)
+	})
+
+	t.Run("Cloud branch do exist, force flag provided will create the backup and fast forward", func(t *testing.T) {
+		issue := &model.Issue{
+			State:     model.StateOpen,
+			RepoName:  "mattermost-server",
+			RepoOwner: "mattermosttest",
+		}
+		gs := mocks.NewMockGitService(ctrl)
+		s.GithubClient.Git = gs
+		gs.EXPECT().ListMatchingRefs(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.ReferenceListOptions{
+			Ref: cloudBranchName,
+		}).Times(1).Return([]*github.Reference{
+			{
+				Ref: github.String("heads/cloud-" + time.Now().Format("2006-01-02") + "-backup"),
+				Object: &github.GitObject{
+					SHA: github.String("some-random-sha"),
+				},
+			},
+		}, nil, nil)
+		now := time.Now()
+		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
+			Author: &github.CommitAuthor{
+				Date: &now,
+			},
+		}, nil, nil)
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
 			},
 		}, nil, nil)
 		gs.EXPECT().CreateRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.Reference{
-			Ref: github.String(cloudBranchName + "-2022-04-05-backup"),
+			Ref: github.String(cloudBranchName + "-" + time.Now().Format("2006-01-02") + "-backup"),
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
 			},
-		}).Times(1).Return(nil, nil, nil)
+		}).Times(1).Return(nil, &github.Response{Response: &http.Response{
+			StatusCode: http.StatusUnprocessableEntity,
+		}}, fmt.Errorf("some-error"))
+		gs.EXPECT().DeleteRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName+"-"+time.Now().Format("2006-01-02")+"-backup").Times(1).Return(nil, nil)
+		gs.EXPECT().CreateRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.Reference{
+			Ref: github.String(cloudBranchName + "-" + time.Now().Format("2006-01-02") + "-backup"),
+			Object: &github.GitObject{
+				SHA: github.String("some-random-sha"),
+			},
+		}).Times(1).Return(&github.Reference{
+			Ref: github.String(cloudBranchName + "-" + time.Now().Format("2006-01-02") + "-backup"),
+			Object: &github.GitObject{
+				SHA: github.String("some-random-sha"),
+			},
+		}, nil, nil)
 		gs.EXPECT().DeleteRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, nil)
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
@@ -143,15 +206,12 @@ func TestPerformFastForwardProcess(t *testing.T) {
 				SHA: github.String("some-random-sha"),
 			},
 		}).Times(1).Return(nil, nil, nil)
-		s.GithubClient.Git = gs
-
-		is := mocks.NewMockIssuesService(ctrl)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, gomock.AssignableToTypeOf(reflect.TypeOf(&github.IssueComment{}))).
-			Times(1).Return(nil, nil, nil)
-		s.GithubClient.Issues = is
 
 		ctx := context.Background()
-		err := s.performFastForwardProcess(ctx, issue, "/cloud-ff 2022-04-05", member)
+		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff --force", member)
 		require.NoError(t, err)
+		require.Len(t, res.Backup, 1)
+		require.Len(t, res.Skipped, 0)
+		require.Len(t, res.FastForwarded, 1)
 	})
 }
