@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -71,6 +72,20 @@ func (m *MockStore) Issue() store.IssueStore {
 func (mr *MockStoreMockRecorder) Issue() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Issue", reflect.TypeOf((*MockStore)(nil).Issue))
+}
+
+// Mutex mocks base method.
+func (m *MockStore) Mutex() store.LockStore {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Mutex")
+	ret0, _ := ret[0].(store.LockStore)
+	return ret0
+}
+
+// Mutex indicates an expected call of Mutex.
+func (mr *MockStoreMockRecorder) Mutex() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Mutex", reflect.TypeOf((*MockStore)(nil).Mutex))
 }
 
 // PullRequest mocks base method.
@@ -206,4 +221,55 @@ func (m *MockIssueStore) Save(issue *model.Issue) (*model.Issue, error) {
 func (mr *MockIssueStoreMockRecorder) Save(issue interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockIssueStore)(nil).Save), issue)
+}
+
+// MockLockStore is a mock of LockStore interface.
+type MockLockStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockLockStoreMockRecorder
+}
+
+// MockLockStoreMockRecorder is the mock recorder for MockLockStore.
+type MockLockStoreMockRecorder struct {
+	mock *MockLockStore
+}
+
+// NewMockLockStore creates a new mock instance.
+func NewMockLockStore(ctrl *gomock.Controller) *MockLockStore {
+	mock := &MockLockStore{ctrl: ctrl}
+	mock.recorder = &MockLockStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockLockStore) EXPECT() *MockLockStoreMockRecorder {
+	return m.recorder
+}
+
+// Lock mocks base method.
+func (m *MockLockStore) Lock(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Lock", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Lock indicates an expected call of Lock.
+func (mr *MockLockStoreMockRecorder) Lock(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Lock", reflect.TypeOf((*MockLockStore)(nil).Lock), ctx)
+}
+
+// Unlock mocks base method.
+func (m *MockLockStore) Unlock() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unlock")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Unlock indicates an expected call of Unlock.
+func (mr *MockLockStoreMockRecorder) Unlock() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unlock", reflect.TypeOf((*MockLockStore)(nil).Unlock))
 }

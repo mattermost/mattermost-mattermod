@@ -286,6 +286,22 @@ func (mr *MockGitServiceMockRecorder) DeleteRef(ctx, owner, repo, ref interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRef", reflect.TypeOf((*MockGitService)(nil).DeleteRef), ctx, owner, repo, ref)
 }
 
+// GetCommit mocks base method.
+func (m *MockGitService) GetCommit(ctx context.Context, owner, repo, ref string) (*github.Commit, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommit", ctx, owner, repo, ref)
+	ret0, _ := ret[0].(*github.Commit)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetCommit indicates an expected call of GetCommit.
+func (mr *MockGitServiceMockRecorder) GetCommit(ctx, owner, repo, ref interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommit", reflect.TypeOf((*MockGitService)(nil).GetCommit), ctx, owner, repo, ref)
+}
+
 // GetRef mocks base method.
 func (m *MockGitService) GetRef(ctx context.Context, owner, repo, ref string) (*github.Reference, *github.Response, error) {
 	m.ctrl.T.Helper()
@@ -300,6 +316,22 @@ func (m *MockGitService) GetRef(ctx context.Context, owner, repo, ref string) (*
 func (mr *MockGitServiceMockRecorder) GetRef(ctx, owner, repo, ref interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRef", reflect.TypeOf((*MockGitService)(nil).GetRef), ctx, owner, repo, ref)
+}
+
+// ListMatchingRefs mocks base method.
+func (m *MockGitService) ListMatchingRefs(ctx context.Context, owner, repo string, opts *github.ReferenceListOptions) ([]*github.Reference, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMatchingRefs", ctx, owner, repo, opts)
+	ret0, _ := ret[0].([]*github.Reference)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListMatchingRefs indicates an expected call of ListMatchingRefs.
+func (mr *MockGitServiceMockRecorder) ListMatchingRefs(ctx, owner, repo, opts interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchingRefs", reflect.TypeOf((*MockGitService)(nil).ListMatchingRefs), ctx, owner, repo, opts)
 }
 
 // MockOrganizationsService is a mock of OrganizationsService interface.
