@@ -2,210 +2,236 @@ package server
 
 import (
 	"bytes"
-        "context"
+	"context"
 	"encoding/json"
-        "net/http"
-        "net/http/httptest"
-        "reflect"
-        "testing"
+	"net/http"
+	"net/http/httptest"
+	"reflect"
+	"testing"
 	"time"
 
-        "github.com/golang/mock/gomock"
-        "github.com/google/go-github/v39/github"
-        "github.com/stretchr/testify/require"
+	"github.com/mattermost/mattermost-mattermod/model"
+	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
-        "github.com/mattermost/mattermost-mattermod/model"
-        "github.com/mattermost/mattermost-mattermod/server/mocks"
-        stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
+	"github.com/golang/mock/gomock"
+	"github.com/google/go-github/v39/github"
+	"github.com/stretchr/testify/require"
 
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 )
 
 func TestE2EQAWorkflow(t *testing.T) {
-        ctrl := gomock.NewController(t)
-        defer ctrl.Finish()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-        s := &Server{
-                GithubClient: &GithubClient{},
-                Config: &Config{
-                        Repositories: []*Repository{
-                                {
-                                        Name:               "mattermod",
-                                        Owner:              "mattertest",
-                                        BuildStatusContext: "something",
-                                },
-                        },
-                },
-        }
-	s.Config.Org = "mattertest"
-	s.Config.E2ETriggerLabel = "QA review/deferred"
-	// Ensure that "mattermod" is not part of the Org.
-	// Needed for checking entry into the handleE2ETest function
-	s.OrgMembers = []string{}
+	repoOwner := "mattertest"
+	repo := "mattermost-webapp"
+	sha := "sha"
+	s := &Server{
+		GithubClient: &GithubClient{},
+		Config: &Config{
+			Repositories: []*Repository{
+				{
+					Name:               repo,
+					Owner:              repoOwner,
+					BuildStatusContext: "something",
+				},
+			},
+			Org:               repoOwner,
+			E2ETriggerLabel:   "QA review/deferred",
+			E2EWebappReponame: repo,
+			E2EServerReponame: repo,
+		},
+	}
+	s.OrgMembers = make([]string, 1)
+	allowedUser := "mattermod"
+	s.OrgMembers[0] = allowedUser
 
 	eventAction := "labeled"
-	eventLabelShouldTrigger := s.Config.E2ETriggerLabel
-	eventLabelShouldNotTrigger := "NotTheValidLabel"
 	event := pullRequestEvent{
-	        Action: eventAction,
-		Label: &github.Label{
-			Name: nil, // changes across tests, must be filled by every test case
-		},
-	        PRNumber: 1,
-	        PullRequest: &github.PullRequest{
-	                Number: github.Int(1),
-	                Base: &github.PullRequestBranch{
-	                        Repo: &github.Repository{
-	                                Owner: &github.User{
-	                                        Login: github.String("mattertest"),
-	                                },
-	                                Name: github.String("mattermod"),
-	                        },
-	                },
-	                Head: &github.PullRequestBranch{
-	                        SHA: github.String("sha"),
-	                },
-	        },
-		Sender: &pullRequestEventSender{
-			Login: "ghUser",
+		Action:   eventAction,
+		Label:    &github.Label{},
+		PRNumber: 1,
+		PullRequest: &github.PullRequest{
+			Number: github.Int(1),
+			Base: &github.PullRequestBranch{
+				Repo: &github.Repository{
+					Owner: &github.User{
+						Login: github.String(repoOwner),
+					},
+					Name: github.String(repo),
+				},
+			},
+			Head: &github.PullRequestBranch{
+				SHA: github.String(sha),
+			},
 		},
 	}
 	prState := "open"
-	prMergeableState := "clean"
-	prNotMergeableState := "unclean"
-	prApprovalState := "approved"
-	prApprovalReviews := []*github.PullRequestReview{
-		&github.PullRequestReview{
-                        State: &prApprovalState,
-                },
-	}
-	prGhModel := github.PullRequest{
+	prGhModel := &github.PullRequest{
 		Labels: []*github.Label{event.Label},
-		State: &prState,
-		MergeableState: nil, // changes across tests, must be filled by every test case
+		State:  &prState,
 	}
-	e2eTestUnauthorizedCommentBody := e2eTestMsgCommenterPermission
-	e2eTestUnauthorizedComment := &github.IssueComment{Body: &e2eTestUnauthorizedCommentBody}
 
-        rs := mocks.NewMockRepositoriesService(ctrl)
-        s.GithubClient.Repositories = rs
+	msg := new(string)
+	comment := &github.IssueComment{Body: msg}
 
-        cs := mocks.NewMockChecksService(ctrl)
-        s.GithubClient.Checks = cs
+	rs := mocks.NewMockRepositoriesService(ctrl)
+	s.GithubClient.Repositories = rs
 
-        is := mocks.NewMockIssuesService(ctrl)
-        s.GithubClient.Issues = is
+	cs := mocks.NewMockChecksService(ctrl)
+	s.GithubClient.Checks = cs
 
-        prs := mocks.NewMockPullRequestsService(ctrl)
-        s.GithubClient.PullRequests = prs
+	is := mocks.NewMockIssuesService(ctrl)
+	s.GithubClient.Issues = is
 
-        ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	prs := mocks.NewMockPullRequestsService(ctrl)
+	s.GithubClient.PullRequests = prs
 
-        prStoreMock := stmock.NewMockPullRequestStore(ctrl)
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
 
-        ss := stmock.NewMockStore(ctrl)
-        ss.EXPECT().
-                PullRequest().
-                Return(prStoreMock).
-                AnyTimes()
+	prStoreMock := stmock.NewMockPullRequestStore(ctrl)
 
-        s.Store = ss
+	ss := stmock.NewMockStore(ctrl)
+	ss.EXPECT().
+		PullRequest().
+		Return(prStoreMock).
+		AnyTimes()
 
-        ts := httptest.NewServer(http.HandlerFunc(s.pullRequestEventHandler))
-        defer ts.Close()
+	s.Store = ss
+
+	ts := httptest.NewServer(http.HandlerFunc(s.pullRequestEventHandler))
+	defer ts.Close()
 
 	setUpCommonMocks := func() {
-                rs.EXPECT().
-                        GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, sha, nil).
 			AnyTimes().
-                        Return(&github.CombinedStatus{
-                                Statuses: []*github.RepoStatus{
-                                        {
-                                                Context: github.String("something"),
-                                        },
-                                },
-                        }, nil, nil)
+			Return(&github.CombinedStatus{
+				Statuses: []*github.RepoStatus{
+					{
+						Context: github.String("something"),
+						State:   github.String(stateSuccess),
+					},
+				},
+			}, nil, nil)
 
-                cs.EXPECT().
-                        ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", "sha", nil).
-                        Return(&github.ListCheckRunsResults{}, nil, nil)
+		cs.EXPECT().
+			ListCheckRunsForRef(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, sha, nil).
+			Return(&github.ListCheckRunsResults{}, nil, nil)
 
-                is.EXPECT().
-                        ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
-                        Return([]*github.Label{}, nil, nil)
+		is.EXPECT().
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
+			Return([]*github.Label{}, nil, nil)
 
-		prs.EXPECT().
-			ListReviews(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
-			Return(prApprovalReviews, nil, nil)
-		prs.EXPECT().
-			Get(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1).
-			Return(&prGhModel, nil, nil)
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Return(nil, nil)
 
-                prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
-                        Return(nil, nil)
+		prStoreMock.EXPECT().Get(repoOwner, repo, 1).
+			Return(&model.PullRequest{
+				RepoOwner:           repoOwner,
+				RepoName:            repo,
+				CreatedAt:           time.Time{},
+				Labels:              []string{"old-label"},
+				Sha:                 sha,
+				MaintainerCanModify: NewBool(false),
+				Merged:              NewBool(false),
+			}, nil)
 
-                prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
-                        Return(&model.PullRequest{
-                        RepoOwner:           "mattertest",
-                        RepoName:            "mattermod",
-                        CreatedAt:           time.Time{},
-                        Labels:              []string{"old-label"},
-                        Sha:                 "sha",
-                        MaintainerCanModify: NewBool(false),
-                        Merged:              NewBool(false),
-                }, nil)
-
-                prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
-                        Return(nil, nil)
+		prStoreMock.EXPECT().Save(gomock.AssignableToTypeOf(&model.PullRequest{})).
+			Return(nil, nil)
 	}
 	runTestEvent := func() {
-                b, err := json.Marshal(event)
-                require.NoError(t, err)
+		b, err := json.Marshal(event)
+		require.NoError(t, err)
 
-                req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
-                require.NoError(t, err)
-                resp, err := http.DefaultClient.Do(req)
-                require.NoError(t, err)
-                defer resp.Body.Close()
-                require.Equal(t, http.StatusOK, resp.StatusCode)
+		req, err := http.NewRequest("POST", ts.URL, bytes.NewReader(b))
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 
-        t.Run("Event has correct label, should trigger E2E test", func(t *testing.T) {
-		event.Label.Name = &eventLabelShouldTrigger
-		prGhModel.MergeableState = &prMergeableState
+	t.Run("happy path", func(t *testing.T) {
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		prGhModel.MergeableState = github.String("clean")
 
+		prApprovalReviews := []*github.PullRequestReview{
+			{
+				State: github.String("approved"),
+			},
+		}
 		setUpCommonMocks()
 
-		// "mattermod" is not part of the org, so handleE2ETest will call github.CreateComment to handle handle this case.
-		// The following checks that we actually enter the handleE2ETest function
-                is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
+		prs.EXPECT().
+			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
+			Return(prApprovalReviews, nil, nil)
+		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, event.PRNumber).
+			Return(prGhModel, nil, nil).
+			Times(1)
+
+		// Let's not repeat all the e2e_test_command_test.go happy path steps and instead
+		// throw a permission denied error, so we know handleE2ETest can be called
+		s.Config.Username = "wronguser"
+		*msg = e2eTestMsgCommenterPermission
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
 			Times(1).
 			Return(nil, nil, nil)
-
 		runTestEvent()
-        })
-        t.Run("Event has the wrong label, should not trigger E2E test", func(t *testing.T) {
-		event.Label.Name = &eventLabelShouldNotTrigger
-		prGhModel.MergeableState = &prMergeableState
+	})
+	t.Run("event has wrong label", func(t *testing.T) {
+		event.Label.Name = github.String("NotTheValidLabel")
 
 		setUpCommonMocks()
 
-                is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
-			Times(0) // handleE2ETest function did not run
-
 		runTestEvent()
-        })
-        t.Run("PR is not mergeable, should not trigger E2E test", func(t *testing.T) {
-		event.Label.Name = &eventLabelShouldTrigger
-		prGhModel.MergeableState = &prNotMergeableState
-
+	})
+	t.Run("PR not approved", func(t *testing.T) {
+		*msg = e2eTestQAMsgPRHasNoApprovals
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		prReviewsNotApproved := []*github.PullRequestReview{
+			{
+				State: github.String("changes_requested"),
+			},
+		}
 		setUpCommonMocks()
 
-                is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, e2eTestUnauthorizedComment).
-			Times(0) // handleE2ETest function did not run
+		prs.EXPECT().
+			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
+			Return(prReviewsNotApproved, nil, nil).
+			Times(1)
+
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
+			Times(1)
 
 		runTestEvent()
-        })
+	})
+	t.Run("PR not mergeable", func(t *testing.T) {
+		*msg = e2eTestQAMsgPRNotMergeable
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		prGhModel.MergeableState = github.String("unclean")
+		setUpCommonMocks()
+
+		prReviewsApproved := []*github.PullRequestReview{
+			{
+				State: github.String("approved"),
+			},
+		}
+		prs.EXPECT().
+			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
+			Return(prReviewsApproved, nil, nil).
+			Times(1)
+		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, event.PRNumber).
+			Return(prGhModel, nil, nil).
+			Times(1)
+
+		is.EXPECT().
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
+			Times(1)
+
+		runTestEvent()
+	})
 }

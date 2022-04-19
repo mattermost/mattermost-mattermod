@@ -29,22 +29,13 @@ type pullRequestEventSender struct {
 }
 
 type pullRequestEvent struct {
-	PullRequest   *github.PullRequest     `json:"pull_request"`
-	Issue         *github.Issue           `json:"issue"`
-	Label         *github.Label           `json:"label"`
-	Repo          *github.Repository      `json:"repository"`
-	RepositoryURL string                  `json:"repository_url"`
-	Action        string                  `json:"action"`
-	PRNumber      int                     `json:"number"`
-	Sender        *pullRequestEventSender `json:"sender"`
-}
-
-func (event *pullRequestEvent) GetSender() *pullRequestEventSender {
-	if event.Sender != nil {
-		return event.Sender
-	} else {
-		return &pullRequestEventSender{pullRequestEventSenderAbsent}
-	}
+	PullRequest   *github.PullRequest `json:"pull_request"`
+	Issue         *github.Issue       `json:"issue"`
+	Label         *github.Label       `json:"label"`
+	Repo          *github.Repository  `json:"repository"`
+	RepositoryURL string              `json:"repository_url"`
+	Action        string              `json:"action"`
+	PRNumber      int                 `json:"number"`
 }
 
 func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +48,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	eventSender := event.GetSender().Login
-	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action), mlog.String("sender", eventSender))
 
 	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest, event.Action)
 	if err != nil {
@@ -147,6 +136,12 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			s.removeLabel(ctx, repoOwner, repoName, pr.Number, s.Config.BuildAppTag)
 		}
 
+		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) &&
+			*event.Label.Name == s.Config.E2ETriggerLabel {
+			mlog.Info("Label to run e2e tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
+			go s.triggerE2ETestFromPRChange(ctx, pr)
+		}
+
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
 			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
 			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
@@ -166,7 +161,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
 		}
-                s.triggerE2ETestFromPRChange(ctx, pr, eventSender)
 	case "unlabeled":
 		if event.Label == nil {
 			mlog.Error("Unlabel event received, but label object was empty")
@@ -530,75 +524,6 @@ func (s *Server) isBlockPRMergeInLabels(labels []string) bool {
 		}
 	}
 	return false
-}
-
-func (s *Server) shouldTriggerE2ETest(ctx context.Context, pr *github.PullRequest, reviews []*github.PullRequestReview) bool {
-	containsE2ELabel := false
-	isPRApprovedAtLeastOnce := false
-	isPRMergeable := false
-	for _, label := range pr.Labels {
-		if *label.Name == s.Config.E2ETriggerLabel {
-			containsE2ELabel = true
-			break
-		}
-	}
-	for _, review := range reviews {
-		if *review.State == "approved" {
-			isPRApprovedAtLeastOnce = true
-			break
-		}
-	}
-	if pr.GetState() == "open" && pr.GetMergeableState() == "clean" {
-                isPRMergeable = true
-        }
-	return containsE2ELabel && isPRApprovedAtLeastOnce && isPRMergeable
-}
-
-func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest, eventSender string) error {
-	mlog.Debug("Checking if the event should trigger E2E test",
-		mlog.Int("pr", pr.Number),
-                mlog.String("repo", pr.RepoName))
-	isPRReady, err := s.areChecksSuccessfulForPR(ctx, pr)
-	if err != nil {
-		mlog.Error("Error while checking PR state",
-			mlog.Int("pr", pr.Number),
-                        mlog.String("repo", pr.RepoName),
-                        mlog.Err(err))
-		return err
-	}
-	if isPRReady == false {
-		return nil
-	}
-	prReviews, _, err := s.GithubClient.PullRequests.ListReviews(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-	        mlog.Error("Error getting reviews for the PR",
-	                mlog.Int("pr", pr.Number),
-	                mlog.String("repo", pr.RepoName),
-	                mlog.Err(err))
-	        return err
-	}
-	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
-        if err != nil {
-                mlog.Error("Error in getting the PR info",
-                        mlog.Int("pr", pr.Number),
-                        mlog.String("repo", pr.RepoName),
-                        mlog.Err(err))
-                return err
-        }
-	if s.shouldTriggerE2ETest(ctx, ghPR, prReviews) {
-		mlog.Debug("Determined that the event should trigger the E2E test",
-			mlog.Int("pr", pr.Number),
-		        mlog.String("repo", pr.RepoName))
-		err := s.handleE2ETest(ctx, eventSender, pr, "")
-		if err != nil {
-			mlog.Error("Error in triggering the E2E test from PR event",
-				mlog.Int("pr", pr.Number),
-				mlog.String("repo", pr.RepoName),
-				mlog.Err(err))
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *Server) getPRFromIssueCommentEvent(ctx context.Context, event *issueCommentEvent) (*model.PullRequest, error) {
