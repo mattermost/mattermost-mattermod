@@ -36,6 +36,8 @@ type GitService interface {
 	CreateRef(ctx context.Context, owner string, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
 	DeleteRef(ctx context.Context, owner string, repo string, ref string) (*github.Response, error)
 	GetRef(ctx context.Context, owner string, repo string, ref string) (*github.Reference, *github.Response, error)
+	GetCommit(ctx context.Context, owner string, repo string, ref string) (*github.Commit, *github.Response, error)
+	ListMatchingRefs(ctx context.Context, owner string, repo string, opts *github.ReferenceListOptions) ([]*github.Reference, *github.Response, error)
 }
 
 type OrganizationsService interface {

@@ -63,7 +63,6 @@ const (
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	s := &Server{
 		Config:                config,
-		Store:                 store.NewSQLStore(config.DriverName, config.DataSource),
 		StartTime:             time.Now(),
 		Metrics:               metrics,
 		cherryPickRequests:    make(chan *cherryPickRequest, 20),
@@ -76,6 +75,10 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 		return nil, err
 	}
 	s.GithubClient = ghClient
+	s.Store, err = store.NewSQLStore(config.DriverName, config.DataSource)
+	if err != nil {
+		return nil, err
+	}
 	s.CircleCiClient, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion11)
 	if err != nil {
 		return nil, err
