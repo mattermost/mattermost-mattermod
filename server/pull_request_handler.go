@@ -19,14 +19,8 @@ import (
 )
 
 const (
-	// Underscores are not accepted as github usernames, so it'll never
-	// check positive during GitHub permission checks
-	pullRequestEventSenderAbsent = "_"
+	PREventLabeled = "labeled"
 )
-
-type pullRequestEventSender struct {
-	Login string `json:"login"`
-}
 
 type pullRequestEvent struct {
 	PullRequest   *github.PullRequest `json:"pull_request"`
@@ -123,7 +117,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		s.setBlockStatusForPR(ctx, pr)
-	case "labeled":
+	case PREventLabeled:
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
 			return

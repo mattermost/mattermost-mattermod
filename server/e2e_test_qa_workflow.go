@@ -28,7 +28,7 @@ type E2ETestQAError struct {
 	source string
 }
 
-func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest) error {
+func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest) {
 	var e2eTestQAErr *E2ETestQAError
 	defer func() {
 		if e2eTestQAErr != nil {
@@ -44,11 +44,15 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
 			mlog.Err(err))
-		return err
+		return
 	}
 	if !hasMoreThanOneApproval(prReviews) {
 		e2eTestQAErr = &E2ETestQAError{source: e2eTestQAMsgPRHasNoApprovals}
-		return e2eTestQAErr
+		mlog.Warn("Not triggering E2E test, due to missing required approvals",
+			mlog.Int("pr", pr.Number),
+			mlog.String("repo", pr.RepoName),
+			mlog.Err(e2eTestQAErr))
+		return
 	}
 
 	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
@@ -57,11 +61,15 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
 			mlog.Err(err))
-		return err
+		return
 	}
 	if !isMergeable(ghPR) {
 		e2eTestQAErr = &E2ETestQAError{source: e2eTestQAMsgPRNotMergeable}
-		return e2eTestQAErr
+		mlog.Warn("Not triggering E2E test, the PR is not mergeable",
+			mlog.Int("pr", pr.Number),
+			mlog.String("repo", pr.RepoName),
+			mlog.Err(e2eTestQAErr))
+		return
 	}
 
 	mlog.Debug("Determined that the event should trigger the E2E test",
@@ -73,9 +81,7 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
 			mlog.Err(err))
-		return err
 	}
-	return nil
 }
 
 func hasMoreThanOneApproval(reviews []*github.PullRequestReview) bool {
@@ -88,7 +94,7 @@ func hasMoreThanOneApproval(reviews []*github.PullRequestReview) bool {
 }
 
 func isMergeable(pr *github.PullRequest) bool {
-	if pr.GetState() == "open" && pr.GetMergeableState() == "clean" {
+	if pr.GetState() == model.StateOpen && pr.GetMergeableState() == model.MergeableStateClean {
 		return true
 	}
 	return false

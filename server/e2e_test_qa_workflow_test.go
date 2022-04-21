@@ -47,7 +47,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	allowedUser := "mattermod"
 	s.OrgMembers[0] = allowedUser
 
-	eventAction := "labeled"
+	eventAction := PREventLabeled
 	event := pullRequestEvent{
 		Action:   eventAction,
 		Label:    &github.Label{},
