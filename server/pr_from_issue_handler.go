@@ -6,7 +6,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
 func (s *Server) prFromIssueHandler(event *issueEvent, w http.ResponseWriter) {

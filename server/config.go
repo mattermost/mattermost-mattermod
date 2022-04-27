@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -129,14 +128,13 @@ type Config struct {
 	MattermostWebhookFooter string
 
 	LogSettings struct {
-		AdvancedLogging mlog.LogTargetCfg
-		ConsoleLevel    string
-		FileLevel       string
-		FileLocation    string
-		EnableConsole   bool
-		ConsoleJSON     bool
-		EnableFile      bool
-		FileJSON        bool
+		ConsoleLevel  string
+		FileLevel     string
+		FileLocation  string
+		EnableConsole bool
+		ConsoleJSON   bool
+		EnableFile    bool
+		FileJSON      bool
 	}
 
 	DaysUntilStale    int

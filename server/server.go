@@ -25,8 +25,10 @@ import (
 	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-mattermod/version"
-	"github.com/mattermost/mattermost-server/v5/mlog"
-	"github.com/mattermost/mattermost-server/v5/utils/fileutils"
+	"github.com/mattermost/mattermost-server/v6/config"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+	"github.com/mattermost/mattermost-server/v6/utils/fileutils"
 )
 
 // Server is the mattermod server.
@@ -365,27 +367,34 @@ func GetLogFileLocation(fileLocation string) string {
 	return filepath.Join(fileLocation, logFilename)
 }
 
-func SetupLogging(config *Config) error {
-	loggingConfig := &mlog.LoggerConfiguration{
-		EnableConsole: config.LogSettings.EnableConsole,
-		ConsoleJson:   config.LogSettings.ConsoleJSON,
-		ConsoleLevel:  strings.ToLower(config.LogSettings.ConsoleLevel),
-		EnableFile:    config.LogSettings.EnableFile,
-		FileJson:      config.LogSettings.FileJSON,
-		FileLevel:     strings.ToLower(config.LogSettings.FileLevel),
-		FileLocation:  GetLogFileLocation(config.LogSettings.FileLocation),
+func SetupLogging(c *Config) error {
+	loggingConfig := &model.LogSettings{
+		EnableConsole: model.NewBool(c.LogSettings.EnableConsole),
+		ConsoleJson:   model.NewBool(c.LogSettings.ConsoleJSON),
+		ConsoleLevel:  model.NewString(strings.ToLower(c.LogSettings.ConsoleLevel)),
+		EnableFile:    model.NewBool(c.LogSettings.EnableFile),
+		FileJson:      model.NewBool(c.LogSettings.FileJSON),
+		FileLevel:     model.NewString(strings.ToLower(c.LogSettings.FileLevel)),
+		FileLocation:  model.NewString(GetLogFileLocation(c.LogSettings.FileLocation)),
 	}
 
-	logger := mlog.NewLogger(loggingConfig)
-	mlog.RedirectStdLog(logger)
+	logger, err := mlog.NewLogger()
+	if err != nil {
+		return err
+	}
+
+	cfg, err := config.MloggerConfigFromLoggerConfig(loggingConfig, nil, GetLogFileLocation)
+	if err != nil {
+		return fmt.Errorf("could not configure logger: %w", err)
+	}
+
+	if err := logger.ConfigureTargets(cfg, nil); err != nil {
+		return fmt.Errorf("could not configure config targets: %w", err)
+	}
+
+	logger.RedirectStdLog(mlog.LvlStdLog)
 	mlog.InitGlobalLogger(logger)
 
-	if config.LogSettings.AdvancedLogging != nil {
-		err := logger.ConfigAdvancedLogging(config.LogSettings.AdvancedLogging)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
