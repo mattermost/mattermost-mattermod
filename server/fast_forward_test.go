@@ -145,6 +145,52 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		require.Len(t, res.FastForwarded, 0)
 	})
 
+	t.Run("Provided dry-run flag, won't call any create ref methods", func(t *testing.T) {
+		issue := &model.Issue{
+			State:     model.StateOpen,
+			RepoName:  "mattermost-server",
+			RepoOwner: "mattermosttest",
+		}
+		gs := mocks.NewMockGitService(ctrl)
+		s.GithubClient.Git = gs
+		gs.EXPECT().ListMatchingRefs(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.ReferenceListOptions{
+			Ref: cloudBranchName,
+		}).Times(1).Return([]*github.Reference{
+			{
+				Ref: github.String("heads/cloud-" + time.Now().Format("2006-01-02") + "-backup"),
+				Object: &github.GitObject{
+					SHA: github.String("some-random-sha"),
+				},
+			},
+		}, nil, nil)
+		now := time.Now().Add(-1 * 6 * 24 * time.Hour)
+		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
+			Author: &github.CommitAuthor{
+				Date: &now,
+			},
+		}, nil, nil)
+		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(&github.Reference{
+			Object: &github.GitObject{
+				SHA: github.String("some-random-sha"),
+			},
+		}, nil, nil)
+
+		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
+			Object: &github.GitObject{
+				SHA: github.String("some-random-sha"),
+			},
+		}, nil, nil)
+
+		ctx := context.Background()
+		fmt.Println("1")
+		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff --dry-run", member)
+		require.NoError(t, err)
+		require.Len(t, res.Backup, 1)
+		require.Len(t, res.Skipped, 0)
+		require.Len(t, res.FastForwarded, 1)
+		require.Equal(t, res.DryRun, true)
+	})
+
 	t.Run("Cloud branch do exist, force flag provided will create the backup and fast forward", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
