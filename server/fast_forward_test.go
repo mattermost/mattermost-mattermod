@@ -182,7 +182,6 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		}, nil, nil)
 
 		ctx := context.Background()
-		fmt.Println("1")
 		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff --dry-run", member)
 		require.NoError(t, err)
 		require.Len(t, res.Backup, 1)
