@@ -38,7 +38,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 				},
 			},
 			Org:               repoOwner,
-			E2ETriggerLabel:   "QA review/deferred",
+			E2ETriggerLabel:   []string{"Run E2E Testing"},
 			E2EWebappReponame: repo,
 			E2EServerReponame: repo,
 		},
@@ -154,7 +154,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	}
 
 	t.Run("happy path", func(t *testing.T) {
-		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("clean")
 
 		prApprovalReviews := []*github.PullRequestReview{
@@ -190,7 +190,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	})
 	t.Run("PR not approved", func(t *testing.T) {
 		*msg = e2eTestQAMsgPRHasNoApprovals
-		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prReviewsNotApproved := []*github.PullRequestReview{
 			{
 				State: github.String("changes_requested"),
@@ -211,7 +211,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 	})
 	t.Run("PR not mergeable", func(t *testing.T) {
 		*msg = e2eTestQAMsgPRNotMergeable
-		event.Label.Name = github.String(s.Config.E2ETriggerLabel)
+		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("unclean")
 		setUpCommonMocks()
 

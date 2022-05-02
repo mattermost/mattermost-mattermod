@@ -130,8 +130,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			s.removeLabel(ctx, repoOwner, repoName, pr.Number, s.Config.BuildAppTag)
 		}
 
-		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) &&
-			*event.Label.Name == s.Config.E2ETriggerLabel {
+		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) && contains(s.Config.E2ETriggerLabel, *event.Label.Name) {
 			mlog.Info("Label to run e2e tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
 			go s.triggerE2ETestFromPRChange(ctx, pr)
 		}

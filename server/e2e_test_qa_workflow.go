@@ -46,7 +46,7 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 			mlog.Err(err))
 		return
 	}
-	if !hasMoreThanOneApproval(prReviews) {
+	if !hasAtLeastOneApproval(prReviews) {
 		e2eTestQAErr = &E2ETestQAError{source: e2eTestQAMsgPRHasNoApprovals}
 		mlog.Warn("Not triggering E2E test, due to missing required approvals",
 			mlog.Int("pr", pr.Number),
@@ -84,7 +84,7 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 	}
 }
 
-func hasMoreThanOneApproval(reviews []*github.PullRequestReview) bool {
+func hasAtLeastOneApproval(reviews []*github.PullRequestReview) bool {
 	for _, review := range reviews {
 		if *review.State == "approved" {
 			return true
