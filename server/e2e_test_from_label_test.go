@@ -159,7 +159,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 
 		prApprovalReviews := []*github.PullRequestReview{
 			{
-				State: github.String("approved"),
+				State: github.String(prReviewApproved),
 			},
 		}
 		setUpCommonMocks()
@@ -217,7 +217,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 
 		prReviewsApproved := []*github.PullRequestReview{
 			{
-				State: github.String("approved"),
+				State: github.String(prReviewApproved),
 			},
 		}
 		prs.EXPECT().

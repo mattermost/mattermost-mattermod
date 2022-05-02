@@ -86,7 +86,8 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 
 func hasAtLeastOneApproval(reviews []*github.PullRequestReview) bool {
 	for _, review := range reviews {
-		if *review.State == "approved" {
+		reviewState := *review.State
+		if reviewState == prReviewApproved {
 			return true
 		}
 	}
