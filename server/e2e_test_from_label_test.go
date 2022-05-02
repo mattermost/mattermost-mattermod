@@ -20,7 +20,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 )
 
-func TestE2EQAWorkflow(t *testing.T) {
+func TestE2EFromLabelWorkflow(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -189,7 +189,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 		runTestEvent()
 	})
 	t.Run("PR not approved", func(t *testing.T) {
-		*msg = e2eTestQAMsgPRHasNoApprovals
+		*msg = e2eTestFromLabelMsgPRHasNoApprovals
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prReviewsNotApproved := []*github.PullRequestReview{
 			{
@@ -210,7 +210,7 @@ func TestE2EQAWorkflow(t *testing.T) {
 		runTestEvent()
 	})
 	t.Run("PR not mergeable", func(t *testing.T) {
-		*msg = e2eTestQAMsgPRNotMergeable
+		*msg = e2eTestFromLabelMsgPRNotMergeable
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("unclean")
 		setUpCommonMocks()

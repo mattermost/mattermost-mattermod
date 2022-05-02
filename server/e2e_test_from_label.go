@@ -9,30 +9,30 @@ import (
 )
 
 const (
-	e2eTestQAMsgPRNotMergeable   = "E2E tests not automatically triggered, because the PR is not in a mergeable state. Please update the branch with the base branch and resolve outstanding conflicts."
-	e2eTestQAMsgPRHasNoApprovals = "E2E tests not automatically triggered, because PR has no approval yet. Please ask a developer to review and then try again to attach the QA label. "
+	e2eTestFromLabelMsgPRNotMergeable   = "E2E tests not automatically triggered, because the PR is not in a mergeable state. Please update the branch with the base branch and resolve outstanding conflicts."
+	e2eTestFromLabelMsgPRHasNoApprovals = "E2E tests not automatically triggered, because PR has no approval yet. Please ask a developer to review and then try again to attach the QA label. "
 )
 
-func (e *E2ETestQAError) Error() string {
+func (e *E2ETestFromLabelError) Error() string {
 	switch e.source {
-	case e2eTestQAMsgPRNotMergeable:
+	case e2eTestFromLabelMsgPRNotMergeable:
 		return "e2e not running, pr not in mergeable state"
-	case e2eTestQAMsgPRHasNoApprovals:
+	case e2eTestFromLabelMsgPRHasNoApprovals:
 		return "e2e not running, pr has no approval"
 	default:
 		panic("unhandled error type")
 	}
 }
 
-type E2ETestQAError struct {
+type E2ETestFromLabelError struct {
 	source string
 }
 
-func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullRequest) {
-	var e2eTestQAErr *E2ETestQAError
+func (s *Server) triggerE2ETestFromLabel(ctx context.Context, pr *model.PullRequest) {
+	var e2eTestFromLabelErr *E2ETestFromLabelError
 	defer func() {
-		if e2eTestQAErr != nil {
-			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e2eTestQAErr.source); err != nil {
+		if e2eTestFromLabelErr != nil {
+			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e2eTestFromLabelErr.source); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
 		}
@@ -47,11 +47,11 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 		return
 	}
 	if !hasAtLeastOneApproval(prReviews) {
-		e2eTestQAErr = &E2ETestQAError{source: e2eTestQAMsgPRHasNoApprovals}
+		e2eTestFromLabelErr = &E2ETestFromLabelError{source: e2eTestFromLabelMsgPRHasNoApprovals}
 		mlog.Warn("Not triggering E2E test, due to missing required approvals",
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
-			mlog.Err(e2eTestQAErr))
+			mlog.Err(e2eTestFromLabelErr))
 		return
 	}
 
@@ -64,11 +64,11 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 		return
 	}
 	if !isMergeable(ghPR) {
-		e2eTestQAErr = &E2ETestQAError{source: e2eTestQAMsgPRNotMergeable}
+		e2eTestFromLabelErr = &E2ETestFromLabelError{source: e2eTestFromLabelMsgPRNotMergeable}
 		mlog.Warn("Not triggering E2E test, the PR is not mergeable",
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
-			mlog.Err(e2eTestQAErr))
+			mlog.Err(e2eTestFromLabelErr))
 		return
 	}
 
@@ -77,7 +77,7 @@ func (s *Server) triggerE2ETestFromPRChange(ctx context.Context, pr *model.PullR
 		mlog.String("repo", pr.RepoName))
 	err = s.handleE2ETest(ctx, s.Config.Username, pr, "")
 	if err != nil {
-		mlog.Error("Error in triggering the E2E test from PR event",
+		mlog.Error("Error in triggering the E2E test from PR's label event",
 			mlog.Int("pr", pr.Number),
 			mlog.String("repo", pr.RepoName),
 			mlog.Err(err))
