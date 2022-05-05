@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"net/http"
 	"strings"
+
+	"github.com/mattermost/mattermost-mattermod/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
 const (

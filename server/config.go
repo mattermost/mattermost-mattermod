@@ -18,7 +18,6 @@ const (
 	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
-	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
