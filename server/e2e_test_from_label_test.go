@@ -73,9 +73,6 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 		State:  &prState,
 	}
 
-	msg := new(string)
-	comment := &github.IssueComment{Body: msg}
-
 	rs := mocks.NewMockRepositoriesService(ctrl)
 	s.GithubClient.Repositories = rs
 
@@ -154,6 +151,8 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 	}
 
 	t.Run("happy path", func(t *testing.T) {
+		msgHappyPath := e2eTestMsgCommenterPermission
+		commentHappyPath := &github.IssueComment{Body: &msgHappyPath}
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("clean")
 
@@ -174,9 +173,8 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 		// Let's not repeat all the e2e_test_command_test.go happy path steps and instead
 		// throw a permission denied error, so we know handleE2ETest can be called
 		s.Config.Username = "wronguser"
-		*msg = e2eTestMsgCommenterPermission
 		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, commentHappyPath).
 			Times(1).
 			Return(nil, nil, nil)
 		runTestEvent()
@@ -189,13 +187,15 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 		runTestEvent()
 	})
 	t.Run("PR not approved", func(t *testing.T) {
-		*msg = e2eTestFromLabelMsgPRHasNoApprovals
+		msgPRNotApproved := e2eTestFromLabelMsgPRHasNoApprovals
+		commentPRNotApproved := &github.IssueComment{Body: &msgPRNotApproved}
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prReviewsNotApproved := []*github.PullRequestReview{
 			{
 				State: github.String("changes_requested"),
 			},
 		}
+
 		setUpCommonMocks()
 
 		prs.EXPECT().
@@ -204,15 +204,17 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 			Times(1)
 
 		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, commentPRNotApproved).
 			Times(1)
 
 		runTestEvent()
 	})
 	t.Run("PR not mergeable", func(t *testing.T) {
-		*msg = e2eTestFromLabelMsgPRNotMergeable
+		msgNotMergeable := e2eTestFromLabelMsgPRNotMergeable
+		commentNotMergeable := &github.IssueComment{Body: &msgNotMergeable}
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("unclean")
+
 		setUpCommonMocks()
 
 		prReviewsApproved := []*github.PullRequestReview{
@@ -229,7 +231,7 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 			Times(1)
 
 		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, comment).
+			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, commentNotMergeable).
 			Times(1)
 
 		runTestEvent()
