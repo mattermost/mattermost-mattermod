@@ -13,6 +13,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
 )
 
@@ -70,6 +71,15 @@ func main() {
 			return
 		}
 	}()
+
+	c := cron.New()
+
+	_, err = c.AddFunc("0 2 * * *", s.RefreshMembers)
+	if err != nil {
+		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
+	}
+
+	c.Start()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
