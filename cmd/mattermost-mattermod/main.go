@@ -74,11 +74,7 @@ func main() {
 
 	c := cron.New()
 
-	_, err = c.AddFunc("0 2 * * *", func() {
-		time.Sleep(time.Duration(5) * time.Second)
-		s.RefreshMembers()
-	})
-
+	_, err = c.AddFunc("10 2 * * *", s.RefreshMembers)
 	if err != nil {
 		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
 	}
