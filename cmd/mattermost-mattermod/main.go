@@ -54,8 +54,20 @@ func main() {
 	mlog.Info("Starting Mattermod Server")
 	s.Start()
 
+	c := cron.New()
+
+	_, err = c.AddFunc("10 2 * * *", s.RefreshMembers)
+	if err != nil {
+		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
+	}
+
+	c.Start()
+
 	defer func() {
 		mlog.Info("Stopping Mattermod Server")
+
+		c.Stop()
+
 		code := 0
 		if err2 := s.Stop(); err2 != nil {
 			mlog.Error("error while shutting down server", mlog.Err(err2))
@@ -71,15 +83,6 @@ func main() {
 			return
 		}
 	}()
-
-	c := cron.New()
-
-	_, err = c.AddFunc("10 2 * * *", s.RefreshMembers)
-	if err != nil {
-		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
-	}
-
-	c.Start()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
