@@ -79,6 +79,7 @@
     "TranslationsMattermostWebhookURL": "",
     "TranslationsMattermostMessage": "",
     "TranslationsBot": "",
+    "TranslationsDoNotMergeLabel": "",
 
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",

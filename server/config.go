@@ -106,6 +106,7 @@ type Config struct {
 	TranslationsMattermostWebhookURL string
 	TranslationsMattermostMessage    string
 	TranslationsBot                  string
+	TranslationsDoNotMergeLabel      string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

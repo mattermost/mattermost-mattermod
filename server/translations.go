@@ -14,6 +14,12 @@ func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest)
 		return
 	}
 
+	label := []string{s.Config.TranslationsDoNotMergeLabel}
+	_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
+	if errLabel != nil {
+		mlog.Error("Unable to label", mlog.Err(errLabel))
+	}
+
 	prURL := fmt.Sprintf("https://github.com/%v/%v/pull/%v", s.Config.Org, pr.RepoName, pr.Number)
 	dataMsg := fmt.Sprintf("#### [%v translations PR %v](%v)\n", pr.RepoName, time.Now().UTC().Format(time.RFC3339), prURL)
 	msg := dataMsg + s.Config.TranslationsMattermostMessage
@@ -25,4 +31,5 @@ func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest)
 		mlog.Error("Unable to post to Mattermost webhook", mlog.Err(err))
 		return
 	}
+
 }
