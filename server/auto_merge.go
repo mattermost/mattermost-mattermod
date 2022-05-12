@@ -117,8 +117,12 @@ func (s *Server) AutoMergePR() error {
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
-			s.removeTranslationLabel(ctx, pr)
-			s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage)
+			if err = s.removeTranslationLabel(ctx, pr); err != nil {
+				mlog.Warn("Error while removing translation label", mlog.Err(err))
+			}
+			if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage); err != nil {
+				mlog.Warn("Error while sending failure message to mattermost", mlog.Err(err))
+			}
 			continue
 		}
 
@@ -128,8 +132,12 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		if translationPr {
-			s.removeTranslationLabel(ctx, pr)
-			s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergedMessage)
+			if err = s.removeTranslationLabel(ctx, pr); err != nil {
+				mlog.Warn("Error while removing translation label", mlog.Err(err))
+			}
+			if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergedMessage); err != nil {
+				mlog.Warn("Error while sending translations merged message to mattermost", mlog.Err(err))
+			}
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "/cherry-pick cloud"); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}

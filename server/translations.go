@@ -19,7 +19,10 @@ func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest)
 	if errLabel != nil {
 		mlog.Error("Unable to label", mlog.Err(errLabel))
 	}
-	s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMattermostMessage)
+	err := s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMattermostMessage)
+	if err != nil {
+		mlog.Error("Unable to send message ", mlog.Err(err))
+	}
 }
 
 func (s *Server) sendTranslationWebhookMessage(ctx context.Context, pr *model.PullRequest, msg string) error {
@@ -43,7 +46,6 @@ func (s *Server) removeTranslationLabel(ctx context.Context, pr *model.PullReque
 		return err
 	}
 	return nil
-
 }
 
 func (s *Server) isTranslationPr(pr *model.PullRequest) bool {
