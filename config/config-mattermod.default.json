@@ -80,6 +80,8 @@
     "TranslationsMattermostMessage": "",
     "TranslationsBot": "",
     "TranslationsDoNotMergeLabel": "",
+    "TranslationsMergedMessage":"",
+    "TranslationsMergeFailureMessage":"",
 
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",

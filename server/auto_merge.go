@@ -29,7 +29,9 @@ func (s *Server) AutoMergePR() error {
 	}
 
 	for _, pr := range prs {
-		if !s.hasAutoMerge(pr.Labels) {
+		var autoMergePr = s.hasAutoMerge(pr.Labels)
+		var translationPr = s.isTranslationPr(pr) && s.hasTranslationMergeLabel(pr.Labels)
+		if !autoMergePr || !translationPr {
 			continue
 		}
 
@@ -105,18 +107,32 @@ func (s *Server) AutoMergePR() error {
 			MergeMethod: "squash",
 		}
 
+		if translationPr {
+			opt.MergeMethod = "merge"
+		}
+
 		merged, _, err := s.GithubClient.PullRequests.Merge(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
+			s.removeTranslationLabel(ctx, pr)
+			s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage)
 			continue
 		}
 
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
 		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
 			mlog.Warn("Error while commenting", mlog.Err(err))
+		}
+
+		if translationPr {
+			s.removeTranslationLabel(ctx, pr)
+			s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergedMessage)
+			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "/cherry-pick cloud"); err != nil {
+				mlog.Warn("Error while commenting", mlog.Err(err))
+			}
 		}
 	}
 

@@ -107,6 +107,8 @@ type Config struct {
 	TranslationsMattermostMessage    string
 	TranslationsBot                  string
 	TranslationsDoNotMergeLabel      string
+	TranslationsMergedMessage        string
+	TranslationsMergeFailureMessage  string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
