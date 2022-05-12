@@ -69,7 +69,7 @@ func main() {
 	_, err = c.AddFunc("@every 30m", func() {
 		err2 := s.AutoMergePR()
 		if err2 != nil {
-			mlog.Error("Error from AutoMergePullRequests", mlog.Err(err2))
+			mlog.Error("Error from AutoMergePR", mlog.Err(err2))
 		}
 	})
 	if err != nil {

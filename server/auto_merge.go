@@ -31,7 +31,7 @@ func (s *Server) AutoMergePR() error {
 	for _, pr := range prs {
 		var autoMergePr = s.hasAutoMerge(pr.Labels)
 		var translationPr = s.isTranslationPr(pr) && s.hasTranslationMergeLabel(pr.Labels)
-		if !autoMergePr || !translationPr {
+		if !autoMergePr && !translationPr {
 			continue
 		}
 
