@@ -117,11 +117,13 @@ func (s *Server) AutoMergePR() error {
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
-			if err = s.removeTranslationLabel(ctx, pr); err != nil {
-				mlog.Warn("Error while removing translation label", mlog.Err(err))
-			}
-			if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage); err != nil {
-				mlog.Warn("Error while sending failure message to mattermost", mlog.Err(err))
+			if translationPr {
+				if err = s.removeTranslationLabel(ctx, pr); err != nil {
+					mlog.Warn("Error while removing translation label", mlog.Err(err))
+				}
+				if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage); err != nil {
+					mlog.Warn("Error while sending failure message to mattermost", mlog.Err(err))
+				}
 			}
 			continue
 		}
