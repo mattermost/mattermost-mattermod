@@ -140,9 +140,6 @@ func (s *Server) AutoMergePR() error {
 			if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergedMessage); err != nil {
 				mlog.Warn("Error while sending translations merged message to mattermost", mlog.Err(err))
 			}
-			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "/cherry-pick cloud"); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
 		}
 	}
 
