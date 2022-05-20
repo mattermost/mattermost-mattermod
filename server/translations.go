@@ -49,7 +49,7 @@ func (s *Server) removeTranslationLabel(ctx context.Context, pr *model.PullReque
 }
 
 func (s *Server) isTranslationPr(pr *model.PullRequest) bool {
-	return pr.Username != s.Config.TranslationsBot
+	return pr.Username == s.Config.TranslationsBot
 }
 
 func (s *Server) hasTranslationMergeLabel(labels []string) bool {
