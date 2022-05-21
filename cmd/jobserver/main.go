@@ -49,16 +49,6 @@ func main() {
 	mlog.Info("Starting Job Server")
 	s.RefreshMembers()
 
-	defer func() {
-		mlog.Info("Stopping Job Server")
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
-			mlog.Error("error while shutting logging", mlog.Err(err2))
-			os.Exit(1)
-		}
-	}()
-
 	c := cron.New()
 
 	_, err = c.AddFunc("0 1 * * *", s.CheckPRActivity)
@@ -93,6 +83,19 @@ func main() {
 	}
 
 	c.Start()
+
+	defer func() {
+		mlog.Info("Stopping Job Server")
+
+		c.Stop()
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
+			mlog.Error("error while shutting logging", mlog.Err(err2))
+			os.Exit(1)
+		}
+	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)

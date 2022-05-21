@@ -13,6 +13,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/net/context"
 )
 
@@ -53,8 +54,20 @@ func main() {
 	mlog.Info("Starting Mattermod Server")
 	s.Start()
 
+	c := cron.New()
+
+	_, err = c.AddFunc("10 2 * * *", s.RefreshMembers)
+	if err != nil {
+		mlog.Error("failed adding RefreshMembers cron", mlog.Err(err))
+	}
+
+	c.Start()
+
 	defer func() {
 		mlog.Info("Stopping Mattermod Server")
+
+		c.Stop()
+
 		code := 0
 		if err2 := s.Stop(); err2 != nil {
 			mlog.Error("error while shutting down server", mlog.Err(err2))
