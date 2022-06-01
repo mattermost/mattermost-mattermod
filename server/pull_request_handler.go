@@ -18,6 +18,10 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
 
+const (
+	PREventLabeled = "labeled"
+)
+
 type pullRequestEvent struct {
 	PullRequest   *github.PullRequest `json:"pull_request"`
 	Issue         *github.Issue       `json:"issue"`
@@ -38,7 +42,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	mlog.Info("pr event", mlog.String("repo", event.Repo.GetName()), mlog.Int("pr", event.PRNumber), mlog.String("action", event.Action))
 
 	pr, err := s.GetPullRequestFromGithub(ctx, event.PullRequest, event.Action)
 	if err != nil {
@@ -114,7 +117,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		s.setBlockStatusForPR(ctx, pr)
-	case "labeled":
+	case PREventLabeled:
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
 			return
@@ -125,6 +128,11 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			go s.buildApp(pr)
 
 			s.removeLabel(ctx, repoOwner, repoName, pr.Number, s.Config.BuildAppTag)
+		}
+
+		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) && contains(s.Config.E2ETriggerLabel, *event.Label.Name) {
+			mlog.Info("Label to run e2e tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
+			go s.triggerE2ETestFromLabel(ctx, pr)
 		}
 
 		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&

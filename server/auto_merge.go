@@ -48,7 +48,7 @@ func (s *Server) AutoMergePR() error {
 			continue
 		}
 
-		if ghPR.GetMergeableState() != "clean" {
+		if ghPR.GetMergeableState() != model.MergeableStateClean {
 			mlog.Debug("PR is not ready to merge; unclean merge state",
 				mlog.Int("pr", pr.Number),
 				mlog.String("repo", pr.RepoName),
