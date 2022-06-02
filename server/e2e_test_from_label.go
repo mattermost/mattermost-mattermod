@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -28,7 +29,9 @@ type E2ETestFromLabelError struct {
 	source string
 }
 
-func (s *Server) triggerE2ETestFromLabel(ctx context.Context, pr *model.PullRequest) {
+func (s *Server) triggerE2ETestFromLabel(pr *model.PullRequest) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
 	var e2eTestFromLabelErr *E2ETestFromLabelError
 	defer func() {
 		if e2eTestFromLabelErr != nil {
