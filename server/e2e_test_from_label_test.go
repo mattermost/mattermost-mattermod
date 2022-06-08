@@ -158,7 +158,8 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 
 		prApprovalReviews := []*github.PullRequestReview{
 			{
-				State: github.String(prReviewApproved),
+				State:          github.String(prReviewApproved),
+				PullRequestURL: github.String("https://github.com/mattermost-webapp/pulls/12345"),
 			},
 		}
 		setUpCommonMocks()
@@ -219,7 +220,8 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 
 		prReviewsApproved := []*github.PullRequestReview{
 			{
-				State: github.String(prReviewApproved),
+				State:          github.String(prReviewApproved),
+				PullRequestURL: github.String("https://github.com/mattermost-webapp/pulls/12345"),
 			},
 		}
 		prs.EXPECT().
