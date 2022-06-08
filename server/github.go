@@ -21,7 +21,7 @@ const (
 	stateSuccess     = "success"
 	stateError       = "error"
 	prEventOpened    = "opened"
-	prReviewApproved = "approved"
+	prReviewApproved = "APPROVED"
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {

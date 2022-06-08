@@ -89,8 +89,10 @@ func (s *Server) triggerE2ETestFromLabel(pr *model.PullRequest) {
 
 func hasAtLeastOneApproval(reviews []*github.PullRequestReview) bool {
 	for _, review := range reviews {
-		reviewState := *review.State
-		if reviewState == prReviewApproved {
+		mlog.Debug("Checking review state",
+			mlog.String("pr", review.GetPullRequestURL()),
+			mlog.String("state", review.GetState()))
+		if review.GetState() == prReviewApproved {
 			return true
 		}
 	}
