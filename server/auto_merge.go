@@ -108,7 +108,7 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		if translationPr {
-			opt.MergeMethod = "merge"
+			opt.MergeMethod = s.Config.TranslationsMergePolicy
 		}
 
 		merged, _, err := s.GithubClient.PullRequests.Merge(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)

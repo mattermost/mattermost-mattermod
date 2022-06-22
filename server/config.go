@@ -110,6 +110,7 @@ type Config struct {
 	TranslationsDoNotMergeLabel      string
 	TranslationsMergedMessage        string
 	TranslationsMergeFailureMessage  string
+	TranslationsMergePolicy          string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string
