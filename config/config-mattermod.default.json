@@ -66,6 +66,7 @@
     "E2EServerReponame": "",
     "E2EWebappStatusContext": "",
     "E2EServerStatusContext": "",
+    "E2ETriggerLabel": ["3: QA Review", "QA Deferred", "Run E2E Testing"],
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
@@ -79,6 +80,10 @@
     "TranslationsMattermostWebhookURL": "",
     "TranslationsMattermostMessage": "",
     "TranslationsBot": "",
+    "TranslationsDoNotMergeLabel": "",
+    "TranslationsMergedMessage":"",
+    "TranslationsMergeFailureMessage":"",
+    "TranslationsMergePolicy":"rebase",
 
     "StartLoadtestTag": "",
     "StartLoadtestMessage": "",

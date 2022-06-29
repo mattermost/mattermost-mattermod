@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	StateOpen   = "open"
-	StateClosed = "closed"
+	StateOpen           = "open"
+	StateClosed         = "closed"
+	MergeableStateClean = "clean"
 )
 
 type PullRequest struct {

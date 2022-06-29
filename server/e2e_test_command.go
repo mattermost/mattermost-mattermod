@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
@@ -91,21 +90,6 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	if !isCIPassing {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgCIFailing}
 		return e2eTestErr
-	}
-
-	ghStatusContext := ""
-	switch prRepoName {
-	case s.Config.E2EWebappReponame:
-		ghStatusContext = s.Config.E2EWebappStatusContext
-	case s.Config.E2EServerReponame:
-		ghStatusContext = s.Config.E2EServerStatusContext
-	}
-
-	ctx2, cancel := context.WithTimeout(context.Background(), defaultE2ETestTimeout*time.Second)
-	defer cancel()
-	err = s.waitForStatus(ctx2, pr, ghStatusContext, stateSuccess, 30*time.Second) // 30 seconds to consider GitHub's secondary rate limit
-	if err != nil {
-		return err
 	}
 
 	opts := parseE2ETestCommentForOpts(commentBody)

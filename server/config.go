@@ -17,7 +17,6 @@ const (
 	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
-	defaultE2ETestTimeout  = 7200
 )
 
 type LabelResponse struct {
@@ -93,6 +92,7 @@ type Config struct {
 	E2EServerReponame      string
 	E2EWebappStatusContext string
 	E2EServerStatusContext string
+	E2ETriggerLabel        []string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
@@ -106,6 +106,10 @@ type Config struct {
 	TranslationsMattermostWebhookURL string
 	TranslationsMattermostMessage    string
 	TranslationsBot                  string
+	TranslationsDoNotMergeLabel      string
+	TranslationsMergedMessage        string
+	TranslationsMergeFailureMessage  string
+	TranslationsMergePolicy          string
 
 	StartLoadtestTag     string
 	StartLoadtestMessage string

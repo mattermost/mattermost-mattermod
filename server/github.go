@@ -17,10 +17,11 @@ import (
 )
 
 const (
-	statePending  = "pending"
-	stateSuccess  = "success"
-	stateError    = "error"
-	prEventOpened = "opened"
+	statePending     = "pending"
+	stateSuccess     = "success"
+	stateError       = "error"
+	prEventOpened    = "opened"
+	prReviewApproved = "APPROVED"
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
