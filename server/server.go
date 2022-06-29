@@ -373,6 +373,7 @@ func SetupLogging(c *Config) error {
 		ConsoleJson:   model.NewBool(c.LogSettings.ConsoleJSON),
 		ConsoleLevel:  model.NewString(strings.ToLower(c.LogSettings.ConsoleLevel)),
 		EnableFile:    model.NewBool(c.LogSettings.EnableFile),
+		EnableColor:   model.NewBool(c.LogSettings.EnableColor),
 		FileJson:      model.NewBool(c.LogSettings.FileJSON),
 		FileLevel:     model.NewString(strings.ToLower(c.LogSettings.FileLevel)),
 		FileLocation:  model.NewString(GetLogFileLocation(c.LogSettings.FileLocation)),
