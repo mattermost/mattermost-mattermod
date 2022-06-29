@@ -136,6 +136,7 @@ type Config struct {
 		FileLevel     string
 		FileLocation  string
 		EnableConsole bool
+		EnableColor   bool
 		ConsoleJSON   bool
 		EnableFile    bool
 		FileJSON      bool

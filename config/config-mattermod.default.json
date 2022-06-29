@@ -112,6 +112,7 @@
     "LogSettings": {
         "EnableConsole": true,
         "ConsoleLevel": "DEBUG",
+        "EnableColor": false,
         "ConsoleJson": true,
         "EnableFile": true,
         "FileLevel": "INFO",
