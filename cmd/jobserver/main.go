@@ -86,13 +86,6 @@ func main() {
 		mlog.Info("Stopping Job Server")
 
 		c.Stop()
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
-			mlog.Error("error while shutting logging", mlog.Err(err2))
-			os.Exit(1)
-		}
 	}()
 
 	sig := make(chan os.Signal, 1)
