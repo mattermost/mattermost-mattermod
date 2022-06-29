@@ -9,13 +9,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 	"github.com/robfig/cron/v3"
-	"golang.org/x/net/context"
 )
 
 func main() {
@@ -88,17 +86,11 @@ func main() {
 		mlog.Info("Stopping Job Server")
 
 		c.Stop()
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
-			mlog.Error("error while shutting logging", mlog.Err(err2))
-			os.Exit(1)
-		}
 	}()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sig
+	mlog.Info("Stopped Job Server")
 }

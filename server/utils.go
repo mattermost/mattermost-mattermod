@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
 func (s *Server) logToMattermost(ctx context.Context, msg string, args ...interface{}) {

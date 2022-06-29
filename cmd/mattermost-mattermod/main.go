@@ -8,13 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 	"github.com/robfig/cron/v3"
-	"golang.org/x/net/context"
 )
 
 var (
@@ -68,19 +66,9 @@ func main() {
 
 		c.Stop()
 
-		code := 0
 		if err2 := s.Stop(); err2 != nil {
 			mlog.Error("error while shutting down server", mlog.Err(err2))
-			code = 1
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-		if err2 := mlog.ShutdownAdvancedLogging(ctx); err2 != nil {
-			mlog.Error("error while shutting logging", mlog.Err(err2))
-			code = 1
-		}
-		if code != 0 {
-			return
+			os.Exit(1)
 		}
 	}()
 
@@ -88,4 +76,5 @@ func main() {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	<-sig
+	mlog.Info("Stopped Mattermod Server")
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
 func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) error {
