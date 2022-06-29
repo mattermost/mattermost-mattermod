@@ -112,12 +112,6 @@ func TestAutoMergePR(t *testing.T) {
 				gomock.Eq(prs[0].Number),
 				gomock.AssignableToTypeOf(comment)).
 			MaxTimes(2)
-		issueMock.EXPECT().
-			RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface),
-				gomock.Eq(prs[0].RepoOwner),
-				gomock.Eq(prs[0].RepoName),
-				gomock.Eq(prs[0].Number),
-				gomock.Eq(prs[0].Labels[0]))
 
 		client := &GithubClient{
 			PullRequests: prMock,
