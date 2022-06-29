@@ -659,6 +659,22 @@ func (mr *MockRepositoriesServiceMockRecorder) GetCombinedStatus(ctx, owner, rep
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCombinedStatus", reflect.TypeOf((*MockRepositoriesService)(nil).GetCombinedStatus), ctx, owner, repo, ref, opts)
 }
 
+// ListBranches mocks base method.
+func (m *MockRepositoriesService) ListBranches(ctx context.Context, owner, repo string, opts *github.BranchListOptions) ([]*github.Branch, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListBranches", ctx, owner, repo, opts)
+	ret0, _ := ret[0].([]*github.Branch)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListBranches indicates an expected call of ListBranches.
+func (mr *MockRepositoriesServiceMockRecorder) ListBranches(ctx, owner, repo, opts interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListBranches", reflect.TypeOf((*MockRepositoriesService)(nil).ListBranches), ctx, owner, repo, opts)
+}
+
 // ListStatuses mocks base method.
 func (m *MockRepositoriesService) ListStatuses(ctx context.Context, owner, repo, ref string, opts *github.ListOptions) ([]*github.RepoStatus, *github.Response, error) {
 	m.ctrl.T.Helper()

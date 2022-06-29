@@ -260,3 +260,50 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		require.Len(t, res.FastForwarded, 1)
 	})
 }
+
+func TestCleanupCloudBranches(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := &Repository{
+		Name:               "mattermost-server",
+		Owner:              "mattermosttest",
+		BuildStatusContext: "something",
+	}
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	branches := []*github.Branch{
+		{Name: github.String("hello")},
+		{Name: github.String("cloud-2022-03-07-backup")},
+	}
+	gs := mocks.NewMockGitService(ctrl)
+	gs.EXPECT().
+		DeleteRef(gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(repo.Owner),
+			gomock.Eq(repo.Name),
+			gomock.Eq("heads/"+*branches[1].Name)).
+		Return(&github.Response{}, nil)
+
+	repoMock := mocks.NewMockRepositoriesService(ctrl)
+	repoMock.EXPECT().
+		ListBranches(gomock.AssignableToTypeOf(ctxInterface),
+			gomock.Eq(repo.Owner),
+			gomock.Eq(repo.Name),
+			gomock.Any()).
+		Return(branches, &github.Response{}, nil)
+
+	client := &GithubClient{
+		Git:          gs,
+		Repositories: repoMock,
+	}
+
+	s := &Server{
+		GithubClient: client,
+		Config: &Config{
+			Repositories:      []*Repository{repo},
+			Org:               repo.Owner,
+			CloudRepositories: []string{repo.Name},
+		},
+	}
+
+	s.CleanOutdatedCloudBranches()
+}
