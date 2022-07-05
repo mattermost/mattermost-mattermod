@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	backupRegex = regexp.MustCompile(`cloud-20\d{2}-\d{2}-\d{2}-backup`)
+	backupRegex = regexp.MustCompile(`cloud-20(\d{2})-(\d{2})-(\d{2})-backup`)
 )
 
 type fastForwardResult struct {
@@ -233,3 +233,69 @@ Could not create the backup branch for following (a backup may already exist):{{
 {{end}}
 {{ if gt (len .FastForwarded) 0 }} Successfully fast-forwarded {{(len .FastForwarded)}} repositories. {{end}}
 `
+
+// 3 months
+const cloudBranchCleanupThreshold = 24 * time.Hour * 30 * 3
+
+func (s *Server) CleanOutdatedCloudBranches() {
+	mlog.Info("Starting to clean outdated cloud branches")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCronTaskTimeout*time.Second)
+	defer cancel()
+	branchListOpts := &github.BranchListOptions{
+		ListOptions: github.ListOptions{PerPage: 50},
+	}
+
+	// calculate threshold time.
+	year, month, day := time.Now().UTC().Date()
+	trunc := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	// subtract threshold
+	target := trunc.Add(-cloudBranchCleanupThreshold)
+
+	// iterate repos
+	for _, repository := range s.Config.CloudRepositories {
+		for {
+			// for each repo, get all branches
+			branches, resp, err := s.GithubClient.Repositories.ListBranches(ctx, s.Config.Org, repository, branchListOpts)
+			if err != nil {
+				mlog.Error("Failed to get branches", mlog.Err(err))
+				if resp.NextPage == 0 {
+					break
+				}
+				branchListOpts.Page = resp.NextPage
+				continue
+			}
+
+			branchListOpts.Page = resp.NextPage
+			time.Sleep(200 * time.Millisecond)
+
+			// parse cloud branch name, if older than threshold, delete them
+			for _, branch := range branches {
+				if backupRegex.MatchString(*branch.Name) {
+					components := backupRegex.FindStringSubmatch(*branch.Name)
+					if len(components) != 4 {
+						mlog.Error("Could not match date from branch regex", mlog.String("name", *branch.Name))
+						continue
+					}
+
+					branchDate, err := time.Parse("2006-01-02", "20"+components[1]+"-"+components[2]+"-"+components[3])
+					if err != nil {
+						mlog.Error("Error in parsing the date from branch name", mlog.Err(err))
+						continue
+					}
+
+					if branchDate.Before(target) {
+						// Delete branch
+						mlog.Debug("Deleting branch", mlog.String("name", *branch.Name))
+						_, err2 := s.GithubClient.Git.DeleteRef(ctx, s.Config.Org, repository, "heads/"+*branch.Name)
+						if err2 != nil {
+							mlog.Warn("Error deleting the branch", mlog.Err(err2), mlog.String("name", *branch.Name))
+						}
+					}
+				}
+			}
+			if resp.NextPage == 0 {
+				break
+			}
+		}
+	}
+}

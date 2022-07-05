@@ -67,7 +67,7 @@ func (m *Server) Start() {
 
 	go func() {
 		mlog.Info("Metrics and profiling server started", mlog.String("port", m.port))
-		if err := m.server.ListenAndServe(); err != nil {
+		if err := m.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			mlog.Error("Error trying to start the metrics server", mlog.Err(err))
 			return
 		}

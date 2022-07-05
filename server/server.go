@@ -224,9 +224,6 @@ func (s *Server) Tick() {
 				prListOpts.Page = resp.NextPage
 				continue
 			}
-			if resp.NextPage == 0 {
-				break
-			}
 			prListOpts.Page = resp.NextPage
 			time.Sleep(200 * time.Millisecond)
 
@@ -244,6 +241,9 @@ func (s *Server) Tick() {
 				} else if changed {
 					mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
 				}
+			}
+			if resp.NextPage == 0 {
+				break
 			}
 		}
 
@@ -265,9 +265,6 @@ func (s *Server) Tick() {
 				issueListOpts.Page = resp.NextPage
 				continue
 			}
-			if resp.NextPage == 0 {
-				break
-			}
 			issueListOpts.Page = resp.NextPage
 
 			time.Sleep(200 * time.Millisecond)
@@ -288,6 +285,9 @@ func (s *Server) Tick() {
 				if err := s.checkIssueForChanges(ctx, issue); err != nil {
 					mlog.Error("could not check issue for changes", mlog.Err(err))
 				}
+			}
+			if resp.NextPage == 0 {
+				break
 			}
 		}
 	}

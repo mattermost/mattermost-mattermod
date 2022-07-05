@@ -64,6 +64,12 @@ func main() {
 		mlog.Error("failed adding CleanOutdatedPRs cron", mlog.Err(err))
 	}
 
+	// Run once a month
+	_, err = c.AddFunc("0 12 1 * *", s.CleanOutdatedCloudBranches)
+	if err != nil {
+		mlog.Error("failed adding CleanOutdatedCloudBranches cron", mlog.Err(err))
+	}
+
 	_, err = c.AddFunc("@every 30m", func() {
 		err2 := s.AutoMergePR()
 		if err2 != nil {
