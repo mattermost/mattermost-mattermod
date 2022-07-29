@@ -8,9 +8,13 @@ import (
 )
 
 const (
-	envKeyPRNumber     = "PR_NUMBER"
-	envKeyBuildTag     = "BUILD_TAG"
-	variableTypeEnvVar = "env_var"
+	envKeyPRNumber            = "PR_NUMBER"
+	envKeyRefMattermostServer = "REF_MATTERMOST_SERVER"
+	envKeyShaMattermostServer = "SHA_MATTERMOST_SERVER"
+	envKeyRefMattermostWebapp = "REF_MATTERMOST_WEBAPP"
+	envKeyShaMattermostWebapp = "SHA_MATTERMOST_WEBAPP"
+	envKeyBuildTag            = "BUILD_TAG"
+	variableTypeEnvVar        = "env_var"
 )
 
 type GitLabClient struct {
@@ -160,6 +164,11 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 					return false, nil
 				}
 				i++
+			}
+			// Triggering PR defaults to 6 created default pipeline environment variables.
+			// See triggerE2EGitLabPipeline in gitlab.go . Adding a custom env vars has 7.
+			if len(glVars) > 6 {
+				return false, nil
 			}
 		}
 		if matching == i {
