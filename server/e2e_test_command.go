@@ -64,7 +64,6 @@ type E2ETestTriggerInfo struct {
 	WebappBranch string
 	WebappSHA    string
 	EnvVars      map[string]string
-	BuildTag     string
 }
 
 func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.PullRequest, commentBody string) error {
@@ -166,7 +165,6 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 		TriggerPR:   pr.Number,
 		TriggerRepo: pr.RepoName,
 		TriggerSHA:  pr.Sha,
-		BuildTag:    s.Config.E2EDockerRepo + ":" + pr.Sha[0:7],
 	}
 
 	if opts != nil {

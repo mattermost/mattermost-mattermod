@@ -13,7 +13,6 @@ const (
 	envKeyShaMattermostServer = "SHA_MATTERMOST_SERVER"
 	envKeyRefMattermostWebapp = "REF_MATTERMOST_WEBAPP"
 	envKeyShaMattermostWebapp = "SHA_MATTERMOST_WEBAPP"
-	envKeyBuildTag            = "BUILD_TAG"
 	variableTypeEnvVar        = "env_var"
 )
 
@@ -65,11 +64,6 @@ func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTrig
 		{
 			Key:          "SHA_MATTERMOST_SERVER",
 			Value:        info.ServerSHA,
-			VariableType: variableTypeEnvVar,
-		},
-		{
-			Key:          envKeyBuildTag,
-			Value:        info.BuildTag,
 			VariableType: variableTypeEnvVar,
 		},
 		{
@@ -145,11 +139,65 @@ func (s *Server) checkPipelinesForSameEnvs(ctx context.Context, info *E2ETestTri
 }
 
 func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
-	if info.EnvVars == nil {
-		matching := 2
-		i := 0
+	isSame, err := isPipelineForSamePRWithoutOptions(info, glVars)
+	if err != nil {
+		return false, err
+	}
+	if isSame {
+		return true, nil
+	}
+
+	isSame, err = isPipelineForSamePRWithSameOptions(info, glVars)
+	if err != nil {
+		return false, err
+	}
+	if isSame {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// The following is a sample response of retrieving pipeline environment variables of one of our e2e testing pipelines via api.
+// The first element are custom options, the rest of the elements, every pipeline has.
+// [
+// {
+// "key": "MM_ENV",
+// "value": "MM_FEATUREFLAGS_GRAPHQL=true"
+// },
+// {
+// "key": "PR_NUMBER",
+// "value": "10857"
+// },
+// {
+// "key": "REF_MATTERMOST_SERVER",
+// "value": "master"
+// },
+// {
+// "key": "REF_MATTERMOST_WEBAPP",
+// "value": "update-cypress-report"
+// },
+// {
+// "key": "SHA_MATTERMOST_SERVER",
+// "value": ""
+// },
+// {
+// "key": "SHA_MATTERMOST_WEBAPP",
+// "value": "c4a1b4cc4a7fdce4e007e95c840e59e0d976e3f3"
+// }
+// ]
+func isPipelineForSamePRWithoutOptions(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
+	defaultTriggerEnvVars := [5]string{
+		"PR_NUMBER",
+		"REF_MATTERMOST_SERVER",
+		"SHA_MATTERMOST_SERVER",
+		"REF_MATTERMOST_WEBAPP",
+		"SHA_MATTERMOST_WEBAPP",
+	}
+
+	if info.EnvVars == nil && len(glVars) <= len(defaultTriggerEnvVars) {
 		for _, glVar := range glVars {
-			if glVar.Key == envKeyPRNumber {
+			if envKeyPRNumber == glVar.Key {
 				pr, err := strconv.Atoi(glVar.Value)
 				if err != nil {
 					return false, err
@@ -157,30 +205,19 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 				if pr != info.TriggerPR {
 					return false, nil
 				}
-				i++
+				return true, nil
 			}
-			if glVar.Key == envKeyBuildTag {
-				if glVar.Value != info.BuildTag {
-					return false, nil
-				}
-				i++
-			}
-			// Triggering PR defaults to 6 created default pipeline environment variables.
-			// See triggerE2EGitLabPipeline in gitlab.go . Adding a custom env vars has 7.
-			if len(glVars) > 6 {
-				return false, nil
-			}
-		}
-		if matching == i {
-			return true, nil
 		}
 		return false, nil
 	}
+	return false, nil
+}
+
+func isPipelineForSamePRWithSameOptions(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
 	i := 0
-	matching := len(info.EnvVars)
 	for k, v := range info.EnvVars {
 		for _, glVar := range glVars {
-			if glVar.Key == envKeyPRNumber {
+			if envKeyPRNumber == glVar.Key {
 				pr, err := strconv.Atoi(glVar.Value)
 				if err != nil {
 					return false, err
@@ -189,18 +226,16 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 					return false, nil
 				}
 			}
-			if glVar.Key == envKeyBuildTag && glVar.Value != info.BuildTag {
-				return false, nil
-			}
-
 			if k == glVar.Key && v == glVar.Value {
 				i++
+				optsCount := len(info.EnvVars)
+				if optsCount == i {
+					return true, nil
+				}
 			}
 		}
 	}
-	if matching == i {
-		return true, nil
-	}
+
 	return false, nil
 }
 
