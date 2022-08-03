@@ -47,23 +47,23 @@ type PipelinesService interface {
 func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (string, error) {
 	defaultEnvs := []*gitlab.PipelineVariable{
 		{
-			Key:          "REF_MATTERMOST_WEBAPP",
-			Value:        info.WebappBranch,
-			VariableType: variableTypeEnvVar,
-		},
-		{
-			Key:          "SHA_MATTERMOST_WEBAPP",
-			Value:        info.WebappSHA,
-			VariableType: variableTypeEnvVar,
-		},
-		{
-			Key:          "REF_MATTERMOST_SERVER",
+			Key:          envKeyRefMattermostServer,
 			Value:        info.ServerBranch,
 			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:          "SHA_MATTERMOST_SERVER",
+			Key:          envKeyShaMattermostServer,
 			Value:        info.ServerSHA,
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyRefMattermostWebapp,
+			Value:        info.WebappBranch,
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyShaMattermostWebapp,
+			Value:        info.WebappSHA,
 			VariableType: variableTypeEnvVar,
 		},
 		{
@@ -184,11 +184,11 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 // ]
 func isPipelineForSamePRWithoutOptions(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
 	defaultTriggerEnvVars := [5]string{
-		"PR_NUMBER",
-		"REF_MATTERMOST_SERVER",
-		"SHA_MATTERMOST_SERVER",
-		"REF_MATTERMOST_WEBAPP",
-		"SHA_MATTERMOST_WEBAPP",
+		envKeyPRNumber,
+		envKeyRefMattermostServer,
+		envKeyShaMattermostServer,
+		envKeyRefMattermostWebapp,
+		envKeyShaMattermostWebapp,
 	}
 
 	if info.EnvVars == nil && len(glVars) <= len(defaultTriggerEnvVars) {
