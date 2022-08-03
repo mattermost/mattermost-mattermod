@@ -104,11 +104,12 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	r.Use(s.withValidation)
 
 	s.server = &http.Server{
-		Addr:         s.Config.ListenAddress,
-		Handler:      r,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		Addr:              s.Config.ListenAddress,
+		Handler:           r,
+		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: 30 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
 	}
 
 	return s, nil
