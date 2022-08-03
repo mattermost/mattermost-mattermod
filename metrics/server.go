@@ -47,8 +47,9 @@ func NewServer(port string, handler Handler, pprof bool) *Server {
 // Start starts the metrics server in the provider port
 func (m *Server) Start() {
 	const (
-		defaultHTTPServerReadTimeoutSeconds  = 30
-		defaultHTTPServerWriteTimeoutSeconds = 30
+		defaultHTTPServerReadTimeoutSeconds       = 30
+		defaultHTTPServerReadHeaderTimeoutSeconds = 30
+		defaultHTTPServerWriteTimeoutSeconds      = 30
 	)
 
 	router := mux.NewRouter()
@@ -59,10 +60,11 @@ func (m *Server) Start() {
 	}
 
 	m.server = &http.Server{
-		Addr:         fmt.Sprintf(":%s", m.port),
-		Handler:      router,
-		ReadTimeout:  time.Duration(defaultHTTPServerReadTimeoutSeconds) * time.Second,
-		WriteTimeout: time.Duration(defaultHTTPServerWriteTimeoutSeconds) * time.Second,
+		Addr:              fmt.Sprintf(":%s", m.port),
+		Handler:           router,
+		ReadTimeout:       time.Duration(defaultHTTPServerReadTimeoutSeconds) * time.Second,
+		ReadHeaderTimeout: time.Duration(defaultHTTPServerReadHeaderTimeoutSeconds) * time.Second,
+		WriteTimeout:      time.Duration(defaultHTTPServerWriteTimeoutSeconds) * time.Second,
 	}
 
 	go func() {
