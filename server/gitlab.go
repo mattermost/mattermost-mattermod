@@ -151,11 +151,7 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 	if err != nil {
 		return false, err
 	}
-	if isSame {
-		return true, nil
-	}
-
-	return false, nil
+	return isSame, nil
 }
 
 // The following is a sample response of retrieving pipeline environment variables of one of our e2e testing pipelines via api.
