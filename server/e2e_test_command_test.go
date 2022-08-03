@@ -276,6 +276,14 @@ func TestHandleE2ETesting(t *testing.T) {
 				Key:   "MM_ENV",
 				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			},
+			{
+				Key:   "EXCLUDE_FILE",
+				Value: "something_to_exclude_spec.js",
+			},
+			{
+				Key:   "INCLUDE_FILE",
+				Value: "new_message_spec.js",
+			},
 		}
 		notSameEnvs1 := []*gitlab.PipelineVariable{
 			{
