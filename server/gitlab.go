@@ -138,22 +138,6 @@ func (s *Server) checkPipelinesForSameEnvs(ctx context.Context, info *E2ETestTri
 	return false, nil
 }
 
-func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
-	isSame, err := isPipelineForSamePRWithoutOptions(info, glVars)
-	if err != nil {
-		return false, err
-	}
-	if isSame {
-		return true, nil
-	}
-
-	isSame, err = isPipelineForSamePRWithSameOptions(info, glVars)
-	if err != nil {
-		return false, err
-	}
-	return isSame, nil
-}
-
 // The following is a sample response of retrieving pipeline environment variables of one of our e2e testing pipelines via api.
 // The first element are custom options, the rest of the elements, every pipeline has.
 // [
@@ -182,57 +166,46 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 // "value": "c4a1b4cc4a7fdce4e007e95c840e59e0d976e3f3"
 // }
 // ]
-func isPipelineForSamePRWithoutOptions(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
-	defaultTriggerEnvVars := [5]string{
-		envKeyPRNumber,
-		envKeyRefMattermostServer,
-		envKeyShaMattermostServer,
-		envKeyRefMattermostWebapp,
-		envKeyShaMattermostWebapp,
+func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
+	glRequiredEnvVars := map[string]bool{
+		envKeyPRNumber:            true,
+		envKeyRefMattermostServer: true,
+		envKeyShaMattermostServer: true,
+		envKeyRefMattermostWebapp: true,
+		envKeyShaMattermostWebapp: true,
 	}
 
-	if info.EnvVars == nil && len(glVars) <= len(defaultTriggerEnvVars) {
-		for _, glVar := range glVars {
-			if envKeyPRNumber == glVar.Key {
-				pr, err := strconv.Atoi(glVar.Value)
-				if err != nil {
-					return false, err
-				}
-				if pr != info.TriggerPR {
-					return false, nil
-				}
-				return true, nil
-			}
-		}
+	// Pack the gitlab env_vars in a map
+	glEnvVars := make(map[string]string)
+	for _, glVar := range glVars {
+		glEnvVars[glVar.Key] = glVar.Value
+	}
+
+	// Check: if the PR number differs, it's not the same pipeline
+	glPRNumber, err := strconv.Atoi(glEnvVars[envKeyPRNumber])
+	if err != nil {
+		return false, err
+	}
+	if glPRNumber != info.TriggerPR {
 		return false, nil
 	}
-	return false, nil
-}
 
-func isPipelineForSamePRWithSameOptions(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
-	i := 0
-	for k, v := range info.EnvVars {
-		for _, glVar := range glVars {
-			if envKeyPRNumber == glVar.Key {
-				pr, err := strconv.Atoi(glVar.Value)
-				if err != nil {
-					return false, err
-				}
-				if pr != info.TriggerPR {
-					return false, nil
-				}
-			}
-			if k == glVar.Key && v == glVar.Value {
-				i++
-				optsCount := len(info.EnvVars)
-				if optsCount == i {
-					return true, nil
-				}
+	// Check: if the options are not exactly equal, it's not the same pipeline
+	for requiredVar, _ := range glRequiredEnvVars {
+		delete(glEnvVars, requiredVar) // It's fine even if keys that are not there
+	}
+	if len(glEnvVars) != len(info.EnvVars) {
+		return false, nil
+	} else {
+		for envVar, envVarValue := range info.EnvVars {
+			glEnvVarValue, glEnvVarExists := glEnvVars[envVar]
+			if !glEnvVarExists || glEnvVarValue != envVarValue {
+				return false, nil
 			}
 		}
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func (s *Server) cancelPipelinesForPR(ctx context.Context, e2eProjectRef *string, prNumber *int) ([]*string, error) { // pending, created, running
