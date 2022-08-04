@@ -191,17 +191,17 @@ func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (b
 	}
 
 	// Check: if the options are not exactly equal, it's not the same pipeline
-	for requiredVar, _ := range glRequiredEnvVars {
+	for requiredVar := range glRequiredEnvVars {
 		delete(glEnvVars, requiredVar) // It's fine even if keys that are not there
 	}
 	if len(glEnvVars) != len(info.EnvVars) {
 		return false, nil
-	} else {
-		for envVar, envVarValue := range info.EnvVars {
-			glEnvVarValue, glEnvVarExists := glEnvVars[envVar]
-			if !glEnvVarExists || glEnvVarValue != envVarValue {
-				return false, nil
-			}
+	}
+	// There's an equal number of options, check if there's any difference
+	for envVar, envVarValue := range info.EnvVars {
+		glEnvVarValue, glEnvVarExists := glEnvVars[envVar]
+		if !glEnvVarExists || glEnvVarValue != envVarValue {
+			return false, nil
 		}
 	}
 
