@@ -8,9 +8,12 @@ import (
 )
 
 const (
-	envKeyPRNumber     = "PR_NUMBER"
-	envKeyBuildTag     = "BUILD_TAG"
-	variableTypeEnvVar = "env_var"
+	envKeyPRNumber            = "PR_NUMBER"
+	envKeyRefMattermostServer = "REF_MATTERMOST_SERVER"
+	envKeyShaMattermostServer = "SHA_MATTERMOST_SERVER"
+	envKeyRefMattermostWebapp = "REF_MATTERMOST_WEBAPP"
+	envKeyShaMattermostWebapp = "SHA_MATTERMOST_WEBAPP"
+	variableTypeEnvVar        = "env_var"
 )
 
 type GitLabClient struct {
@@ -44,28 +47,23 @@ type PipelinesService interface {
 func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (string, error) {
 	defaultEnvs := []*gitlab.PipelineVariable{
 		{
-			Key:          "REF_MATTERMOST_WEBAPP",
-			Value:        info.WebappBranch,
-			VariableType: variableTypeEnvVar,
-		},
-		{
-			Key:          "SHA_MATTERMOST_WEBAPP",
-			Value:        info.WebappSHA,
-			VariableType: variableTypeEnvVar,
-		},
-		{
-			Key:          "REF_MATTERMOST_SERVER",
+			Key:          envKeyRefMattermostServer,
 			Value:        info.ServerBranch,
 			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:          "SHA_MATTERMOST_SERVER",
+			Key:          envKeyShaMattermostServer,
 			Value:        info.ServerSHA,
 			VariableType: variableTypeEnvVar,
 		},
 		{
-			Key:          envKeyBuildTag,
-			Value:        info.BuildTag,
+			Key:          envKeyRefMattermostWebapp,
+			Value:        info.WebappBranch,
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyShaMattermostWebapp,
+			Value:        info.WebappSHA,
 			VariableType: variableTypeEnvVar,
 		},
 		{
@@ -140,59 +138,74 @@ func (s *Server) checkPipelinesForSameEnvs(ctx context.Context, info *E2ETestTri
 	return false, nil
 }
 
+// The following is a sample response of retrieving pipeline environment variables of one of our e2e testing pipelines via api.
+// The first element are custom options, the rest of the elements, every pipeline has.
+// [
+// {
+// "key": "MM_ENV",
+// "value": "MM_FEATUREFLAGS_GRAPHQL=true"
+// },
+// {
+// "key": "PR_NUMBER",
+// "value": "10857"
+// },
+// {
+// "key": "REF_MATTERMOST_SERVER",
+// "value": "master"
+// },
+// {
+// "key": "REF_MATTERMOST_WEBAPP",
+// "value": "update-cypress-report"
+// },
+// {
+// "key": "SHA_MATTERMOST_SERVER",
+// "value": ""
+// },
+// {
+// "key": "SHA_MATTERMOST_WEBAPP",
+// "value": "c4a1b4cc4a7fdce4e007e95c840e59e0d976e3f3"
+// }
+// ]
 func hasSameEnvs(info *E2ETestTriggerInfo, glVars []*gitlab.PipelineVariable) (bool, error) {
-	if info.EnvVars == nil {
-		matching := 2
-		i := 0
-		for _, glVar := range glVars {
-			if glVar.Key == envKeyPRNumber {
-				pr, err := strconv.Atoi(glVar.Value)
-				if err != nil {
-					return false, err
-				}
-				if pr != info.TriggerPR {
-					return false, nil
-				}
-				i++
-			}
-			if glVar.Key == envKeyBuildTag {
-				if glVar.Value != info.BuildTag {
-					return false, nil
-				}
-				i++
-			}
-		}
-		if matching == i {
-			return true, nil
-		}
+	glRequiredEnvVars := map[string]bool{
+		envKeyPRNumber:            true,
+		envKeyRefMattermostServer: true,
+		envKeyShaMattermostServer: true,
+		envKeyRefMattermostWebapp: true,
+		envKeyShaMattermostWebapp: true,
+	}
+
+	// Pack the gitlab env_vars in a map
+	glEnvVars := make(map[string]string)
+	for _, glVar := range glVars {
+		glEnvVars[glVar.Key] = glVar.Value
+	}
+
+	// Check: if the PR number differs, it's not the same pipeline
+	glPRNumber, err := strconv.Atoi(glEnvVars[envKeyPRNumber])
+	if err != nil {
+		return false, err
+	}
+	if glPRNumber != info.TriggerPR {
 		return false, nil
 	}
-	i := 0
-	matching := len(info.EnvVars)
-	for k, v := range info.EnvVars {
-		for _, glVar := range glVars {
-			if glVar.Key == envKeyPRNumber {
-				pr, err := strconv.Atoi(glVar.Value)
-				if err != nil {
-					return false, err
-				}
-				if pr != info.TriggerPR {
-					return false, nil
-				}
-			}
-			if glVar.Key == envKeyBuildTag && glVar.Value != info.BuildTag {
-				return false, nil
-			}
 
-			if k == glVar.Key && v == glVar.Value {
-				i++
-			}
+	// Check: if the options are not exactly equal, it's not the same pipeline
+	for requiredVar := range glRequiredEnvVars {
+		delete(glEnvVars, requiredVar) // It's fine even if keys that are not there
+	}
+	if len(glEnvVars) != len(info.EnvVars) {
+		return false, nil
+	}
+	// There's an equal number of options, check if there's any difference
+	for envVar, envVarValue := range info.EnvVars {
+		glEnvVarValue, glEnvVarExists := glEnvVars[envVar]
+		if !glEnvVarExists || glEnvVarValue != envVarValue {
+			return false, nil
 		}
 	}
-	if matching == i {
-		return true, nil
-	}
-	return false, nil
+
+	return true, nil
 }
 
 func (s *Server) cancelPipelinesForPR(ctx context.Context, e2eProjectRef *string, prNumber *int) ([]*string, error) { // pending, created, running

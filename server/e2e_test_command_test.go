@@ -23,6 +23,7 @@ import (
 
 const (
 	commandE2ETestBase     = "/e2e-test"
+	commandE2ETestSingle   = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\"\nOther commenting after command \n Even other comment"
 	commandE2ETestAdvanced = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
 	prNumber               = 123
 	eSHA                   = "abcdefg"
@@ -118,11 +119,10 @@ func TestHandleE2ETesting(t *testing.T) {
 	gCtxInterface := reflect.TypeOf(gitlab.RequestOptionFunc(nil))
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
 
-	t.Run("happy trigger from webapp", func(t *testing.T) {
+	t.Run("happy trigger from webapp without options", func(t *testing.T) {
 		commentBody := commandE2ETestBase
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
-		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
@@ -150,8 +150,20 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: "124",
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
 			},
 		}
 		notSameEnvs1 := []*gitlab.PipelineVariable{
@@ -160,8 +172,24 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: strconv.Itoa(prNumber),
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: s.Config.E2EDockerRepo + ":" + "otherSHA"[0:7],
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+			{
+				Key:   "MM_ENV",
+				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			},
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
@@ -199,11 +227,123 @@ func TestHandleE2ETesting(t *testing.T) {
 		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
 		require.NoError(t, err)
 	})
-	t.Run("happy trigger from webapp with options", func(t *testing.T) {
+	t.Run("happy trigger from webapp with single option", func(t *testing.T) {
+		commentBody := commandE2ETestSingle
+		s.OrgMembers = make([]string, 1)
+		s.OrgMembers[0] = userHandle
+		pr := &model.PullRequest{
+			RepoOwner: userHandle,
+			RepoName:  s.Config.E2EWebappReponame,
+			Number:    prNumber,
+			Ref:       eBranch,
+			Sha:       eSHA,
+		}
+		pipsC := []*gitlab.PipelineInfo{
+			{
+				ID:     0,
+				Ref:    s.Config.E2EWebappRef,
+				Status: string(gitlab.Created),
+			},
+		}
+		pipsP := []*gitlab.PipelineInfo{
+			{
+				ID:     1,
+				Ref:    s.Config.E2EWebappRef,
+				Status: string(gitlab.Pending),
+			},
+		}
+		notSameEnvs0 := []*gitlab.PipelineVariable{
+			{
+				Key:   "MM_ENV",
+				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
+			},
+			{
+				Key:   envKeyPRNumber,
+				Value: "124",
+			},
+			{
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+		}
+		notSameEnvs1 := []*gitlab.PipelineVariable{
+			{
+				Key:   envKeyPRNumber,
+				Value: strconv.Itoa(prNumber),
+			},
+			{
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+		}
+		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
+		pr.FullName = organization + "/" + userHandle
+		rs.EXPECT().
+			GetCombinedStatus(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EWebappReponame, gomock.Any(), nil).
+			Times(1).
+			Return(&github.CombinedStatus{
+				State: github.String(statePending),
+			}, nil, nil)
+		rs.EXPECT().GetBranch(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, s.Config.E2EServerReponame, pr.Ref, false).Times(1).Return(
+			nil,
+			&github.Response{Response: &http.Response{StatusCode: http.StatusNotFound}},
+			errors.New(ghBranchNotFoundError),
+		)
+		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, pr.RepoName, pr.Number).Times(1).Return(
+			&github.PullRequest{
+				Number: &pr.Number,
+				Base: &github.PullRequestBranch{
+					Ref: github.String("release-6.0"),
+				},
+			},
+			&github.Response{Response: &http.Response{StatusCode: http.StatusOK}},
+			nil,
+		)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsC, nil, nil)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(pipsP, nil, nil)
+		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(nil, nil, nil)
+		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
+		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs1, nil, nil)
+
+		opts := &map[string]string{
+			"MM_ENV": "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
+		}
+		commentInit := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, opts))}
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentInit).Times(1).Return(nil, nil, nil)
+		glPS.EXPECT().CreatePipeline(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(p, nil, nil)
+		commentEnd := &github.IssueComment{Body: github.String(fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, p.WebURL))}
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, commentEnd).Times(1).Return(nil, nil, nil)
+		err := s.handleE2ETest(ctx, userHandle, pr, commentBody)
+		require.NoError(t, err)
+	})
+	t.Run("happy trigger from webapp with multiple options", func(t *testing.T) {
 		commentBody := commandE2ETestAdvanced
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
-		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
@@ -231,8 +371,32 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: "124",
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+			{
+				Key:   "MM_ENV",
+				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
+			},
+			{
+				Key:   "EXCLUDE_FILE",
+				Value: "something_to_exclude_spec.js",
+			},
+			{
+				Key:   "INCLUDE_FILE",
+				Value: "new_message_spec.js",
 			},
 		}
 		notSameEnvs1 := []*gitlab.PipelineVariable{
@@ -241,8 +405,24 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: strconv.Itoa(prNumber),
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: s.Config.E2EDockerRepo + ":" + "otherSHA"[0:7],
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+			{
+				Key:   "MM_ENV",
+				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			},
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
@@ -291,7 +471,6 @@ func TestHandleE2ETesting(t *testing.T) {
 		commentBody := commandE2ETestBase
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
-		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EServerReponame,
@@ -319,8 +498,20 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: "124",
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
 			},
 		}
 		notSameEnvs1 := []*gitlab.PipelineVariable{
@@ -329,8 +520,24 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: strconv.Itoa(prNumber),
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: s.Config.E2EDockerRepo + ":" + "otherSHA"[0:7],
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
+			},
+			{
+				Key:   "MM_ENV",
+				Value: "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			},
 		}
 		p := &gitlab.Pipeline{WebURL: "https://your.gitlab.com/project/-/pipelines/54004"}
@@ -416,7 +623,6 @@ func TestHandleE2ETesting(t *testing.T) {
 		commentBody := fmt.Sprintf("/e2e-test %s=\"%s\" %s=\"%s\" %s=\"%s\"\nOther commenting after command \n Even other comment", eEnvKey0, eEnvValue0, eEnvKey1, eEnvValue1, eEnvKey2, eEnvValue2)
 		s.OrgMembers = make([]string, 1)
 		s.OrgMembers[0] = userHandle
-		eBuildTag := s.Config.E2EDockerRepo + eSHA[0:7]
 		pr := &model.PullRequest{
 			RepoOwner: userHandle,
 			RepoName:  s.Config.E2EWebappReponame,
@@ -442,11 +648,6 @@ func TestHandleE2ETesting(t *testing.T) {
 				Ref:    s.Config.E2EWebappRef,
 				Status: string(gitlab.Pending),
 			},
-			{
-				ID:     3,
-				Ref:    s.Config.E2EWebappRef,
-				Status: string(gitlab.Pending),
-			},
 		}
 		notSameEnvs0 := []*gitlab.PipelineVariable{
 			{
@@ -454,8 +655,20 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: "124",
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
 			},
 			{
 				Key:   eEnvKey0,
@@ -476,30 +689,20 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: strconv.Itoa(prNumber),
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: s.Config.E2EDockerRepo + ":" + "otherSHA"[0:7],
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
 			},
 			{
-				Key:   eEnvKey0,
-				Value: eEnvValue0,
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
 			},
 			{
-				Key:   eEnvKey1,
-				Value: eEnvValue1,
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
 			},
 			{
-				Key:   eEnvKey2,
-				Value: eEnvValue2,
-			},
-		}
-		NotSameEnvs2 := []*gitlab.PipelineVariable{
-			{
-				Key:   envKeyPRNumber,
-				Value: strconv.Itoa(prNumber),
-			},
-			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
 			},
 			{
 				Key:   eEnvKey0 + "0",
@@ -520,8 +723,20 @@ func TestHandleE2ETesting(t *testing.T) {
 				Value: strconv.Itoa(prNumber),
 			},
 			{
-				Key:   envKeyBuildTag,
-				Value: eBuildTag,
+				Key:   envKeyRefMattermostServer,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostServer,
+				Value: eSHA,
+			},
+			{
+				Key:   envKeyRefMattermostWebapp,
+				Value: eBranch,
+			},
+			{
+				Key:   envKeyShaMattermostWebapp,
+				Value: eSHA,
 			},
 			{
 				Key:   eEnvKey0,
@@ -563,7 +778,6 @@ func TestHandleE2ETesting(t *testing.T) {
 		glPS.EXPECT().ListProjectPipelines(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(nil, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(notSameEnvs0, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(NotSameEnvs1, nil, nil)
-		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(NotSameEnvs2, nil, nil)
 		glPS.EXPECT().GetPipelineVariables(s.Config.E2EGitLabProject, gomock.Any(), gomock.AssignableToTypeOf(gCtxInterface)).Times(1).Return(sameEnvs, nil, nil)
 
 		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, gomock.Any()).Times(1).Return(nil, nil, nil)
