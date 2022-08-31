@@ -6,7 +6,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -105,13 +105,13 @@ func (t *MetricsTransport) processGithubMetrics(req *http.Request, resp *http.Re
 		// Read body to check if there is an error message,
 		// then close it and re-assigning the body again for the
 		// next layer so it could read the body without problem
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
 		resp.Body.Close()
 		defer func() {
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+			resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}()
 
 		err = json.Unmarshal(bodyBytes, &msg)

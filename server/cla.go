@@ -6,7 +6,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,7 +83,7 @@ func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
 	}
 	defer closeBody(r)
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		s.logToMattermost(ctx, "unable to read CLA google csv file Error: ```"+err.Error()+"```")
 		return nil, err

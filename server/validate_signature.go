@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -27,14 +27,14 @@ func (s *Server) withValidation(next http.Handler) http.Handler {
 			return
 		}
 
-		buf, err := ioutil.ReadAll(r.Body)
+		buf, err := io.ReadAll(r.Body)
 		if err != nil {
 			mlog.Error("Failed to read body", mlog.Err(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		r.Body.Close()
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 
 		err = validateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
 		if err != nil {

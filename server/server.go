@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -314,7 +313,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 		}
 		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
 	case "issues":
-		buf, err := ioutil.ReadAll(r.Body)
+		buf, err := io.ReadAll(r.Body)
 		if err != nil {
 			mlog.Error("Failed to read body", mlog.Err(err))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -333,7 +332,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 		// An issue can be both an issue or a PR. So we need to differentiate between the two.
 		if event.Issue.IsPullRequest() {
 			mlog.Info("A PR event is found from an issue. Updating DB.", mlog.String("link", event.Issue.GetPullRequestLinks().GetHTMLURL()))
@@ -402,7 +401,7 @@ func SetupLogging(c *Config) error {
 
 func closeBody(r *http.Response) {
 	if r.Body != nil {
-		_, _ = io.Copy(ioutil.Discard, r.Body)
+		_, _ = io.Copy(io.Discard, r.Body)
 		_ = r.Body.Close()
 	}
 }
