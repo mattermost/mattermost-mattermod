@@ -26,6 +26,7 @@ import (
 const (
 	cherryPickScheduledMsg = "Cherry pick is scheduled."
 	tooManyCherryPickMsg   = "There are too many cherry picking requests. Please do this manually or try again later."
+	milestoneCloud         = "cloud"
 )
 
 type cherryPickRequest struct {
@@ -181,7 +182,7 @@ func getMilestone(title string) string {
 	milestone := strings.TrimSpace(title)
 	milestone = strings.Trim(milestone, "v")
 	milestone = strings.TrimSuffix(milestone, ".0")
-	if title != "cloud" {
+	if title != milestoneCloud {
 		milestone = fmt.Sprintf("release-%s", milestone)
 	}
 	return milestone
