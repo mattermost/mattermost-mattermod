@@ -59,7 +59,12 @@ issues:
 
   exclude-rules:
     - linters:
-      - goconst
+        - gofmt
+        - goimports
+      # Ignore this file as it append generate tags and golangci-lint fails
+      path: assets.go
+    - linters:
+        - goconst
       # Ignore warnings trying to change variables to constants.
       # We can't do that because we are taking the address of those variables.
       path: "issue_handler_test.go"
