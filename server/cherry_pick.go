@@ -181,7 +181,9 @@ func getMilestone(title string) string {
 	milestone := strings.TrimSpace(title)
 	milestone = strings.Trim(milestone, "v")
 	milestone = strings.TrimSuffix(milestone, ".0")
-	milestone = fmt.Sprintf("release-%s", milestone)
+	if title != "cloud" {
+		milestone = fmt.Sprintf("release-%s", milestone)
+	}
 	return milestone
 }
 
