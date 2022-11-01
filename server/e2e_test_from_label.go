@@ -36,7 +36,7 @@ func (s *Server) triggerE2ETestFromLabel(pr *model.PullRequest) {
 	defer func() {
 		if e2eTestFromLabelErr != nil {
 			if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, e2eTestFromLabelErr.source); err != nil {
-				mlog.Warn("Error while commenting", mlog.Err(err))
+				mlog.Warn("Error while commenting1", mlog.Err(err))
 			}
 		}
 	}()
