@@ -91,6 +91,26 @@ func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTrig
 	return pip, err
 }
 
+func (s *Server) triggerE2EMobileGitLabPipeline(ctx context.Context, info *E2ETestMobileTriggerInfo) (string, error) {
+	defaultEnvs := []*gitlab.PipelineVariable{
+		{
+			Key:          envKeyPRNumber,
+			Value:        strconv.Itoa(info.TriggerPR),
+			VariableType: variableTypeEnvVar,
+		},
+	}
+	createOpts := &gitlab.CreatePipelineOptions{
+		Ref:       &info.RefToTrigger,
+		Variables: defaultEnvs,
+	}
+	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EMobileGitLabProject, createOpts, gitlab.WithContext(ctx))
+	if err != nil {
+		return "", err
+	}
+
+	return pip.WebURL, nil
+}
+
 func (s *Server) checkForPipelinesWithSameEnvs(ctx context.Context, info *E2ETestTriggerInfo) (bool, error) {
 	hasC, err := s.checkPipelinesForSameEnvs(ctx, info, gitlab.Created)
 	if err != nil {

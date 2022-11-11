@@ -100,6 +100,9 @@ type Config struct {
 	E2ETriggerLabel               []string
 	E2ETestAutomationDashboardURL string
 
+	E2EMobileCoreReponame  string
+	E2EMobileGitLabProject string
+
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
 	EnterpriseWebappReponame      string

@@ -128,10 +128,20 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	if ev.HasE2ETest() {
-		s.Metrics.IncreaseWebhookRequest("e2e_test")
-		if err := s.handleE2ETest(ctx, commenter, pr, ev.Comment.GetBody()); err != nil {
-			s.Metrics.IncreaseWebhookErrors("e2e_test")
-			errs = append(errs, fmt.Errorf("error e2e test: %w", err))
+		if s.Config.E2EWebappReponame == *ev.Repository.Name ||
+			s.Config.E2EServerReponame == *ev.Repository.Name {
+			s.Metrics.IncreaseWebhookRequest("e2e_test")
+			if err := s.handleE2ETest(ctx, commenter, pr, ev.Comment.GetBody()); err != nil {
+				s.Metrics.IncreaseWebhookErrors("e2e_test")
+				errs = append(errs, fmt.Errorf("error e2e test: %w", err))
+			}
+		}
+		if s.Config.E2EMobileCoreReponame == *ev.Repository.Name {
+			s.Metrics.IncreaseWebhookRequest("e2e_test_mobile")
+			if err := s.handleE2ETestMobile(ctx, commenter, pr); err != nil {
+				s.Metrics.IncreaseWebhookErrors("e2e_test_mobile")
+				errs = append(errs, fmt.Errorf("error e2e test: %w", err))
+			}
 		}
 	}
 
