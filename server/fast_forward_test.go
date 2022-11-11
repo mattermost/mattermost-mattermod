@@ -38,7 +38,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 				},
 			},
 			Org:               "mattermosttest",
-			CloudRepositories: []string{cloudRepo1},
+			CloudRepositories: []*CloudRepository{{Name: cloudRepo1}},
 		},
 		OrgMembers: []string{
 			member,
@@ -93,7 +93,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		}).Times(1).Return(nil, nil, nil)
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, nil, errors.New("some-error"))
 		gs.EXPECT().DeleteRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, errors.New("some-error"))
-		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
+		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, defaultMainBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
 			},
@@ -175,7 +175,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 			},
 		}, nil, nil)
 
-		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
+		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, defaultMainBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
 			},
@@ -240,7 +240,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 			},
 		}, nil, nil)
 		gs.EXPECT().DeleteRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(nil, nil)
-		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, mainBranchName).Times(1).Return(&github.Reference{
+		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, defaultMainBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
 			},
@@ -301,7 +301,7 @@ func TestCleanupCloudBranches(t *testing.T) {
 		Config: &Config{
 			Repositories:      []*Repository{repo},
 			Org:               repo.Owner,
-			CloudRepositories: []string{repo.Name},
+			CloudRepositories: []*CloudRepository{{Name: repo.Name}},
 		},
 	}
 

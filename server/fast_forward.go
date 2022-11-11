@@ -20,7 +20,7 @@ import (
 
 const (
 	cloudBranchName        = "heads/cloud"
-	mainBranchName         = "heads/master"
+	defaultMainBranchName  = "heads/master"
 	processRepo            = "mattermost-server"
 	minBackupIntervalHours = 5 * 24
 )
@@ -77,8 +77,14 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 
 	backupBranchName := cloudBranchName + "-" + time.Now().Format("2006-01-02") + "-backup"
 
-	for _, repo := range s.Config.CloudRepositories {
-		refs, _, err := s.GithubClient.Git.ListMatchingRefs(ctx, s.Config.Org, repo, &github.ReferenceListOptions{
+	for _, r := range s.Config.CloudRepositories {
+		repository := r.Name
+		mainBranchName := r.MainBranch
+		if mainBranchName == "" {
+			mainBranchName = defaultMainBranchName
+		}
+
+		refs, _, err := s.GithubClient.Git.ListMatchingRefs(ctx, s.Config.Org, repository, &github.ReferenceListOptions{
 			Ref: cloudBranchName,
 		})
 		if err != nil {
@@ -103,20 +109,20 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 		// if it's a recent backup, we assume that the fast forward process has been completed
 		// and skip for this repository
 		if latestBackup != "" && latestBackupSHA != "" {
-			commit, _, err2 := s.GithubClient.Git.GetCommit(ctx, s.Config.Org, repo, latestBackupSHA)
+			commit, _, err2 := s.GithubClient.Git.GetCommit(ctx, s.Config.Org, repository, latestBackupSHA)
 			if err2 != nil {
 				return nil, err2
 			}
 			if !force && time.Now().Before(commit.Author.Date.Add(minBackupIntervalHours*time.Hour)) {
-				result.Skipped = append(result.Skipped, repo)
+				result.Skipped = append(result.Skipped, repository)
 				continue
 			}
 		}
 
 		// we get the cloud branch
-		ref, _, err := s.GithubClient.Git.GetRef(ctx, s.Config.Org, repo, cloudBranchName)
+		ref, _, err := s.GithubClient.Git.GetRef(ctx, s.Config.Org, repository, cloudBranchName)
 		if err != nil {
-			mlog.Warn("error getting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repo), mlog.String("Ref", cloudBranchName))
+			mlog.Warn("error getting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repository), mlog.String("Ref", cloudBranchName))
 			// We don't return here as cloud branch may not exist anyway
 		}
 
@@ -132,32 +138,32 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 			var backupRef *github.Reference
 
 			if dryRun {
-				result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repo, *newRef.Ref, (*newRef.Object.SHA)[:7]))
+				result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repository, *newRef.Ref, (*newRef.Object.SHA)[:7]))
 			} else {
-				backupRef, resp, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repo, newRef)
+				backupRef, resp, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repository, newRef)
 				if err != nil {
 					if resp.StatusCode != http.StatusUnprocessableEntity {
 						return nil, err
 					}
 					// if force flag provided, we are going to delete the backup and create again.
 					if force {
-						_, err = s.GithubClient.Git.DeleteRef(ctx, s.Config.Org, repo, *newRef.Ref)
+						_, err = s.GithubClient.Git.DeleteRef(ctx, s.Config.Org, repository, *newRef.Ref)
 						if err != nil {
-							mlog.Warn("error deleting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repo), mlog.String("Ref", cloudBranchName))
+							mlog.Warn("error deleting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repository), mlog.String("Ref", cloudBranchName))
 							// We don't return here as cloud branch may not exist anyway.
 							// Even if it exists, we are going to fail on creating the new cloud branch.
 						}
-						backupRef, _, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repo, newRef)
+						backupRef, _, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repository, newRef)
 						if err != nil {
 							return nil, err
 						}
-						result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repo, *backupRef.Ref, (*backupRef.Object.SHA)[:7]))
+						result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repository, *backupRef.Ref, (*backupRef.Object.SHA)[:7]))
 					} else {
 						// backup exist, continue anyway but comment this.
-						result.Skipped = append(result.Skipped, repo)
+						result.Skipped = append(result.Skipped, repository)
 					}
 				} else {
-					result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repo, *backupRef.Ref, (*backupRef.Object.SHA)[:7]))
+					result.Backup = append(result.Backup, fmt.Sprintf("%s:%s (SHA: `%s`)", repository, *backupRef.Ref, (*backupRef.Object.SHA)[:7]))
 				}
 			}
 		}
@@ -165,16 +171,16 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 		// so far we should've back up the cloud branch, it should be safe to delete
 		// if we didn't take a backup, it should be the only case of cloud branch is not existing (yet).
 		if !dryRun {
-			_, err = s.GithubClient.Git.DeleteRef(ctx, s.Config.Org, repo, cloudBranchName)
+			_, err = s.GithubClient.Git.DeleteRef(ctx, s.Config.Org, repository, cloudBranchName)
 			if err != nil {
-				mlog.Warn("error deleting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repo), mlog.String("Ref", cloudBranchName))
+				mlog.Warn("error deleting reference", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", repository), mlog.String("Ref", cloudBranchName))
 				// We don't return here as cloud branch may not exist anyway.
 				// Even if it exists, we are going to fail on creating the new cloud branch.
 			}
 		}
 
 		// get main branch
-		refHead, _, err := s.GithubClient.Git.GetRef(ctx, s.Config.Org, repo, mainBranchName)
+		refHead, _, err := s.GithubClient.Git.GetRef(ctx, s.Config.Org, repository, mainBranchName)
 		if err != nil {
 			return nil, err
 		}
@@ -186,14 +192,14 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 		}
 
 		if !dryRun {
-			_, _, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repo, newHeadRef)
+			_, _, err = s.GithubClient.Git.CreateRef(ctx, s.Config.Org, repository, newHeadRef)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		// so far we completed the fast forward process for this iteration, let's report it proudly.
-		result.FastForwarded = append(result.FastForwarded, repo)
+		result.FastForwarded = append(result.FastForwarded, repository)
 	}
 
 	return result, nil
@@ -252,7 +258,8 @@ func (s *Server) CleanOutdatedCloudBranches() {
 	target := trunc.Add(-cloudBranchCleanupThreshold)
 
 	// iterate repos
-	for _, repository := range s.Config.CloudRepositories {
+	for _, r := range s.Config.CloudRepositories {
+		repository := r.Name
 		for {
 			// for each repo, get all branches
 			branches, resp, err := s.GithubClient.Repositories.ListBranches(ctx, s.Config.Org, repository, branchListOpts)

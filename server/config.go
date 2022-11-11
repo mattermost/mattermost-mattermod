@@ -35,6 +35,11 @@ type Repository struct {
 	GreetingLabels             []string // GreetingLabels are the labels applied automatically to non-member PRs for this repo.
 }
 
+type CloudRepository struct {
+	Name       string
+	MainBranch string
+}
+
 type Integration struct {
 	RepositoryName  string
 	IntegrationLink string
@@ -72,7 +77,7 @@ type Config struct {
 	DataSource string
 
 	Repositories      []*Repository
-	CloudRepositories []string
+	CloudRepositories []*CloudRepository
 
 	BlockPRMergeLabels []string
 	AutoPRMergeLabel   string
