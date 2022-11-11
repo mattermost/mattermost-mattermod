@@ -94,6 +94,9 @@ type Config struct {
 	E2EServerStatusContext string
 	E2ETriggerLabel        []string
 
+	E2EMobileCoreReponame  string
+	E2EMobileGitLabProject string
+
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
 	EnterpriseWebappReponame      string
