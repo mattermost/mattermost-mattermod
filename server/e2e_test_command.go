@@ -119,7 +119,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		e2eTestErr = &E2ETestError{source: e2eTestMsgTrigger}
 		return e2eTestErr
 	}
-	endMsg := fmt.Sprintf(e2eTestFmtSuccess, pip.WebURL, s.Config.TestAutomationDashboardURL, pip.ID)
+	endMsg := fmt.Sprintf(e2eTestFmtSuccess, pip.WebURL, s.Config.E2ETestAutomationDashboardURL, pip.ID)
 	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, endMsg); cErr != nil {
 		mlog.Warn("Error while commenting", mlog.Err(cErr))
 	}
