@@ -21,10 +21,9 @@ const (
 	e2eTestMsgCompanionBranch     = "Failed to locate companion branch."
 	e2eTestMsgSameEnvs            = "A pipeline with the same environment variables is already running. \n Please cancel it first with /e2e-cancel, or specify different environment variables."
 
-	e2eTestMsgOpts    = "Triggering e2e testing with options:"
+	e2eTestMsgOpts    = "Triggering E2E testing with options:"
 	e2eTestFmtOpts    = "%v\n```%v```"
-	e2eTestMsgSuccess = "Successfully triggered e2e testing!"
-	e2eTestFmtSuccess = "%v\n%v"
+	e2eTestFmtSuccess = "Successfully triggered E2E testing!\n[GitLab pipeline](%v) | [Test dashboard](%v/cycle/%v)"
 )
 
 func (e *E2ETestError) Error() string {
@@ -115,12 +114,12 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		return e2eTestErr
 	}
 
-	url, err := s.triggerE2EGitLabPipeline(ctx, info)
+	pip, err := s.triggerE2EGitLabPipeline(ctx, info)
 	if err != nil {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgTrigger}
 		return e2eTestErr
 	}
-	endMsg := fmt.Sprintf(e2eTestFmtSuccess, e2eTestMsgSuccess, url)
+	endMsg := fmt.Sprintf(e2eTestFmtSuccess, pip.WebURL, s.Config.TestAutomationDashboardURL, pip.ID)
 	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, endMsg); cErr != nil {
 		mlog.Warn("Error while commenting", mlog.Err(cErr))
 	}

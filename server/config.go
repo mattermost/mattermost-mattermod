@@ -89,15 +89,16 @@ type Config struct {
 	BuildAppBranchPrefix  string
 	BuildAppJobs          []*BuildAppJob
 
-	E2EDockerRepo          string
-	E2EGitLabProject       string
-	E2EWebappRef           string
-	E2EServerRef           string
-	E2EWebappReponame      string
-	E2EServerReponame      string
-	E2EWebappStatusContext string
-	E2EServerStatusContext string
-	E2ETriggerLabel        []string
+	E2EDockerRepo              string
+	E2EGitLabProject           string
+	E2EWebappRef               string
+	E2EServerRef               string
+	E2EWebappReponame          string
+	E2EServerReponame          string
+	E2EWebappStatusContext     string
+	E2EServerStatusContext     string
+	E2ETriggerLabel            []string
+	TestAutomationDashboardURL string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string

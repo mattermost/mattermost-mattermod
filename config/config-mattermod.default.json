@@ -67,6 +67,7 @@
     "E2EWebappStatusContext": "",
     "E2EServerStatusContext": "",
     "E2ETriggerLabel": ["3: QA Review", "QA Deferred", "Run E2E Testing"],
+    "TestAutomationDashboardURL": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",
