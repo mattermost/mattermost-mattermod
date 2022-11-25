@@ -218,11 +218,10 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
-				if resp.NextPage == 0 {
-					break
-				}
-				prListOpts.Page = resp.NextPage
 				continue
+			}
+			if resp.NextPage == 0 {
+				break
 			}
 			prListOpts.Page = resp.NextPage
 			time.Sleep(200 * time.Millisecond)
@@ -242,9 +241,6 @@ func (s *Server) Tick() {
 					mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
 				}
 			}
-			if resp.NextPage == 0 {
-				break
-			}
 		}
 
 		time.Sleep(time.Second)
@@ -259,11 +255,10 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
-				if resp.NextPage == 0 {
-					break
-				}
-				issueListOpts.Page = resp.NextPage
 				continue
+			}
+			if resp.NextPage == 0 {
+				break
 			}
 			issueListOpts.Page = resp.NextPage
 
@@ -285,9 +280,6 @@ func (s *Server) Tick() {
 				if err := s.checkIssueForChanges(ctx, issue); err != nil {
 					mlog.Error("could not check issue for changes", mlog.Err(err))
 				}
-			}
-			if resp.NextPage == 0 {
-				break
 			}
 		}
 	}
