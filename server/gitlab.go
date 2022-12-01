@@ -44,7 +44,7 @@ type PipelinesService interface {
 	ListProjectPipelines(pid interface{}, opt *gitlab.ListProjectPipelinesOptions, options ...gitlab.RequestOptionFunc) ([]*gitlab.PipelineInfo, *gitlab.Response, error)
 }
 
-func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (string, error) {
+func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTriggerInfo) (*gitlab.Pipeline, error) {
 	defaultEnvs := []*gitlab.PipelineVariable{
 		{
 			Key:          envKeyRefMattermostServer,
@@ -87,11 +87,8 @@ func (s *Server) triggerE2EGitLabPipeline(ctx context.Context, info *E2ETestTrig
 		Variables: append(defaultEnvs, customEnvs...),
 	}
 	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EGitLabProject, createOpts, gitlab.WithContext(ctx))
-	if err != nil {
-		return "", err
-	}
 
-	return pip.WebURL, nil
+	return pip, err
 }
 
 func (s *Server) triggerE2EMobileGitLabPipeline(ctx context.Context, info *E2ETestMobileTriggerInfo) (string, error) {
