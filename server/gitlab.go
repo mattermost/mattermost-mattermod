@@ -13,6 +13,8 @@ const (
 	envKeyShaMattermostServer = "SHA_MATTERMOST_SERVER"
 	envKeyRefMattermostWebapp = "REF_MATTERMOST_WEBAPP"
 	envKeyShaMattermostWebapp = "SHA_MATTERMOST_WEBAPP"
+	envKeyRefMattermostMobile = "REF_MATTERMOST_MOBILE"
+	envKeyShaMattermostMobile = "SHA_MATTERMOST_MOBILE"
 	variableTypeEnvVar        = "env_var"
 )
 
@@ -98,24 +100,14 @@ func (s *Server) triggerE2EMobileGitLabPipeline(ctx context.Context, info *E2ETe
 			Value:        strconv.Itoa(info.TriggerPR),
 			VariableType: variableTypeEnvVar,
 		},
-	}
-	createOpts := &gitlab.CreatePipelineOptions{
-		Ref:       &info.RefToTrigger,
-		Variables: defaultEnvs,
-	}
-	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EMobileGitLabProject, createOpts, gitlab.WithContext(ctx))
-	if err != nil {
-		return "", err
-	}
-
-	return pip.WebURL, nil
-}
-
-func (s *Server) triggerE2EMobileGitLabPipeline(ctx context.Context, info *E2ETestMobileTriggerInfo) (string, error) {
-	defaultEnvs := []*gitlab.PipelineVariable{
 		{
-			Key:          envKeyPRNumber,
-			Value:        strconv.Itoa(info.TriggerPR),
+			Key:          envKeyRefMattermostMobile,
+			Value:        info.TriggerBranch,
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyShaMattermostMobile,
+			Value:        info.TriggerSHA,
 			VariableType: variableTypeEnvVar,
 		},
 	}

@@ -103,9 +103,6 @@ type Config struct {
 	E2EMobileCoreReponame  string
 	E2EMobileGitLabProject string
 
-	E2EMobileCoreReponame  string
-	E2EMobileGitLabProject string
-
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
 	EnterpriseWebappReponame      string

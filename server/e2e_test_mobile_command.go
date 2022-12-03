@@ -40,11 +40,12 @@ type E2ETestMobileError struct {
 }
 
 type E2ETestMobileTriggerInfo struct {
-	TriggerPR    int
-	TriggerRepo  string
-	TriggerSHA   string
-	RefToTrigger string
-	EnvVars      map[string]string
+	TriggerBranch string
+	TriggerPR     int
+	TriggerRepo   string
+	TriggerSHA    string
+	RefToTrigger  string
+	EnvVars       map[string]string
 }
 
 func (s *Server) handleE2ETestMobile(ctx context.Context, commenter string, pr *model.PullRequest) error {
@@ -73,9 +74,10 @@ func (s *Server) handleE2ETestMobile(ctx context.Context, commenter string, pr *
 	}
 
 	info := &E2ETestMobileTriggerInfo{
-		TriggerPR:   pr.Number,
-		TriggerRepo: pr.RepoName,
-		TriggerSHA:  pr.Sha,
+		TriggerBranch: pr.Ref,
+		TriggerPR:     pr.Number,
+		TriggerRepo:   pr.RepoName,
+		TriggerSHA:    pr.Sha,
 	}
 
 	info.RefToTrigger = "main"
