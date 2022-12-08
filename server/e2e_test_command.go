@@ -24,6 +24,7 @@ const (
 	e2eTestMsgOpts    = "Triggering E2E testing with options:"
 	e2eTestFmtOpts    = "%v\n```%v```"
 	e2eTestFmtSuccess = "Successfully triggered E2E testing!\n[GitLab pipeline](%v) | [Test dashboard](%v/cycle/%v)"
+	typeFlag          = "--type"
 )
 
 func (e *E2ETestError) Error() string {
@@ -154,6 +155,17 @@ func parseE2ETestCommentForOpts(commentBody string) *map[string]string {
 	return &opts
 }
 
+// Example commands:
+// /e2e-test
+// /e2e-test --type=\"cloud\"
+// /e2e-test --type=\"cloud\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
+func parseOptsForWebappRef(opts map[string]string) string {
+	if val, ok := opts[typeFlag]; ok {
+		return val
+	}
+	return ""
+}
+
 // We ignore forks for now, since the build tag will still be built for forks.
 // This means, modified webapp tests and server config settings will not be accurate in E2E testing for forks.
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-cycle.sh requires webapp to be cloned
@@ -189,6 +201,10 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 			info.ServerSHA = ""
 		}
 		info.RefToTrigger = s.Config.E2EWebappRef
+		ref := parseOptsForWebappRef(*opts)
+		if ref != "" {
+			info.RefToTrigger = ref
+		}
 		info.WebappBranch = pr.Ref
 		info.WebappSHA = pr.Sha
 	case s.Config.E2EServerReponame:
