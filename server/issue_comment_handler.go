@@ -140,7 +140,14 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 			s.Metrics.IncreaseWebhookRequest("e2e_test_mobile")
 			if err := s.handleE2ETestMobile(ctx, commenter, pr); err != nil {
 				s.Metrics.IncreaseWebhookErrors("e2e_test_mobile")
-				errs = append(errs, fmt.Errorf("error e2e test: %w", err))
+				errs = append(errs, fmt.Errorf("error e2e test mobile: %w", err))
+			}
+		}
+		if s.Config.E2EDesktopCoreReponame == *ev.Repository.Name {
+			s.Metrics.IncreaseWebhookRequest("e2e_test_desktop")
+			if err := s.handleE2ETestDesktop(ctx, commenter, pr); err != nil {
+				s.Metrics.IncreaseWebhookErrors("e2e_test_desktop")
+				errs = append(errs, fmt.Errorf("error e2e test desktop: %w", err))
 			}
 		}
 	}
