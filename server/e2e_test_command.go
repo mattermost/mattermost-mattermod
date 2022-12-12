@@ -161,14 +161,12 @@ func parseE2ETestCommentForOpts(commentBody string) (eVarOpts *map[string]string
 			}
 			envValue := optSplitInAssignment[1]
 			envVarOpts[envKey] = strings.Trim(envValue, "\"")
-
 		} else {
 			if _, exists := nonEnvVarOpts[envKey]; exists {
 				continue
 			}
 			envValue := optSplitInAssignment[1]
 			nonEnvVarOpts[envKey] = strings.Trim(envValue, "\"")
-
 		}
 	}
 
