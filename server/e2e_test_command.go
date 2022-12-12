@@ -91,16 +91,17 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		return e2eTestErr
 	}
 
-	opts := parseE2ETestCommentForOpts(commentBody)
+	envVarOpts, nonEnvVarOpts := parseE2ETestCommentForOpts(commentBody)
+	webappRef := parseOptsForWebappRef(nonEnvVarOpts)
 
-	info, err := s.getPRInfoForE2ETest(ctx, pr, opts)
+	info, err := s.getPRInfoForE2ETest(ctx, pr, envVarOpts, webappRef)
 	if err != nil {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgPRInfo}
 		return e2eTestErr
 	}
 
-	if opts != nil {
-		initMsg := fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, opts)
+	if envVarOpts != nil {
+		initMsg := fmt.Sprintf(e2eTestFmtOpts, e2eTestMsgOpts, envVarOpts)
 		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, initMsg); cErr != nil {
 			mlog.Warn("Error while commenting", mlog.Err(cErr))
 		}
@@ -128,39 +129,66 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	return nil
 }
 
-// Example commands:
-// /e2e-test
-// /e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
-func parseE2ETestCommentForOpts(commentBody string) *map[string]string {
-	cmd := strings.Split(commentBody, "\n")[0]
-	cmd = strings.TrimSuffix(cmd, " ")
-
-	if !strings.Contains(cmd, " ") && !strings.Contains(cmd, "=") {
-		mlog.Debug("E2E comment does not contain options")
-		return nil
-	}
-
-	var opts = make(map[string]string)
-	optsAfterBaseCmd := strings.Split(cmd, " ")[1:]
-	for _, opt := range optsAfterBaseCmd {
-		optSplitInAssignment := strings.SplitAfterN(opt, string('='), 2)
-		envKey := strings.TrimSuffix(optSplitInAssignment[0], "=")
-		if _, exists := opts[envKey]; exists {
-			continue
-		}
-		envValue := optSplitInAssignment[1]
-		opts[envKey] = strings.Trim(envValue, "\"")
-	}
-
-	return &opts
+func isUpper(s string) bool {
+	return strings.ToUpper(s) == s
 }
 
 // Example commands:
 // /e2e-test
 // /e2e-test --type=\"cloud\"
 // /e2e-test --type=\"cloud\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
-func parseOptsForWebappRef(opts map[string]string) string {
-	if val, ok := opts[typeFlag]; ok {
+// /e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
+func parseE2ETestCommentForOpts(commentBody string) (eVarOpts *map[string]string, nEVarOpts *map[string]string) {
+	cmd := strings.Split(commentBody, "\n")[0]
+	cmd = strings.TrimSuffix(cmd, " ")
+
+	if !strings.Contains(cmd, " ") && !strings.Contains(cmd, "=") {
+		mlog.Debug("E2E comment does not contain options")
+		return nil, nil
+	}
+
+	var envVarOpts = make(map[string]string)
+	var nonEnvVarOpts = make(map[string]string)
+	optsAfterBaseCmd := strings.Split(cmd, " ")[1:]
+	for _, opt := range optsAfterBaseCmd {
+		optSplitInAssignment := strings.SplitAfterN(opt, string('='), 2)
+		envKey := strings.TrimSuffix(optSplitInAssignment[0], "=")
+
+		// env keys are passed as upper case in the comment
+		if isUpper(envKey) {
+			if _, exists := envVarOpts[envKey]; exists {
+				continue
+			}
+			envValue := optSplitInAssignment[1]
+			envVarOpts[envKey] = strings.Trim(envValue, "\"")
+
+		} else {
+			if _, exists := nonEnvVarOpts[envKey]; exists {
+				continue
+			}
+			envValue := optSplitInAssignment[1]
+			nonEnvVarOpts[envKey] = strings.Trim(envValue, "\"")
+
+		}
+	}
+
+	if len(envVarOpts) == 0 && len(nonEnvVarOpts) > 0 {
+		return nil, &nonEnvVarOpts
+	}
+
+	if len(envVarOpts) > 0 && len(nonEnvVarOpts) == 0 {
+		return &envVarOpts, nil
+	}
+
+	return &envVarOpts, &nonEnvVarOpts
+}
+
+func parseOptsForWebappRef(opts *map[string]string) string {
+	if opts == nil {
+		return ""
+	}
+	nonEnvVarOpts := *opts
+	if val, ok := nonEnvVarOpts[typeFlag]; ok {
 		return val
 	}
 	return ""
@@ -171,15 +199,15 @@ func parseOptsForWebappRef(opts map[string]string) string {
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-cycle.sh requires webapp to be cloned
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-server.sh requires server to be cloned
 // getPRInfoForE2ETest returns information needed to trigger E2E testing
-func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, opts *map[string]string) (*E2ETestTriggerInfo, error) {
+func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, envVarOpts *map[string]string, webappRefOption string) (*E2ETestTriggerInfo, error) {
 	info := &E2ETestTriggerInfo{
 		TriggerPR:   pr.Number,
 		TriggerRepo: pr.RepoName,
 		TriggerSHA:  pr.Sha,
 	}
 
-	if opts != nil {
-		info.EnvVars = *opts
+	if envVarOpts != nil {
+		info.EnvVars = *envVarOpts
 	}
 
 	info.RefToTrigger = ""
@@ -201,9 +229,8 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 			info.ServerSHA = ""
 		}
 		info.RefToTrigger = s.Config.E2EWebappRef
-		ref := parseOptsForWebappRef(*opts)
-		if ref != "" {
-			info.RefToTrigger = ref
+		if webappRefOption != "" {
+			info.RefToTrigger = webappRefOption
 		}
 		info.WebappBranch = pr.Ref
 		info.WebappSHA = pr.Sha
