@@ -15,6 +15,8 @@ const (
 	envKeyShaMattermostWebapp = "SHA_MATTERMOST_WEBAPP"
 	envKeyRefMattermostMobile = "REF_MATTERMOST_MOBILE"
 	envKeyShaMattermostMobile = "SHA_MATTERMOST_MOBILE"
+	envKeyRefDesktop          = "REF_DESKTOP"
+	envKeyShaDesktop          = "SHA_DESKTOP"
 	variableTypeEnvVar        = "env_var"
 )
 
@@ -116,6 +118,36 @@ func (s *Server) triggerE2EMobileGitLabPipeline(ctx context.Context, info *E2ETe
 		Variables: defaultEnvs,
 	}
 	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EMobileGitLabProject, createOpts, gitlab.WithContext(ctx))
+	if err != nil {
+		return "", err
+	}
+
+	return pip.WebURL, nil
+}
+
+func (s *Server) triggerE2EDesktopGitLabPipeline(ctx context.Context, info *E2ETestDesktopTriggerInfo) (string, error) {
+	defaultEnvs := []*gitlab.PipelineVariable{
+		{
+			Key:          envKeyPRNumber,
+			Value:        strconv.Itoa(info.TriggerPR),
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyRefDesktop,
+			Value:        info.TriggerBranch,
+			VariableType: variableTypeEnvVar,
+		},
+		{
+			Key:          envKeyShaDesktop,
+			Value:        info.TriggerSHA,
+			VariableType: variableTypeEnvVar,
+		},
+	}
+	createOpts := &gitlab.CreatePipelineOptions{
+		Ref:       &info.RefToTrigger,
+		Variables: defaultEnvs,
+	}
+	pip, _, err := s.GitLabCIClientV4.Pipelines.CreatePipeline(s.Config.E2EDesktopGitLabProject, createOpts, gitlab.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}

@@ -130,12 +130,6 @@ func TestPerformFastForwardProcess(t *testing.T) {
 				},
 			},
 		}, nil, nil)
-		now := time.Now()
-		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
-			Author: &github.CommitAuthor{
-				Date: &now,
-			},
-		}, nil, nil)
 
 		ctx := context.Background()
 		res, err := s.performFastForwardProcess(ctx, issue, "/cloud-ff", member)
@@ -153,22 +147,19 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		}
 		gs := mocks.NewMockGitService(ctrl)
 		s.GithubClient.Git = gs
+		sixDaysBefore := time.Now().Add(-1 * 6 * 24 * time.Hour)
+
 		gs.EXPECT().ListMatchingRefs(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, &github.ReferenceListOptions{
 			Ref: cloudBranchName,
 		}).Times(1).Return([]*github.Reference{
 			{
-				Ref: github.String("heads/cloud-" + time.Now().Format("2006-01-02") + "-backup"),
+				Ref: github.String("heads/cloud-" + time.Now().Format(fmt.Sprintf("%d-%d-%d", sixDaysBefore.Year(), sixDaysBefore.Month(), sixDaysBefore.Day())) + "-backup"),
 				Object: &github.GitObject{
 					SHA: github.String("some-random-sha"),
 				},
 			},
 		}, nil, nil)
-		now := time.Now().Add(-1 * 6 * 24 * time.Hour)
-		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
-			Author: &github.CommitAuthor{
-				Date: &now,
-			},
-		}, nil, nil)
+
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(&github.Reference{
 			Object: &github.GitObject{
 				SHA: github.String("some-random-sha"),
@@ -206,12 +197,6 @@ func TestPerformFastForwardProcess(t *testing.T) {
 				Object: &github.GitObject{
 					SHA: github.String("some-random-sha"),
 				},
-			},
-		}, nil, nil)
-		now := time.Now()
-		gs.EXPECT().GetCommit(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, "some-random-sha").Times(1).Return(&github.Commit{
-			Author: &github.CommitAuthor{
-				Date: &now,
 			},
 		}, nil, nil)
 		gs.EXPECT().GetRef(gomock.AssignableToTypeOf(ctxInterface), s.Config.Org, cloudRepo1, cloudBranchName).Times(1).Return(&github.Reference{

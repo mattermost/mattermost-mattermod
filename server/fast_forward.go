@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	backupRegex = regexp.MustCompile(`cloud-20(\d{2})-(\d{2})-(\d{2})-backup`)
+	backupRegex = regexp.MustCompile(`cloud-(\d{4})-(\d{2})-(\d{2})-backup`)
 )
 
 type fastForwardResult struct {
@@ -92,7 +92,6 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 		}
 
 		var latestBackup string
-		var latestBackupSHA string
 
 		// we are looking for backup branches where has the backup naming patterns
 		// and find the most recent backup branch
@@ -100,20 +99,25 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 			refName := *ref.Ref
 			if backupRegex.MatchString(refName) && refName > latestBackup {
 				latestBackup = refName
-				latestBackupSHA = *ref.Object.SHA
 			}
 		}
 
 		// we check if backup branch do exist
-		// if so, we check the commit day whether if it is older than 5 days or not.
+		// if so, we check the backup date whether if it is older than 5 days or not by parsing the branch name.
 		// if it's a recent backup, we assume that the fast forward process has been completed
 		// and skip for this repository
-		if latestBackup != "" && latestBackupSHA != "" {
-			commit, _, err2 := s.GithubClient.Git.GetCommit(ctx, s.Config.Org, repository, latestBackupSHA)
+		if latestBackup != "" {
+			submatch := backupRegex.FindStringSubmatch(latestBackup)
+			if len(submatch) != 4 {
+				return nil, fmt.Errorf("could not match date from branch (%q) with the regex", latestBackup)
+			}
+
+			refDate, err2 := time.Parse("2006-01-02", fmt.Sprintf("%s-%s-%s", submatch[1], submatch[2], submatch[3]))
 			if err2 != nil {
 				return nil, err2
 			}
-			if !force && time.Now().Before(commit.Author.Date.Add(minBackupIntervalHours*time.Hour)) {
+
+			if !force && time.Now().Before(refDate.Add(minBackupIntervalHours*time.Hour)) {
 				result.Skipped = append(result.Skipped, repository)
 				continue
 			}
@@ -284,7 +288,7 @@ func (s *Server) CleanOutdatedCloudBranches() {
 						continue
 					}
 
-					branchDate, err := time.Parse("2006-01-02", "20"+components[1]+"-"+components[2]+"-"+components[3])
+					branchDate, err := time.Parse("2006-01-02", components[1]+"-"+components[2]+"-"+components[3])
 					if err != nil {
 						mlog.Error("Error in parsing the date from branch name", mlog.Err(err))
 						continue
