@@ -28,6 +28,15 @@ const (
 	cloudServerType   = "cloud"
 )
 
+var cloudEnvOpts = map[string]string{
+	"NOTIFY_ADMIN_COOL_OFF_DAYS":         "0.00000001",
+	"MM_FEATUREFLAGS_AnnualSubscription": "true",
+	"CYPRESS_serverEdition":              "Cloud",
+	"STAGE":                              "@prod",
+	"EXCLUDE_GROUP":                      "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal",
+	"TEST_FILTER":                        "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\"",
+}
+
 func (e *E2ETestError) Error() string {
 	switch e.source {
 	case e2eTestMsgCommenterPermission:
@@ -187,12 +196,9 @@ func optsHaveServerType(opts map[string]string, sType string) bool {
 }
 
 func addRequiredEnvVarOptionsForCloudServerType(opts map[string]string) {
-	opts["NOTIFY_ADMIN_COOL_OFF_DAYS"] = "0.00000001"
-	opts["MM_FEATUREFLAGS_AnnualSubscription"] = "true"
-	opts["CYPRESS_serverEdition"] = "Cloud"
-	opts["STAGE"] = "@prod"
-	opts["EXCLUDE_GROUP"] = "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal"
-	opts["TEST_FILTER"] = "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\""
+	for k, v := range cloudEnvOpts {
+		opts[k] = v
+	}
 }
 
 // We ignore forks for now, since the build tag will still be built for forks.

@@ -22,7 +22,7 @@ const (
 	commandE2ETestBase           = "/e2e-test"
 	commandE2ETestSingle         = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\"\nOther commenting after command \n Even other comment"
 	commandE2ETestAdvanced       = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
-	commandE2ETestOnlyTypeOption = "/e2e-test --type=\"cloud\"\nOther commenting after command \n Even other comment"
+	commandE2ETestOnlyTypeOption = "/e2e-test --server-type=\"cloud\"\nOther commenting after command \n Even other comment"
 	prNumber                     = 123
 	eSHA                         = "abcdefg"
 	eBranch                      = "branchA"
@@ -54,6 +54,31 @@ func TestParseE2ETestCommentForOpts(t *testing.T) {
 		assert.Equal(t, 3, len(*aEnvOpts))
 		assert.EqualValues(t, eEnvOpts, aEnvOpts)
 	})
+
+	t.Run("command with cloud server type specification only", func(t *testing.T) {
+		aEnvOpts := parseE2ETestCommentForOpts(commandE2ETestOnlyTypeOption)
+		assert.Equal(t, len(cloudEnvOpts), len(*aEnvOpts))
+		assert.EqualValues(t, cloudEnvOpts, *aEnvOpts)
+	})
+
+	t.Run("command with cloud server type specification and envs specified", func(t *testing.T) {
+		commentBody := "/e2e-test --server-type=\"cloud\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
+		aEnvOpts := parseE2ETestCommentForOpts(commentBody)
+		eOpts := &map[string]string{
+			"INCLUDE_FILE":                       "new_message_spec.js",
+			"EXCLUDE_FILE":                       "something_to_exclude_spec.js",
+			"NOTIFY_ADMIN_COOL_OFF_DAYS":         "0.00000001",
+			"MM_FEATUREFLAGS_AnnualSubscription": "true",
+			"CYPRESS_serverEdition":              "Cloud",
+			"STAGE":                              "@prod",
+			"EXCLUDE_GROUP":                      "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal",
+			"TEST_FILTER":                        "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\"",
+		}
+
+		assert.Equal(t, 8, len(*aEnvOpts))
+		assert.EqualValues(t, eOpts, aEnvOpts)
+	})
+
 	t.Run("command with space at end", func(t *testing.T) {
 		commentBody := "/e2e-test "
 		aOpts := parseE2ETestCommentForOpts(commentBody)
