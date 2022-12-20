@@ -80,7 +80,7 @@ func (s *Server) handleE2ETestMobile(ctx context.Context, commenter string, pr *
 		TriggerSHA:    pr.Sha,
 	}
 
-	info.RefToTrigger = "main"
+	info.RefToTrigger = s.Config.E2EMobileGitLabProjectRefForPR
 
 	url, err := s.triggerE2EMobileGitLabPipeline(ctx, info)
 	if err != nil {
