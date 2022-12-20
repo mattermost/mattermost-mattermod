@@ -24,7 +24,8 @@ const (
 	e2eTestMsgOpts    = "Triggering E2E testing with options:"
 	e2eTestFmtOpts    = "%v\n```%v```"
 	e2eTestFmtSuccess = "Successfully triggered E2E testing!\n[GitLab pipeline](%v) | [Test dashboard](%v/cycle/%v)"
-	typeFlag          = "--type"
+	serverTypeFlag    = "--server-type"
+	cloudServerType   = "cloud"
 )
 
 func (e *E2ETestError) Error() string {
@@ -92,9 +93,12 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 	}
 
 	envVarOpts, nonEnvVarOpts := parseE2ETestCommentForOpts(commentBody)
-	webappRef := parseOptsForWebappRef(nonEnvVarOpts)
+	cloudServerTypeSpecified := optsHaveServerType(nonEnvVarOpts, cloudServerType)
+	if cloudServerTypeSpecified {
+		envVarOpts = addRequiredEnvVarOptionsForCloudServerType(envVarOpts)
+	}
 
-	info, err := s.getPRInfoForE2ETest(ctx, pr, envVarOpts, webappRef)
+	info, err := s.getPRInfoForE2ETest(ctx, pr, envVarOpts)
 	if err != nil {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgPRInfo}
 		return e2eTestErr
@@ -181,15 +185,27 @@ func parseE2ETestCommentForOpts(commentBody string) (eVarOpts *map[string]string
 	return &envVarOpts, &nonEnvVarOpts
 }
 
-func parseOptsForWebappRef(opts *map[string]string) string {
+func optsHaveServerType(opts *map[string]string, sType string) bool {
 	if opts == nil {
-		return ""
+		return false
 	}
 	nonEnvVarOpts := *opts
-	if val, ok := nonEnvVarOpts[typeFlag]; ok {
-		return val
+	val, ok := nonEnvVarOpts[serverTypeFlag]
+	if ok && val == sType {
+		return true
 	}
-	return ""
+	return false
+}
+
+func addRequiredEnvVarOptionsForCloudServerType(opts *map[string]string) *map[string]string {
+	newOpts := *opts
+	newOpts["NOTIFY_ADMIN_COOL_OFF_DAYS"] = "0.00000001"
+	newOpts["MM_FEATUREFLAGS_AnnualSubscription"] = "true"
+	newOpts["CYPRESS_serverEdition"] = "Cloud"
+	newOpts["STAGE"] = "@prod"
+	newOpts["EXCLUDE_GROUP"] = "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal"
+	newOpts["TEST_FILTER"] = "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\""
+	return &newOpts
 }
 
 // We ignore forks for now, since the build tag will still be built for forks.
@@ -197,7 +213,7 @@ func parseOptsForWebappRef(opts *map[string]string) string {
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-cycle.sh requires webapp to be cloned
 // https://git.internal.mattermost.com/qa/cypress-ui-automation/-/blob/master/scripts/prepare-test-server.sh requires server to be cloned
 // getPRInfoForE2ETest returns information needed to trigger E2E testing
-func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, envVarOpts *map[string]string, webappRefOption string) (*E2ETestTriggerInfo, error) {
+func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest, envVarOpts *map[string]string) (*E2ETestTriggerInfo, error) {
 	info := &E2ETestTriggerInfo{
 		TriggerPR:   pr.Number,
 		TriggerRepo: pr.RepoName,
@@ -227,9 +243,6 @@ func (s *Server) getPRInfoForE2ETest(ctx context.Context, pr *model.PullRequest,
 			info.ServerSHA = ""
 		}
 		info.RefToTrigger = s.Config.E2EWebappRef
-		if webappRefOption != "" {
-			info.RefToTrigger = webappRefOption
-		}
 		info.WebappBranch = pr.Ref
 		info.WebappSHA = pr.Sha
 	case s.Config.E2EServerReponame:
