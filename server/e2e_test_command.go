@@ -92,11 +92,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 		return e2eTestErr
 	}
 
-	envVarOpts, nonEnvVarOpts := parseE2ETestCommentForOpts(commentBody)
-	cloudServerTypeSpecified := optsHaveServerType(nonEnvVarOpts, cloudServerType)
-	if cloudServerTypeSpecified {
-		envVarOpts = addRequiredEnvVarOptionsForCloudServerType(envVarOpts)
-	}
+	envVarOpts := parseE2ETestCommentForOpts(commentBody)
 
 	info, err := s.getPRInfoForE2ETest(ctx, pr, envVarOpts)
 	if err != nil {
@@ -142,13 +138,13 @@ func isUpper(s string) bool {
 // /e2e-test --type=\"cloud\"
 // /e2e-test --type=\"cloud\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
 // /e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment
-func parseE2ETestCommentForOpts(commentBody string) (eVarOpts *map[string]string, nEVarOpts *map[string]string) {
+func parseE2ETestCommentForOpts(commentBody string) *map[string]string {
 	cmd := strings.Split(commentBody, "\n")[0]
 	cmd = strings.TrimSuffix(cmd, " ")
 
 	if !strings.Contains(cmd, " ") && !strings.Contains(cmd, "=") {
 		mlog.Debug("E2E comment does not contain options")
-		return nil, nil
+		return nil
 	}
 
 	var envVarOpts = make(map[string]string)
@@ -174,38 +170,29 @@ func parseE2ETestCommentForOpts(commentBody string) (eVarOpts *map[string]string
 		}
 	}
 
-	if len(envVarOpts) == 0 && len(nonEnvVarOpts) > 0 {
-		return nil, &nonEnvVarOpts
+	cloudServerTypeSpecified := optsHaveServerType(nonEnvVarOpts, cloudServerType)
+	if cloudServerTypeSpecified {
+		addRequiredEnvVarOptionsForCloudServerType(envVarOpts)
 	}
 
-	if len(envVarOpts) > 0 && len(nonEnvVarOpts) == 0 {
-		return &envVarOpts, nil
-	}
-
-	return &envVarOpts, &nonEnvVarOpts
+	return &envVarOpts
 }
 
-func optsHaveServerType(opts *map[string]string, sType string) bool {
-	if opts == nil {
-		return false
-	}
-	nonEnvVarOpts := *opts
-	val, ok := nonEnvVarOpts[serverTypeFlag]
+func optsHaveServerType(opts map[string]string, sType string) bool {
+	val, ok := opts[serverTypeFlag]
 	if ok && val == sType {
 		return true
 	}
 	return false
 }
 
-func addRequiredEnvVarOptionsForCloudServerType(opts *map[string]string) *map[string]string {
-	newOpts := *opts
-	newOpts["NOTIFY_ADMIN_COOL_OFF_DAYS"] = "0.00000001"
-	newOpts["MM_FEATUREFLAGS_AnnualSubscription"] = "true"
-	newOpts["CYPRESS_serverEdition"] = "Cloud"
-	newOpts["STAGE"] = "@prod"
-	newOpts["EXCLUDE_GROUP"] = "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal"
-	newOpts["TEST_FILTER"] = "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\""
-	return &newOpts
+func addRequiredEnvVarOptionsForCloudServerType(opts map[string]string) {
+	opts["NOTIFY_ADMIN_COOL_OFF_DAYS"] = "0.00000001"
+	opts["MM_FEATUREFLAGS_AnnualSubscription"] = "true"
+	opts["CYPRESS_serverEdition"] = "Cloud"
+	opts["STAGE"] = "@prod"
+	opts["EXCLUDE_GROUP"] = "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal"
+	opts["TEST_FILTER"] = "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\""
 }
 
 // We ignore forks for now, since the build tag will still be built for forks.

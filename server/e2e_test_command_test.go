@@ -32,26 +32,20 @@ const (
 func TestParseE2ETestCommentForOpts(t *testing.T) {
 	t.Run("command with newline", func(t *testing.T) {
 		commentBody := "/e2e-test\nOther commenting after command \n Even other comment"
-		aEnvOpts, aNonEnvOpts := parseE2ETestCommentForOpts(commentBody)
+		aEnvOpts := parseE2ETestCommentForOpts(commentBody)
 		assert.Nil(t, aEnvOpts)
-		assert.Nil(t, aNonEnvOpts)
 
 		commentBody = "/e2e-test --type=\"cloud\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
-		aEnvOpts, aNonEnvOpts = parseE2ETestCommentForOpts(commentBody)
+		aEnvOpts = parseE2ETestCommentForOpts(commentBody)
 		eEnvOpts := &map[string]string{
 			"INCLUDE_FILE": "new_message_spec.js",
 			"EXCLUDE_FILE": "something_to_exclude_spec.js",
 		}
-		eNonEnvOpts := &map[string]string{
-			"--type": "cloud",
-		}
 		assert.Equal(t, 2, len(*aEnvOpts))
 		assert.EqualValues(t, eEnvOpts, aEnvOpts)
-		assert.Equal(t, 1, len(*aNonEnvOpts))
-		assert.EqualValues(t, eNonEnvOpts, aNonEnvOpts)
 
 		commentBody = commandE2ETestAdvanced
-		aEnvOpts, _ = parseE2ETestCommentForOpts(commentBody)
+		aEnvOpts = parseE2ETestCommentForOpts(commentBody)
 		eEnvOpts = &map[string]string{
 			"MM_ENV":       "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			"INCLUDE_FILE": "new_message_spec.js",
@@ -60,23 +54,13 @@ func TestParseE2ETestCommentForOpts(t *testing.T) {
 		assert.Equal(t, 3, len(*aEnvOpts))
 		assert.EqualValues(t, eEnvOpts, aEnvOpts)
 	})
-	t.Run("command with type and with newline", func(t *testing.T) {
-		aEnvOpts, aNonEnvOpts := parseE2ETestCommentForOpts(commandE2ETestOnlyTypeOption)
-		eNonEnvOpts := &map[string]string{
-			"--type": "cloud",
-		}
-
-		assert.Nil(t, aEnvOpts)
-		assert.Equal(t, 1, len(*aNonEnvOpts))
-		assert.EqualValues(t, eNonEnvOpts, aNonEnvOpts)
-	})
 	t.Run("command with space at end", func(t *testing.T) {
 		commentBody := "/e2e-test "
-		aOpts, _ := parseE2ETestCommentForOpts(commentBody)
+		aOpts := parseE2ETestCommentForOpts(commentBody)
 		assert.Nil(t, aOpts)
 
 		commentBody = "/e2e-test INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
-		aOpts, _ = parseE2ETestCommentForOpts(commentBody)
+		aOpts = parseE2ETestCommentForOpts(commentBody)
 		eOpts := &map[string]string{
 			"INCLUDE_FILE": "new_message_spec.js",
 			"EXCLUDE_FILE": "something_to_exclude_spec.js",
@@ -85,7 +69,7 @@ func TestParseE2ETestCommentForOpts(t *testing.T) {
 		assert.EqualValues(t, eOpts, aOpts)
 
 		commentBody = "/e2e-test MM_ENV=\"MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
-		aOpts, _ = parseE2ETestCommentForOpts(commentBody)
+		aOpts = parseE2ETestCommentForOpts(commentBody)
 		eOpts = &map[string]string{
 			"MM_ENV":       "MM_FEATUREFLAGS_GLOBALHEADER=true,MM_OTHER_FLAG=true",
 			"INCLUDE_FILE": "new_message_spec.js",
