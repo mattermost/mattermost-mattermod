@@ -19,6 +19,7 @@ import (
 
 const (
 	commenterNoPermissions = "commenter does not have permissions"
+	commentCreatedAction   = "created"
 )
 
 type issueCommentEvent struct {
@@ -39,7 +40,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if ev.HasCloudFF() && ev.Action == "created" {
+	if ev.HasCloudFF() && ev.Action == commentCreatedAction {
 		issue, err2 := s.GetIssueFromGithub(ctx, ev.Issue)
 		if err2 != nil {
 			mlog.Error("could not get the issue from GitHub", mlog.Err(err2))
@@ -51,7 +52,7 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			mlog.Error("error while fast forwarding process", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
 			_, _, err = s.GithubClient.Issues.CreateComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{
-				Body: github.String("Could not complete the fast-forward process w/o errors. Please perform a manual check on repositores."),
+				Body: github.String("Could not complete the fast-forward process w/o errors. Please perform a manual check on repositories."),
 			})
 			if err != nil {
 				mlog.Error("error creating comment", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
@@ -60,6 +61,42 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		} else if res != nil {
 			var comment string
 			comment, err = executeFFSummary(res)
+			if err != nil {
+				mlog.Error("error creating summary", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+				return
+			}
+			_, _, err = s.GithubClient.Issues.CreateComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{
+				Body: github.String(comment),
+			})
+			if err != nil {
+				mlog.Error("error creating comment", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+				return
+			}
+			return
+		}
+	}
+
+	if ev.HasCloudTag() && ev.Action == commentCreatedAction {
+		issue, err2 := s.GetIssueFromGithub(ctx, ev.Issue)
+		if err2 != nil {
+			mlog.Error("could not get the issue from GitHub", mlog.Err(err2))
+			http.Error(w, "could not get the issue from GitHub", http.StatusInternalServerError)
+			return
+		}
+		var res *cloudTagResult
+		res, err = s.createCloudTag(ctx, issue, ev.Comment.GetBody(), *ev.Comment.GetUser().Login)
+		if err != nil {
+			mlog.Error("error while cloud tag process", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+			_, _, err = s.GithubClient.Issues.CreateComment(ctx, issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{
+				Body: github.String("Could not complete the cloud tag process w/o errors. Please perform a manual check on repositories."),
+			})
+			if err != nil {
+				mlog.Error("error creating comment", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
+				return
+			}
+		} else if res != nil {
+			var comment string
+			comment, err = executeCloudTagSummary(res)
 			if err != nil {
 				mlog.Error("error creating summary", mlog.Err(err), mlog.Int("issue", issue.Number), mlog.String("Repo", issue.RepoName))
 				return
