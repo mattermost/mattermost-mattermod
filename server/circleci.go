@@ -111,12 +111,13 @@ func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest,
 
 func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*circleci.Pipeline, error) {
 	params := map[string]interface{}{
-		"tbs_sha":           pr.Sha,
-		"tbs_pr":            strconv.Itoa(pr.Number),
-		"tbs_server_owner":  info.ServerOwner,
-		"tbs_server_branch": info.ServerBranch,
-		"tbs_webapp_owner":  info.WebappOwner,
-		"tbs_webapp_branch": info.WebappBranch,
+		"tbs_sha":                  pr.Sha,
+		"tbs_pr":                   strconv.Itoa(pr.Number),
+		"tbs_server_owner":         info.ServerOwner,
+		"tbs_server_branch":        info.ServerBranch,
+		"tbs_server_target_branch": info.BaseBranch,
+		"tbs_webapp_owner":         info.WebappOwner,
+		"tbs_webapp_branch":        info.WebappBranch,
 	}
 	pip, err := s.CircleCiClientV2.TriggerPipelineWithContext(ctx, circleci.VcsTypeGithub, s.Config.Org, s.Config.EnterpriseReponame, info.EEBranch, "", params)
 	if err != nil {
@@ -129,6 +130,7 @@ func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRe
 		mlog.String("EEBranch", info.EEBranch),
 		mlog.String("ServerOwner", info.ServerOwner),
 		mlog.String("ServerBranch", info.ServerBranch),
+		mlog.String("TargetBranch", info.BaseBranch),
 		mlog.String("WebappOwner", info.WebappOwner),
 		mlog.String("WebappBranch", info.WebappBranch),
 	)
