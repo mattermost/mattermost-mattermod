@@ -35,7 +35,7 @@ func TestParseE2ETestCommentForOpts(t *testing.T) {
 		aEnvOpts := parseE2ETestCommentForOpts(commentBody)
 		assert.Nil(t, aEnvOpts)
 
-		commentBody = "/e2e-test --type=\"cloud\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
+		commentBody = "/e2e-test INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\"\nOther commenting after command \n Even other comment"
 		aEnvOpts = parseE2ETestCommentForOpts(commentBody)
 		eEnvOpts := &map[string]string{
 			"INCLUDE_FILE": "new_message_spec.js",
@@ -57,25 +57,20 @@ func TestParseE2ETestCommentForOpts(t *testing.T) {
 
 	t.Run("command with cloud server type specification only", func(t *testing.T) {
 		aEnvOpts := parseE2ETestCommentForOpts(commandE2ETestOnlyTypeOption)
-		assert.Equal(t, len(cloudEnvOpts), len(*aEnvOpts))
-		assert.EqualValues(t, cloudEnvOpts, *aEnvOpts)
+		assert.Equal(t, 1, len(*aEnvOpts))
+		assert.Contains(t, *aEnvOpts, "SERVER_TYPE")
 	})
 
 	t.Run("command with cloud server type specification and envs specified", func(t *testing.T) {
-		commentBody := "/e2e-test --server-type=\"cloud\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
+		commentBody := "/e2e-test --server-type=\"ha\" INCLUDE_FILE=\"new_message_spec.js\" EXCLUDE_FILE=\"something_to_exclude_spec.js\" "
 		aEnvOpts := parseE2ETestCommentForOpts(commentBody)
 		eOpts := &map[string]string{
-			"INCLUDE_FILE":                       "new_message_spec.js",
-			"EXCLUDE_FILE":                       "something_to_exclude_spec.js",
-			"NOTIFY_ADMIN_COOL_OFF_DAYS":         "0.00000001",
-			"MM_FEATUREFLAGS_AnnualSubscription": "true",
-			"CYPRESS_serverEdition":              "Cloud",
-			"STAGE":                              "@prod",
-			"EXCLUDE_GROUP":                      "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal",
-			"TEST_FILTER":                        "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\"",
+			"INCLUDE_FILE": "new_message_spec.js",
+			"EXCLUDE_FILE": "something_to_exclude_spec.js",
+			"SERVER_TYPE":  "ha",
 		}
 
-		assert.Equal(t, 8, len(*aEnvOpts))
+		assert.Equal(t, 3, len(*aEnvOpts))
 		assert.EqualValues(t, eOpts, aEnvOpts)
 	})
 

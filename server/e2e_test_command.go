@@ -25,16 +25,13 @@ const (
 	e2eTestFmtOpts    = "%v\n```%v```"
 	e2eTestFmtSuccess = "Successfully triggered E2E testing!\n[GitLab pipeline](%v) | [Test dashboard](%v/cycle/%v)"
 	serverTypeFlag    = "--server-type"
-	cloudServerType   = "cloud"
 )
 
-var cloudEnvOpts = map[string]string{
-	"NOTIFY_ADMIN_COOL_OFF_DAYS":         "0.00000001",
-	"MM_FEATUREFLAGS_AnnualSubscription": "true",
-	"CYPRESS_serverEdition":              "Cloud",
-	"STAGE":                              "@prod",
-	"EXCLUDE_GROUP":                      "@not_cloud,@e20_only,@te_only,@high_availability,@license_removal",
-	"TEST_FILTER":                        "--stage=\"${STAGE}\" –includeGroup=\"${INCLUDE_GROUP}\" --excludeGroup=\"${EXCLUDE_GROUP}\" --sortFirst=\"@compliance_export,@elasticsearch,@ldap_group,@ldap\" --sortLast=\"@saml,@keycloak,@plugin,@mfa\" --includeFile=\"${INCLUDE_FILE}\" --excludeFile=\"${EXCLUDE_FILE}\"",
+var validServerTypeOptions = map[string]struct{}{
+	"cloud":   {},
+	"single":  {},
+	"ha":      {},
+	"subpath": {},
 }
 
 func (e *E2ETestError) Error() string {
@@ -179,26 +176,27 @@ func parseE2ETestCommentForOpts(commentBody string) *map[string]string {
 		}
 	}
 
-	cloudServerTypeSpecified := optsHaveServerType(nonEnvVarOpts, cloudServerType)
-	if cloudServerTypeSpecified {
-		addRequiredEnvVarOptionsForCloudServerType(envVarOpts)
+	serverType, serverTypeSpecified := optsHaveValidServerType(nonEnvVarOpts)
+	if serverTypeSpecified {
+		addServerTypeEnvVarOptions(envVarOpts, serverType)
 	}
 
 	return &envVarOpts
 }
 
-func optsHaveServerType(opts map[string]string, sType string) bool {
+func optsHaveValidServerType(opts map[string]string) (string, bool) {
 	val, ok := opts[serverTypeFlag]
-	if ok && val == sType {
-		return true
+	if ok {
+		_, validServerType := validServerTypeOptions[val]
+		if validServerType {
+			return val, validServerType
+		}
 	}
-	return false
+	return "", false
 }
 
-func addRequiredEnvVarOptionsForCloudServerType(opts map[string]string) {
-	for k, v := range cloudEnvOpts {
-		opts[k] = v
-	}
+func addServerTypeEnvVarOptions(opts map[string]string, serverType string) {
+	opts["SERVER_TYPE"] = serverType
 }
 
 // We ignore forks for now, since the build tag will still be built for forks.
