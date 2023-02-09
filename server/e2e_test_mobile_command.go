@@ -57,7 +57,7 @@ func (s *Server) handleE2ETestMobile(ctx context.Context, commenter string, pr *
 			}
 		}
 	}()
-	if !s.IsOrgMember(commenter) {
+	if !s.IsOrgMember(commenter) || s.IsInBotBlockList(commenter) {
 		e2eTestErr = &E2ETestMobileError{source: e2eTestMobileMsgCommenterPermission}
 		return e2eTestErr
 	}

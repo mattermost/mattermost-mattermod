@@ -86,7 +86,7 @@ func (s *Server) handleCherryPick(ctx context.Context, commenter, body string, p
 		}
 	}()
 
-	if !s.IsOrgMember(commenter) {
+	if !s.IsOrgMember(commenter) || s.IsInBotBlockList(commenter) {
 		msg = msgCommenterPermission
 		return nil
 	}

@@ -94,6 +94,7 @@
     "PRWelcomeMessage": "",
     "BlockListPathsGlobal": [],
     "BlockListPathsPerRepo": {},
+    "BlockListBots": [],
     "PrLabels": [
     ],
     "IssueLabels": [
