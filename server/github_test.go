@@ -86,22 +86,22 @@ func TestIsInBotBlockList(t *testing.T) {
 		IsInBlockList bool
 	}{
 		{
-		"mattermost-mattermod",
-		true,
-	},
-	{
-		"agnivade",
-		false,
-	},
-	{
-		"randomuser",
-		false,
-	},
-	{
-		"testbot",
-		true,
-	},
-}
+			"mattermost-mattermod",
+			true,
+		},
+		{
+			"agnivade",
+			false,
+		},
+		{
+			"randomuser",
+			false,
+		},
+		{
+			"testbot",
+			true,
+		},
+	}
 
 	for _, tc := range tests {
 		assert.Equal(t, tc.IsInBlockList, s.IsInBotBlockList(tc.User))
