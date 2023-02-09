@@ -74,6 +74,40 @@ func TestIsOrgMember(t *testing.T) {
 	assert.Equal(t, true, s.IsOrgMember("test1"))
 }
 
+func TestIsInBotBlockList(t *testing.T) {
+	s := &server.Server{
+		Config: &server.Config{
+			BlockListBots: []string{"mattermost-mattermod", "testbot"},
+		},
+	}
+
+	tests := []struct {
+		User          string
+		IsInBlockList bool
+	}{
+		{
+		"mattermost-mattermod",
+		true,
+	},
+	{
+		"agnivade",
+		false,
+	},
+	{
+		"randomuser",
+		false,
+	},
+	{
+		"testbot",
+		true,
+	},
+}
+
+	for _, tc := range tests {
+		assert.Equal(t, tc.IsInBlockList, s.IsInBotBlockList(tc.User))
+	}
+}
+
 func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
