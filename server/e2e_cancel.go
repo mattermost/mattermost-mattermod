@@ -41,7 +41,7 @@ func (s *Server) handleE2ECancel(ctx context.Context, commenter string, pr *mode
 		}
 	}()
 	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-	if !s.IsOrgMember(commenter) {
+	if !s.IsOrgMember(commenter) || s.IsInBotBlockList(commenter) {
 		mlog.Warn("E2E cancellation tried by non org member")
 		e2eErr = &E2ECancelError{source: e2eCancelMsgCommenterPermission}
 		return e2eErr
