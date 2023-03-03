@@ -46,7 +46,7 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 	}()
 
 	// If the commenter is not the PR submitter, check if the PR submitter is an org member
-	if commenter != pr.Username && !s.IsOrgMember(commenter) {
+	if (commenter != pr.Username && !s.IsOrgMember(commenter)) || s.IsInBotBlockList(commenter) {
 		uerr = &updateError{source: msgCommenterPermission}
 		return uerr
 	}

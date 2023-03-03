@@ -47,7 +47,7 @@ func (s *Server) performFastForwardProcess(ctx context.Context, issue *model.Iss
 	}
 
 	// Don't start process if the user is not a core committer
-	if !s.IsOrgMember(user) {
+	if !s.IsOrgMember(user) || s.IsInBotBlockList(user) {
 		return nil, nil
 	}
 

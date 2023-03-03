@@ -247,6 +247,15 @@ func (s *Server) IsOrgMember(user string) bool {
 	return false
 }
 
+func (s *Server) IsInBotBlockList(user string) bool {
+	for _, member := range s.Config.BlockListBots {
+		if user == member {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
 	for _, claExcludedUser := range s.Config.CLAExclusionsList {
 		if user == claExcludedUser {

@@ -141,6 +141,7 @@ type Config struct {
 
 	BlockListPathsGlobal  []string
 	BlockListPathsPerRepo map[string][]string // BlockListPathsPerRepo is a per repository list of blocked files
+	BlockListBots         []string            // List of bots who are part of the org, but are not allowed to run slash commands.
 
 	MattermostWebhookURL    string
 	MattermostWebhookFooter string

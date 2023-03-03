@@ -57,7 +57,7 @@ func (s *Server) handleE2ETestDesktop(ctx context.Context, commenter string, pr 
 			}
 		}
 	}()
-	if !s.IsOrgMember(commenter) {
+	if !s.IsOrgMember(commenter) || s.IsInBotBlockList(commenter) {
 		e2eTestErr = &E2ETestDesktopError{source: e2eTestDesktopMsgCommenterPermission}
 		return e2eTestErr
 	}

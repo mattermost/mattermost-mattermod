@@ -74,7 +74,7 @@ func (s *Server) handleE2ETest(ctx context.Context, commenter string, pr *model.
 			}
 		}
 	}()
-	if !s.IsOrgMember(commenter) {
+	if !s.IsOrgMember(commenter) || s.IsInBotBlockList(commenter) {
 		e2eTestErr = &E2ETestError{source: e2eTestMsgCommenterPermission}
 		return e2eTestErr
 	}
