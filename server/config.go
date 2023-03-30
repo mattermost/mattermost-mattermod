@@ -61,6 +61,7 @@ type Config struct {
 	GitHubTokenReserve          int
 	GithubUsername              string
 	GithubEmail                 string
+	GitConfigMergeRenameLimit   string
 	GithubAccessTokenCherryPick string
 	GitHubWebhookSecret         string
 	Org                         string

@@ -5,6 +5,7 @@
     "GitHubTokenReserve": 10,
     "GithubUsername": "",
     "GithubEmail": "",
+    "GitConfigMergeRenameLimit": "15000",
     "GithubAccessTokenCherryPick": "",
     "GithubWebhookSecret": "",
     "Org": "",
