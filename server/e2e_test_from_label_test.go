@@ -148,6 +148,9 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 		require.NoError(t, err)
 		defer resp.Body.Close()
 		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// The handler function is asynchronous, so give it time to run.
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	t.Run("happy path", func(t *testing.T) {
