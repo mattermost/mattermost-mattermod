@@ -159,17 +159,8 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
 		prGhModel.MergeableState = github.String("clean")
 
-		prApprovalReviews := []*github.PullRequestReview{
-			{
-				State:          github.String(prReviewApproved),
-				PullRequestURL: github.String("https://github.com/mattermost-webapp/pulls/12345"),
-			},
-		}
 		setUpCommonMocks()
 
-		prs.EXPECT().
-			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
-			Return(prApprovalReviews, nil, nil)
 		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, event.PRNumber).
 			Return(prGhModel, nil, nil).
 			Times(1)
@@ -190,29 +181,6 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 
 		runTestEvent()
 	})
-	t.Run("PR not approved", func(t *testing.T) {
-		msgPRNotApproved := e2eTestFromLabelMsgPRHasNoApprovals
-		commentPRNotApproved := &github.IssueComment{Body: &msgPRNotApproved}
-		event.Label.Name = github.String(s.Config.E2ETriggerLabel[0])
-		prReviewsNotApproved := []*github.PullRequestReview{
-			{
-				State: github.String("changes_requested"),
-			},
-		}
-
-		setUpCommonMocks()
-
-		prs.EXPECT().
-			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
-			Return(prReviewsNotApproved, nil, nil).
-			Times(1)
-
-		is.EXPECT().
-			CreateComment(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, commentPRNotApproved).
-			Times(1)
-
-		runTestEvent()
-	})
 	t.Run("PR not mergeable", func(t *testing.T) {
 		msgNotMergeable := e2eTestFromLabelMsgPRNotMergeable
 		commentNotMergeable := &github.IssueComment{Body: &msgNotMergeable}
@@ -221,16 +189,6 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 
 		setUpCommonMocks()
 
-		prReviewsApproved := []*github.PullRequestReview{
-			{
-				State:          github.String(prReviewApproved),
-				PullRequestURL: github.String("https://github.com/mattermost-webapp/pulls/12345"),
-			},
-		}
-		prs.EXPECT().
-			ListReviews(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, 1, nil).
-			Return(prReviewsApproved, nil, nil).
-			Times(1)
 		prs.EXPECT().Get(gomock.AssignableToTypeOf(ctxInterface), repoOwner, repo, event.PRNumber).
 			Return(prGhModel, nil, nil).
 			Times(1)
