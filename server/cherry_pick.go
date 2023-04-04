@@ -351,38 +351,6 @@ func cloneRepo(ctx context.Context, cfg *Config, repoName string) error {
 		return err
 	}
 
-	// Set username and email.
-	cmd = exec.CommandContext(ctx, "git", "config", "user.name")
-	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-		return err
-	} else if out == "" { // this means username is not set
-		cmd = exec.CommandContext(ctx, "git", "config", "user.name", cfg.GithubUsername)
-		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-			return err
-		}
-	}
-
-	cmd = exec.CommandContext(ctx, "git", "config", "user.email")
-	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-		return err
-	} else if out == "" { // this means email is not set
-		cmd = exec.CommandContext(ctx, "git", "config", "user.email", cfg.GithubEmail)
-		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-			return err
-		}
-	}
-
-	// Set git config merge.renameLimit
-	cmd = exec.CommandContext(ctx, "git", "config", "merge.renameLimit")
-	if out, err := runCommandWithOutput(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-		return err
-	} else if out == "" { // this means merge.renameLimit is not set
-		cmd = exec.CommandContext(ctx, "git", "config", "merge.renameLimit", cfg.GitConfigMergeRenameLimit)
-		if err = runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
-			return err
-		}
-	}
-
 	// Set upstream
 	cmd = exec.CommandContext(ctx, "git", "remote", "add", "upstream", "git@github.com:"+upstreamSlug+".git")
 	if err := runCommand(cmd, filepath.Join(cfg.RepoFolder, repoName)); err != nil {
