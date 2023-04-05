@@ -41,23 +41,6 @@ func (s *Server) triggerE2ETestFromLabel(pr *model.PullRequest) {
 		}
 	}()
 
-	prReviews, _, err := s.GithubClient.PullRequests.ListReviews(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
-	if err != nil {
-		mlog.Error("Error getting reviews for the PR",
-			mlog.Int("pr", pr.Number),
-			mlog.String("repo", pr.RepoName),
-			mlog.Err(err))
-		return
-	}
-	if !hasAtLeastOneApproval(prReviews) {
-		e2eTestFromLabelErr = &E2ETestFromLabelError{source: e2eTestFromLabelMsgPRHasNoApprovals}
-		mlog.Warn("Not triggering E2E test, due to missing required approvals",
-			mlog.Int("pr", pr.Number),
-			mlog.String("repo", pr.RepoName),
-			mlog.Err(e2eTestFromLabelErr))
-		return
-	}
-
 	ghPR, _, err := s.GithubClient.PullRequests.Get(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 	if err != nil {
 		mlog.Error("Error in getting the PR info",
@@ -85,18 +68,6 @@ func (s *Server) triggerE2ETestFromLabel(pr *model.PullRequest) {
 			mlog.String("repo", pr.RepoName),
 			mlog.Err(err))
 	}
-}
-
-func hasAtLeastOneApproval(reviews []*github.PullRequestReview) bool {
-	for _, review := range reviews {
-		mlog.Debug("Checking review state",
-			mlog.String("pr", review.GetPullRequestURL()),
-			mlog.String("state", review.GetState()))
-		if review.GetState() == prReviewApproved {
-			return true
-		}
-	}
-	return false
 }
 
 func isMergeable(pr *github.PullRequest) bool {
