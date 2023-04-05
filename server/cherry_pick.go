@@ -367,13 +367,3 @@ func runCommand(cmd *exec.Cmd, dir string) error {
 	)
 	return cmd.Run()
 }
-
-func runCommandWithOutput(cmd *exec.Cmd, dir string) (string, error) {
-	cmd.Dir = dir
-	cmd.Env = append(
-		os.Environ(),
-		os.Getenv("PATH"),
-	)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
