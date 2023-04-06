@@ -42,7 +42,7 @@ func (s *Server) listenCherryPickRequests() {
 
 	for job := range s.cherryPickRequests {
 		func() {
-			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*2*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*10*time.Second)
 			defer cancel()
 			pr := job.pr
 			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
@@ -342,8 +342,8 @@ func returnToMaster(ctx context.Context, dir string) error {
 }
 
 func cloneRepo(ctx context.Context, cfg *Config, repoName string) error {
-	originSlug := cfg.Org + "/" + repoName
-	upstreamSlug := cfg.GithubUsername + "/" + repoName
+	originSlug := cfg.GithubUsername + "/" + repoName
+	upstreamSlug := cfg.Org + "/" + repoName
 
 	// Clone repo
 	cmd := exec.CommandContext(ctx, "git", "clone", "git@github.com:"+originSlug+".git")
