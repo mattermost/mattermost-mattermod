@@ -24,7 +24,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	cloudRepo1 := "mattermost-server"
+	cloudRepo1 := processRepo
 	member := "member-a"
 
 	s := &Server{
@@ -32,7 +32,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 		Config: &Config{
 			Repositories: []*Repository{
 				{
-					Name:               "mattermost-server",
+					Name:               processRepo,
 					Owner:              "mattermosttest",
 					BuildStatusContext: "something",
 				},
@@ -83,7 +83,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	t.Run("Cloud branch does not exist, will not create the backup but still going to create a new one", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
-			RepoName:  "mattermost-server",
+			RepoName:  processRepo,
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
@@ -115,7 +115,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	t.Run("Cloud branch do exist, will not create the backup and skip", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
-			RepoName:  "mattermost-server",
+			RepoName:  processRepo,
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
@@ -142,7 +142,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	t.Run("Provided dry-run flag, won't call any create ref methods", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
-			RepoName:  "mattermost-server",
+			RepoName:  processRepo,
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
@@ -185,7 +185,7 @@ func TestPerformFastForwardProcess(t *testing.T) {
 	t.Run("Cloud branch do exist, force flag provided will create the backup and fast forward", func(t *testing.T) {
 		issue := &model.Issue{
 			State:     model.StateOpen,
-			RepoName:  "mattermost-server",
+			RepoName:  processRepo,
 			RepoOwner: "mattermosttest",
 		}
 		gs := mocks.NewMockGitService(ctrl)
@@ -252,7 +252,7 @@ func TestCleanupCloudBranches(t *testing.T) {
 	defer ctrl.Finish()
 
 	repo := &Repository{
-		Name:               "mattermost-server",
+		Name:               processRepo,
 		Owner:              "mattermosttest",
 		BuildStatusContext: "something",
 	}

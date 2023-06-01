@@ -21,7 +21,7 @@ import (
 const (
 	cloudBranchName        = "heads/cloud"
 	defaultMainBranchName  = "heads/master"
-	processRepo            = "mattermost-server"
+	processRepo            = "mattermost"
 	minBackupIntervalHours = 5 * 24
 )
 
