@@ -14,7 +14,6 @@ import (
 const (
 	// In seconds
 	defaultRequestTimeout  = 60
-	defaultEETaskTimeout   = 300
 	defaultCronTaskTimeout = 600
 	defaultBuildAppTimeout = 7200
 )
