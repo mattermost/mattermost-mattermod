@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -83,59 +82,6 @@ func (s *Server) triggerCircleCIIfNeeded(ctx context.Context, pr *model.PullRequ
 	}
 
 	return nil
-}
-
-func (s *Server) requestEETriggering(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) error {
-	r, err := s.triggerEnterprisePipeline(ctx, pr, info)
-	if err != nil {
-		return err
-	}
-
-	workflowID, err := s.waitForWorkflowID(ctx, r.ID, s.Config.EnterpriseWorkflowName)
-	if err != nil {
-		return err
-	}
-
-	buildLink := "https://app.circleci.com/pipelines/github/" + s.Config.Org + "/" + s.Config.EnterpriseReponame + "/" + strconv.Itoa(r.Number) + "/workflows/" + workflowID
-	mlog.Debug("EE tests wf found", mlog.Int("pr", pr.Number), mlog.String("sha", pr.Sha), mlog.String("link", buildLink))
-
-	err = s.waitForStatus(ctx, pr, s.Config.EnterpriseGithubStatusContext, stateSuccess, 5*time.Second)
-	if err != nil {
-		s.createEnterpriseTestsErrorStatus(ctx, pr, err)
-		return err
-	}
-
-	s.updateBuildStatus(ctx, pr, s.Config.EnterpriseGithubStatusEETests, buildLink)
-	return nil
-}
-
-func (s *Server) triggerEnterprisePipeline(ctx context.Context, pr *model.PullRequest, info *EETriggerInfo) (*circleci.Pipeline, error) {
-	params := map[string]interface{}{
-		"tbs_sha":                  pr.Sha,
-		"tbs_pr":                   strconv.Itoa(pr.Number),
-		"tbs_server_owner":         info.ServerOwner,
-		"tbs_server_branch":        info.ServerBranch,
-		"tbs_server_target_branch": info.BaseBranch,
-		"tbs_webapp_owner":         info.WebappOwner,
-		"tbs_webapp_branch":        info.WebappBranch,
-	}
-	pip, err := s.CircleCiClientV2.TriggerPipelineWithContext(ctx, circleci.VcsTypeGithub, s.Config.Org, s.Config.EnterpriseReponame, info.EEBranch, "", params)
-	if err != nil {
-		return nil, err
-	}
-
-	mlog.Debug("EE triggered",
-		mlog.Int("pr", pr.Number),
-		mlog.String("sha", pr.Sha),
-		mlog.String("EEBranch", info.EEBranch),
-		mlog.String("ServerOwner", info.ServerOwner),
-		mlog.String("ServerBranch", info.ServerBranch),
-		mlog.String("TargetBranch", info.BaseBranch),
-		mlog.String("WebappOwner", info.WebappOwner),
-		mlog.String("WebappBranch", info.WebappBranch),
-	)
-
-	return pip, nil
 }
 
 type BlockPathValidationError struct {
