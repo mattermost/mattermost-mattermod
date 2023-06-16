@@ -84,10 +84,10 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsForOrgMembers(pr)
-		}
+		// if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+		// 	s.createEnterpriseTestsPendingStatus(ctx, pr)
+		// 	go s.triggerEETestsForOrgMembers(pr)
+		// }
 
 		if pr.RepoName == serverRepoName {
 			if err = s.reviewMlog(ctx, pr, event.PullRequest.GetNodeID(), event.PullRequest.GetDiffURL()); err != nil {
@@ -111,10 +111,10 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 
 		s.handleTranslationPR(ctx, pr)
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsForOrgMembers(pr)
-		}
+		// if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+		// 	s.createEnterpriseTestsPendingStatus(ctx, pr)
+		// 	go s.triggerEETestsForOrgMembers(pr)
+		// }
 
 		s.setBlockStatusForPR(ctx, pr)
 	case PREventLabeled:
@@ -135,13 +135,13 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			go s.triggerE2ETestFromLabel(pr)
 		}
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
-			*event.Label.Name == s.Config.EnterpriseTriggerLabel {
-			mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
-			go s.triggerEnterpriseTests(pr)
+		// if pr.RepoName == s.Config.EnterpriseTriggerReponame &&
+		// 	*event.Label.Name == s.Config.EnterpriseTriggerLabel {
+		// 	mlog.Info("Label to run ee tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName))
+		// 	go s.triggerEnterpriseTests(pr)
 
-			s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
-		}
+		// 	s.removeLabel(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.EnterpriseTriggerLabel)
+		// }
 
 		if s.isBlockPRMerge(*event.Label.Name) {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
@@ -178,10 +178,10 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
 		}
 
-		if pr.RepoName == s.Config.EnterpriseTriggerReponame {
-			s.createEnterpriseTestsPendingStatus(ctx, pr)
-			go s.triggerEETestsForOrgMembers(pr)
-		}
+		// if pr.RepoName == s.Config.EnterpriseTriggerReponame {
+		// 	s.createEnterpriseTestsPendingStatus(ctx, pr)
+		// 	go s.triggerEETestsForOrgMembers(pr)
+		// }
 
 		s.setBlockStatusForPR(ctx, pr)
 	case "closed":
