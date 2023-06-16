@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -338,35 +337,4 @@ func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, st
 		return err
 	}
 	return nil
-}
-
-func (s *Server) waitForStatus(ctx context.Context, pr *model.PullRequest, statusContext string, statusState string, t time.Duration) error {
-	ticker := time.NewTicker(t)
-	for {
-		select {
-		case <-ctx.Done():
-			ticker.Stop()
-			return errors.New("timed out waiting for status " + statusContext)
-		case <-ticker.C:
-			mlog.Debug("Waiting for status", mlog.Int("pr", pr.Number), mlog.String("context", statusContext))
-			statuses, _, err := s.GithubClient.Repositories.ListStatuses(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, nil)
-			if err != nil {
-				return err
-			}
-
-			hasStatus := false
-			for _, status := range statuses {
-				if *status.Context == statusContext && *status.State == statusState {
-					hasStatus = true
-				}
-			}
-
-			if !hasStatus {
-				continue
-			}
-
-			ticker.Stop()
-			return nil
-		}
-	}
 }
