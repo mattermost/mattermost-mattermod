@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mattermod.fullname" . }}
+  labels:
+    {{- include "mattermod.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.monitoring.enabled }}
+    - port:  {{ .Values.monitoring.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+  selector:
+    {{- include "mattermod.selectorLabels" . | nindent 4 }}
+
+---
+# Jobserver
+{{- if .Values.jobserver.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mattermod.fullname" . }}-jobserver
+  labels:
+    {{- include "mattermod.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.jobserver.service.type }}
+  ports:
+    - port: {{ .Values.jobserver.service.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "mattermod.jobserver.selectorLabels" . | nindent 4 }}
+{{ end }}

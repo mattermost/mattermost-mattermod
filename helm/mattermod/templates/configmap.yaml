@@ -1,0 +1,11 @@
+{{- if .Values.configuration }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "mattermod.fullname" . }}-config
+  labels:
+    {{- include "mattermod.labels" . | nindent 4 }}
+data:
+  config-mattermod.json: |-
+    {{ .Values.configuration | toJson }}
+{{- end }}

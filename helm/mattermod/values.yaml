@@ -1,0 +1,209 @@
+# mattermod
+replicaCount: 1
+image:
+  repository: docker.io/mattermost/mattermod
+  pullPolicy: IfNotPresent
+  tag: 0.16.20
+nameOverride: mattermod
+fullnameOverride: mattermod
+labels:
+  app: mattermod
+  component: api
+serviceAccount:
+  create: true
+  annotations: {}
+  name: mattermod
+podAnnotations: {}
+podSecurityContext:
+  fsGroup: 1000
+  runAsUser: 1000
+service:
+  type: ClusterIP
+  port: 8080
+monitoring:
+  enabled: true
+  port: 9000
+ingress:
+  enabled: true
+  className: nginx-internal
+  annotations: {}
+  hosts:
+    - host: mattermostdeployment.mattermost.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+resources:
+  limits:
+    cpu: 2
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 100Mi
+persistence:
+  enabled: true
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+autoscaling:
+  enabled: false
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# mattermod-jobserver
+jobserver:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: docker.io/mattermost/mattermod-jobserver
+    pullPolicy: IfNotPresent
+    tag: 0.16.20
+  service:
+    type: ClusterIP
+    port: 9000
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+  resources:
+    limits:
+      cpu: 1
+      memory: 400Mi
+    requests:
+      cpu: 200m
+      memory: 100Mi
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+  autoscaling:
+    enabled: false
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Mattermod needs GitHub SSH configuration. Base64 encoded
+gitconfig: {}
+  # ssh_config:
+  # id_rsa:
+  # known_hosts:
+
+# Mattermod app configuration
+configuration:
+  ListenAddress: ""
+  MattermodURL: ""
+  GithubAccessToken: ""
+  GithubUsername: ""
+  GithubEmail: ""
+  GitConfigMergeRenameLimit: ""
+  GitHubWebhookSecret: ""
+  GithubAccessTokenCherryPick: ""
+  GitHubTokenReserve: ""
+  Org: ""
+  Username: ""
+  CircleCIToken: ""
+  GitLabInternalURL: ""
+  GitLabInternalToken: ""
+  DriverName: ""
+  DataSource: ""
+  TickRateMinutes: ""
+  SpinmintExpirationHour: ""
+  DaysUntilStale: ""
+  ExemptStaleLabels:
+    - value
+  BlockListBots:
+    - value
+  BlockPRMergeLabels:
+    - value
+  StaleLabel: ""
+  StaleComment: ""
+  AutoAssignerTeam: ""
+  AutoAssignerTeamID: ""
+  DockerRegistryURL:
+  DockerUsername: ""
+  DockerPassword: ""
+  Repositories:
+    - Owner: value
+      Name: value
+      GreetingTeam: value
+      GreetingLabels:
+        - value
+  CloudRepositories:
+    - Name:
+      MainBranch:
+  BuildAppTag:
+  BuildAppInitMessage: ""
+  BuildAppDoneMessage: ""
+  BuildAppFailedMessage: ""
+  BuildAppBranchPrefix: ""
+  BuildAppJobs:
+    - JobName: ""
+      RepoName: ""
+      ExpectedArtifacts: ""
+  E2EDockerRepo: ""
+  E2EGitLabProject: ""
+  E2EWebappRef: ""
+  E2EServerRef: ""
+  E2EWebappReponame: ""
+  E2EServerReponame: ""
+  E2EWebappStatusContext: ""
+  E2EServerStatusContext: ""
+  E2ETestDeadline: ""
+  E2EGitHubRateLimitHack: ""
+  E2ETriggerLabel:
+    - value
+  E2ETestAutomationDashboardURL: ""
+  E2EMobileCoreReponame: ""
+  E2EMobileGitLabProject: ""
+  E2EMobileGitLabProjectRefForPR: ""
+  E2EDesktopCoreReponame: ""
+  E2EDesktopGitLabProject: ""
+  E2EDesktopGitLabProjectRefForPR: ""
+  EnterpriseReponame: ""
+  EnterpriseTriggerReponame: ""
+  EnterpriseWebappReponame: ""
+  EnterpriseTriggerLabel: ""
+  EnterpriseGithubStatusContext: ""
+  EnterpriseGithubStatusTETests: ""
+  EnterpriseGithubStatusEETests: ""
+  EnterpriseWorkflowName: ""
+  TranslationsMattermostWebhookURL: ""
+  TranslationsMattermostMessage: ""
+  TranslationsBot: ""
+  TranslationsDoNotMergeLabel: ""
+  TranslationsMergedMessage: ""
+  TranslationsMergeFailureMessage: ""
+  TranslationsMergePolicy: ""
+  StartLoadtestTag: ""
+  StartLoadtestMessage: ""
+  CLAExclusionsList:
+    - value
+  CLAGithubStatusContext: ""
+  SignedCLAURL: ""
+  PRWelcomeMessage: ""
+  PrLabels: []
+  IssueLabels:
+    - Label: ""
+      Message: ""
+  IssueLabelsToCleanUp:
+    - value
+  MattermostWebhookURL: ""
+  MattermostWebhookFooter: ""
+  MetricsServerPort: ""
+  LogSettings:
+    EnableConsole: ""
+    ConsoleLevel: ""
+    ConsoleJson: ""
+    EnableFile: ""
+    FileLevel: ""
+    FileJson: ""
+    FileFormat: ""
+    FileLocation: ""
+  RepoFolder: ""
+  ScriptsFolder: ""
+  AutoPRMergeLabel: ""
+  BlockListPathsGlobal:
+    - value
+  BlockListPathsPerRepo:
+    repository:
+      - "value"
