@@ -4,3 +4,6 @@ description: Auto-generates responses to GitHub issues and pull requests on matt
 type: application
 version: 0.0.1
 appVersion: "v0.16.20"
+maintainers:
+  - name: delivery-team
+    email: "dev-ops@mattermost.com"
