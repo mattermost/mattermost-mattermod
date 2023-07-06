@@ -1,6 +1,10 @@
+
 mattermod
 mattermod.log
 vendor
+
+#Helm
+!helm/*
 
 # Config file
 config/config-mattermod.json
