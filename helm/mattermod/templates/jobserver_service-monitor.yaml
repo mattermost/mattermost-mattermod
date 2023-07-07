@@ -1,10 +1,12 @@
+{{- if .Values.jobserver.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "mattermod.fullname" . }}
   labels:
     {{- include "mattermod.labels" . | nindent 4 }}
-  name: {{ include "mattermod.fullname" . }}-svc-monitoring
+    component: jobserver
+  name: {{ include "mattermod.fullname" . }}-jobserver-svc-monitoring
 spec:
   endpoints:
   - interval: 60s
@@ -16,4 +18,5 @@ spec:
     - {{.Release.Namespace}}
   selector:
     matchLabels:
-    {{- include "mattermod.selectorLabels" . | nindent 6 }}
+    {{- include "mattermod.jobserver.selectorLabels" . | nindent 6 }}
+{{ end }}
