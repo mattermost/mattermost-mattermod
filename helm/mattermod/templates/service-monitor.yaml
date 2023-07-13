@@ -17,3 +17,29 @@ spec:
   selector:
     matchLabels:
     {{- include "mattermod.selectorLabels" . | nindent 6 }}
+
+
+---
+# Jobserver
+{{- if .Values.jobserver.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "mattermod.fullname" . }}
+  labels:
+    {{- include "mattermod.labels" . | nindent 4 }}
+    component: jobserver
+  name: {{ include "mattermod.fullname" . }}-jobserver-svc-monitoring
+spec:
+  endpoints:
+  - interval: 60s
+    port: metrics
+    scrapeTimeout: 15s
+  jobLabel: jobLabel
+  namespaceSelector:
+    matchNames:
+    - {{.Release.Namespace}}
+  selector:
+    matchLabels:
+    {{- include "mattermod.jobserver.selectorLabels" . | nindent 6 }}
+{{ end }}
