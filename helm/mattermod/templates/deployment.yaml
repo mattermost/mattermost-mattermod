@@ -95,3 +95,75 @@ spec:
         - name: data-repos
           persistentVolumeClaim:
             claimName: {{ template "mattermod.fullname" . }}-data
+
+---
+# Jobserver
+{{- if .Values.jobserver.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mattermod.fullname" . }}-jobserver
+  labels:
+    {{- include "mattermod.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.jobserver.autoscaling.enabled }}
+  replicas: {{ .Values.jobserver.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mattermod.jobserver.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.jobserver.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mattermod.jobserver.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.jobserver.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mattermod.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ .Chart.Name }}-jobserver
+          command:
+            - jobserver
+            - -config=/app/config/config.json
+          securityContext:
+            {{- toYaml .Values.jobserver.securityContext | nindent 12 }}
+          image: "{{ .Values.jobserver.image.repository }}:{{ .Values.jobserver.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.jobserver.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.jobserver.service.port }}
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /app/config/config.json
+              name: config
+              readOnly: true
+              subPath: config-mattermod.json
+          resources:
+            {{- toYaml .Values.jobserver.resources | nindent 12 }}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.jobserver.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.jobserver.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: mattermod-config
+          name: config
+{{ end }}
