@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
@@ -55,7 +54,6 @@ func (s *Server) buildApp(pr *model.PullRequest) {
 		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, s.Config.BuildAppInitMessage); cErr != nil {
 			mlog.Warn("Error while commenting", mlog.Err(cErr))
 		}
-		s.build(ctx, pr, s.Config.Org)
 
 		err = s.deleteRefWhereCombinedStateEqualsSuccess(ctx, s.Config.Org, prRepoName, ref)
 		if err != nil {
@@ -70,80 +68,4 @@ func (s *Server) buildApp(pr *model.PullRequest) {
 			mlog.Warn("Error while commenting", mlog.Err(cErr))
 		}
 	}
-}
-
-func (s *Server) build(ctx context.Context, pr *model.PullRequest, org string) {
-	prRepoOwner, prRepoName, prNumber := pr.RepoOwner, pr.RepoName, pr.Number
-	branch := fmt.Sprintf("%s%d-%s", s.Config.BuildAppBranchPrefix, pr.Number, pr.Sha[0:7])
-
-	expectedJobNames := getExpectedJobNames(s.Config.BuildAppJobs, prRepoName)
-
-	builds, err := s.waitForJobs(ctx, pr, org, branch, expectedJobNames)
-	if err != nil {
-		mlog.Err(err)
-		msg := fmt.Sprintf("Failed retrieving build links. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
-		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
-			mlog.Warn("Error while commenting", mlog.Err(cErr))
-		}
-		return
-	}
-
-	linksBuilds := ""
-	for _, build := range builds {
-		linksBuilds += build.BuildURL + "  \n"
-	}
-	comment := fmt.Sprintf("Successfully building:  \n%s", linksBuilds)
-	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, comment); cErr != nil {
-		mlog.Warn("Error while commenting", mlog.Err(cErr))
-	}
-
-	var artifacts []*circleci.Artifact
-	for _, build := range builds {
-		expectedArtifacts := getExpectedArtifacts(s.Config.BuildAppJobs, build.Workflows.JobName, prRepoName)
-		buildArtifacts, err := s.waitForArtifacts(ctx, pr, s.Config.Org, build.BuildNum, expectedArtifacts)
-		if err != nil {
-			msg := fmt.Sprintf("Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. Error:  \n```%s```", err.Error())
-			if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
-				mlog.Warn("Error while commenting", mlog.Err(cErr))
-			}
-		}
-		artifacts = append(artifacts, buildArtifacts...)
-	}
-
-	if len(artifacts) < len(expectedJobNames) {
-		msg := "Failed retrieving artifact links. @mattermost/core-build-engineers have been notified. "
-		if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, msg); cErr != nil {
-			mlog.Warn("Error while commenting", mlog.Err(cErr))
-		}
-	}
-
-	linksArtifacts := ""
-	for _, artifact := range artifacts {
-		linksArtifacts += artifact.URL + "  \n"
-	}
-	comment = fmt.Sprintf("Artifact links:  \n%s", linksArtifacts)
-	if cErr := s.sendGitHubComment(ctx, prRepoOwner, prRepoName, prNumber, comment); cErr != nil {
-		mlog.Warn("Error while commenting", mlog.Err(cErr))
-	}
-}
-
-func getExpectedArtifacts(jobs []*BuildAppJob, buildJobName, prRepoName string) int {
-	for _, job := range jobs {
-		if buildJobName == job.JobName && prRepoName == job.RepoName {
-			return job.ExpectedArtifacts
-		}
-	}
-
-	return 0
-}
-
-func getExpectedJobNames(jobs []*BuildAppJob, prRepoName string) []string {
-	var expectedJobNames []string
-	for _, job := range jobs {
-		if prRepoName == job.RepoName {
-			expectedJobNames = append(expectedJobNames, job.JobName)
-		}
-	}
-
-	return expectedJobNames
 }
