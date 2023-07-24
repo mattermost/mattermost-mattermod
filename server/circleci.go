@@ -187,66 +187,6 @@ func (s *Server) waitForWorkflowID(ctx context.Context, id string, workflowName 
 	}
 }
 
-func (s *Server) waitForJobs(ctx context.Context, pr *model.PullRequest, org string, branch string, expectedJobNames []string) ([]*circleci.Build, error) {
-	ticker := time.NewTicker(20 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, errors.New("timed out waiting for build")
-		case <-ticker.C:
-			mlog.Debug("Waiting for jobs to complete", mlog.Int("pr", pr.Number), mlog.String("branch", branch), mlog.String("repo", pr.RepoName), mlog.Int("expected", len(expectedJobNames)))
-			var builds []*circleci.Build
-			var err error
-			builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "running", len(expectedJobNames), 0)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(builds) == 0 {
-				builds, err = s.CircleCiClient.ListRecentBuildsForProjectWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, branch, "", len(expectedJobNames), 0)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			for _, build := range builds {
-				mlog.Debug("Job Status", mlog.String("branch", branch), mlog.String("Jobname", build.Workflows.JobName), mlog.String("JobStatus", build.Status))
-			}
-
-			if !areAllExpectedJobs(builds, expectedJobNames) {
-				continue
-			}
-
-			mlog.Debug("Started building", mlog.Int("pr", pr.Number))
-			return builds, nil
-		}
-	}
-}
-
-func (s *Server) waitForArtifacts(ctx context.Context, pr *model.PullRequest, org string, buildNumber int, expectedArtifacts int) ([]*circleci.Artifact, error) {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, errors.New("timed out waiting for links to artifacts")
-		case <-ticker.C:
-			mlog.Debug("Trying to fetch artifacts", mlog.Int("build", buildNumber))
-			artifacts, err := s.CircleCiClient.ListBuildArtifactsWithContext(ctx, circleci.VcsTypeGithub, org, pr.RepoName, buildNumber)
-			if err != nil {
-				return nil, err
-			}
-
-			if len(artifacts) < expectedArtifacts {
-				continue
-			}
-
-			return artifacts, nil
-		}
-	}
-}
-
 func areAllExpectedJobs(builds []*circleci.Build, jobNames []string) bool {
 	c := 0
 	for _, build := range builds {
