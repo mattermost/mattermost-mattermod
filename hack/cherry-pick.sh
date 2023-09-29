@@ -57,7 +57,7 @@ function make-a-pr() {
   local rel
   rel="$(basename "${BRANCH}")"
   echo
-  echo "+++ Creating a pull request on GitHub at ${GITHUB_USER}:${NEWBRANCH}"
+  echo "+++ Creating a pull request on GitHub at ${MAIN_REPO_ORG}:${NEWBRANCH}"
 
   # This looks like an unnecessary use of a tmpfile, but it avoids
   # https://github.com/github/hub/issues/976 Otherwise stdin is stolen
@@ -77,7 +77,7 @@ NONE
 
 EOF
 
-hub pull-request -F "${prtext}" -h "${GITHUB_USER}:${NEWBRANCH}" -b "${MAIN_REPO_ORG}:${rel}"
+hub pull-request -F "${prtext}" -h "${MAIN_REPO_ORG}:${NEWBRANCH}" -b "${MAIN_REPO_ORG}:${rel}"
 }
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -90,7 +90,7 @@ declare -r REBASEMAGIC="${REPO_ROOT}/.git/rebase-apply"
 DRY_RUN=${DRY_RUN:-""}
 REGENERATE_DOCS=${REGENERATE_DOCS:-""}
 UPSTREAM_REMOTE=${UPSTREAM_REMOTE:-upstream}
-FORK_REMOTE=${FORK_REMOTE:-origin}
+FORK_REMOTE=${FORK_REMOTE:-upstream}
 MAIN_REPO_ORG=${MAIN_REPO_ORG:-$(git remote get-url "$UPSTREAM_REMOTE" | awk '{gsub(/http[s]:\/\/|git@/,"")}1' | awk -F'[@:./]' 'NR==1{print $3}')}
 MAIN_REPO_NAME=${MAIN_REPO_NAME:-$(git remote get-url "$UPSTREAM_REMOTE" | awk '{gsub(/http[s]:\/\/|git@/,"")}1' | awk -F'[@:./]' 'NR==1{print $4}')}
 
@@ -183,22 +183,6 @@ if [[ -n "${DRY_RUN}" ]]; then
   echo "To delete this branch:"
   echo
   echo "  git branch -D ${NEWBRANCHUNIQ}"
-  exit 0
-fi
-
-if git remote -v | grep ^"${FORK_REMOTE}" | grep "${MAIN_REPO_ORG}/${MAIN_REPO_NAME}.git"; then
-  echo "!!! You have ${FORK_REMOTE} configured as your ${MAIN_REPO_ORG}/${MAIN_REPO_NAME}.git"
-  echo "This isn't normal. Leaving you with push instructions:"
-  echo
-  echo "+++ First manually push the branch this script created:"
-  echo
-  echo "  git push REMOTE ${NEWBRANCHUNIQ}:${NEWBRANCH}"
-  echo
-  echo "where REMOTE is your personal fork (maybe ${UPSTREAM_REMOTE}? Consider swapping those.)."
-  echo "OR consider setting UPSTREAM_REMOTE and FORK_REMOTE to different values."
-  echo
-  make-a-pr
-  cleanbranch=""
   exit 0
 fi
 
