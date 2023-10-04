@@ -17,24 +17,25 @@ RUN CGO_ENABLED=0 make build-mattermod
 
 ################
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get update \
+    && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y ca-certificates ssh-client git \
     && apt-get clean all \
     && rm -rf /var/cache/apt/
 
 RUN groupadd \
-        --gid 1000 mattermod \
+    --gid 1000 mattermod \
     && useradd \
-        --home-dir /app \
-        --create-home \
-        --uid 1000 \
-        --gid 1000 \
-        --shell /bin/sh \
-        --skel /dev/null \
-        mattermod \
+    --home-dir /app \
+    --create-home \
+    --uid 1000 \
+    --gid 1000 \
+    --shell /bin/sh \
+    --skel /dev/null \
+    mattermod \
     && chown -R mattermod:mattermod /app
 
 COPY --from=builder /opt/hub/hub /usr/local/bin/hub
@@ -44,8 +45,8 @@ COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/
 WORKDIR /app
 
 RUN for d in .ssh repos logs; do \
-        mkdir -p /app/${d} ; \
-        chown -R mattermod:mattermod /app/${d}/ ; \
+    mkdir -p /app/${d} ; \
+    chown -R mattermod:mattermod /app/${d}/ ; \
     done
 
 USER mattermod
