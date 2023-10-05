@@ -234,7 +234,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 		}
 		return string(out), err
 	}
-	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*\.*[0-9]+`)
+	gitHubPR := regexp.MustCompile(`https://github.com/mattermost/.*/pull/[0-9]+`)
 	newPRURL := gitHubPR.FindString(string(out))
 	newPR := strings.Split(newPRURL, "/")
 	newPRNumber, _ := strconv.Atoi(newPR[len(newPR)-1])
