@@ -76,6 +76,21 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		if prStatus.GetState() != stateSuccess {
+			for _, status := range prStatus.Statuses {
+				mlog.Debug("status",
+					mlog.Int("pr", pr.Number),
+					mlog.String("repo", pr.RepoName),
+					mlog.String("state", status.GetState()),
+					mlog.String("description", status.GetDescription()),
+					mlog.String("context", status.GetContext()),
+					mlog.String("target_url", status.GetTargetURL()),
+				)
+			}
+
+			mlog.Error("PR is not ready to merge; combined status state is not success",
+				mlog.Int("pr", pr.Number),
+				mlog.String("repo", pr.RepoName),
+				mlog.String("state", prStatus.GetState()))
 			continue
 		}
 
