@@ -15,7 +15,6 @@ const (
 	// In seconds
 	defaultRequestTimeout  = 60
 	defaultCronTaskTimeout = 600
-	defaultBuildAppTimeout = 7200
 )
 
 type LabelResponse struct {
