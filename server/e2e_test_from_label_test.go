@@ -47,7 +47,7 @@ func TestE2EFromLabelWorkflow(t *testing.T) {
 	allowedUser := "mattermod"
 	s.OrgMembers[0] = allowedUser
 
-	eventAction := PREventLabeled
+	eventAction := prEventLabeled
 	event := pullRequestEvent{
 		Action:   eventAction,
 		Label:    &github.Label{},

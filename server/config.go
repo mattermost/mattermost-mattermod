@@ -46,12 +46,6 @@ type Integration struct {
 	Files           []string
 }
 
-type BuildAppJob struct {
-	JobName           string
-	RepoName          string
-	ExpectedArtifacts int
-}
-
 // nolint:govet
 type Config struct {
 	ListenAddress               string
@@ -87,7 +81,6 @@ type Config struct {
 	BuildAppDoneMessage   string
 	BuildAppFailedMessage string
 	BuildAppBranchPrefix  string
-	BuildAppJobs          []*BuildAppJob
 
 	E2EDockerRepo                 string
 	E2EGitLabProject              string

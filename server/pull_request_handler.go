@@ -18,10 +18,6 @@ import (
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
 
-const (
-	PREventLabeled = "labeled"
-)
-
 type pullRequestEvent struct {
 	PullRequest   *github.PullRequest `json:"pull_request"`
 	Issue         *github.Issue       `json:"issue"`
@@ -60,12 +56,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-		}
-
 		if err = s.postPRWelcomeMessage(ctx, pr, claCommentNeeded); err != nil {
 			mlog.Error("Error while commenting PR welcome message", mlog.Err(err))
 		}
@@ -91,32 +81,19 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		s.setBlockStatusForPR(ctx, pr)
-	case "reopened":
+	case prEventReOpened:
 		mlog.Info("PR reopened", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
 		if _, err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-		}
-
 		s.handleTranslationPR(ctx, pr)
 		s.setBlockStatusForPR(ctx, pr)
-	case PREventLabeled:
+	case prEventLabeled:
 		if event.Label == nil {
 			mlog.Error("Label event received, but label object was empty")
 			return
-		}
-		if *event.Label.Name == s.Config.BuildAppTag {
-			mlog.Info("Label to run mobile/desktop app build", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
-			repoOwner, repoName := pr.RepoOwner, pr.RepoName
-			go s.buildApp(pr)
-
-			s.removeLabel(ctx, repoOwner, repoName, pr.Number, s.Config.BuildAppTag)
 		}
 
 		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) && contains(s.Config.E2ETriggerLabel, *event.Label.Name) {
@@ -135,7 +112,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Warn("Error while commenting", mlog.Err(err))
 			}
 		}
-	case "unlabeled":
+	case prEventUnLabeled:
 		if event.Label == nil {
 			mlog.Error("Unlabel event received, but label object was empty")
 			return
@@ -146,21 +123,15 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
 		}
-	case "synchronize":
+	case prEventSynchronize:
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))
 
 		if _, err = s.handleCheckCLA(ctx, pr); err != nil {
 			mlog.Error("Unable to check CLA", mlog.Err(err))
 		}
 
-		if err = s.triggerCircleCIIfNeeded(ctx, pr); err != nil {
-			mlog.Error("Unable to trigger CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName), mlog.Err(err))
-		} else {
-			mlog.Debug("Triggered CircleCI", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number), mlog.String("fullname", pr.FullName))
-		}
-
 		s.setBlockStatusForPR(ctx, pr)
-	case "closed":
+	case prEventClosed:
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
 		go s.checkIfNeedCherryPick(pr)
 		go s.CleanUpLabels(pr)
