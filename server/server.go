@@ -21,7 +21,6 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/go-circleci"
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-mattermod/version"
 	"github.com/mattermost/mattermost-server/v6/config"
@@ -36,8 +35,6 @@ type Server struct {
 	Config                *Config
 	Store                 store.Store
 	GithubClient          *GithubClient
-	CircleCiClient        CircleCIService
-	CircleCiClientV2      CircleCIService
 	GitLabCIClientV4      *GitLabClient
 	OrgMembers            []string
 	commentLock           sync.Mutex
@@ -77,14 +74,6 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	}
 	s.GithubClient = ghClient
 	s.Store, err = store.NewSQLStore(config.DriverName, config.DataSource)
-	if err != nil {
-		return nil, err
-	}
-	s.CircleCiClient, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion11)
-	if err != nil {
-		return nil, err
-	}
-	s.CircleCiClientV2, err = circleci.NewClient(s.Config.CircleCIToken, circleci.APIVersion2)
 	if err != nil {
 		return nil, err
 	}

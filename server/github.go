@@ -16,10 +16,15 @@ import (
 )
 
 const (
-	statePending  = "pending"
-	stateSuccess  = "success"
-	stateError    = "error"
-	prEventOpened = "opened"
+	statePending       = "pending"
+	stateSuccess       = "success"
+	stateError         = "error"
+	prEventOpened      = "opened"
+	prEventReOpened    = "reopened"
+	prEventLabeled     = "labeled"
+	prEventUnLabeled   = "unlabeled"
+	prEventSynchronize = "synchronize"
+	prEventClosed      = "closed"
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
@@ -261,60 +266,6 @@ func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
 		}
 	}
 	return false
-}
-
-func (s *Server) checkIfRefExists(ctx context.Context, pr *model.PullRequest, org string, ref string) (bool, error) {
-	_, r, err := s.GithubClient.Git.GetRef(ctx, org, pr.RepoName, ref)
-	if err != nil {
-		if r == nil || r.StatusCode != http.StatusNotFound {
-			mlog.Debug("Unable to find reference. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
-			return false, err
-		}
-		return false, nil // do not err if ref is not found
-	}
-	mlog.Debug("Reference found. ", mlog.Int("pr", pr.Number), mlog.String("ref", ref))
-	return true, nil
-}
-
-func (s *Server) createRef(ctx context.Context, pr *model.PullRequest, ref string) {
-	_, _, err := s.GithubClient.Git.CreateRef(
-		ctx,
-		pr.RepoOwner,
-		pr.RepoName,
-		&github.Reference{
-			Ref: github.String(ref),
-			Object: &github.GitObject{
-				SHA: github.String(pr.Sha),
-			},
-		})
-
-	if err != nil {
-		mlog.Error("Error creating reference", mlog.Err(err))
-	}
-}
-
-func (s *Server) deleteRefWhereCombinedStateEqualsSuccess(ctx context.Context, repoOwner string, repoName string, ref string) error {
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, ref, nil)
-	if err != nil {
-		return err
-	}
-
-	if cStatus.GetState() == stateSuccess {
-		_, err := s.GithubClient.Git.DeleteRef(ctx, repoOwner, repoName, ref)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (s *Server) deleteRef(ctx context.Context, repoOwner string, repoName string, ref string) error {
-	_, err := s.GithubClient.Git.DeleteRef(ctx, repoOwner, repoName, ref)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (s *Server) areChecksSuccessfulForPR(ctx context.Context, pr *model.PullRequest) (bool, error) {

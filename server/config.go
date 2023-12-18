@@ -15,7 +15,6 @@ const (
 	// In seconds
 	defaultRequestTimeout  = 60
 	defaultCronTaskTimeout = 600
-	defaultBuildAppTimeout = 7200
 )
 
 type LabelResponse struct {
@@ -44,12 +43,6 @@ type Integration struct {
 	IntegrationLink string
 	Message         string
 	Files           []string
-}
-
-type BuildAppJob struct {
-	JobName           string
-	RepoName          string
-	ExpectedArtifacts int
 }
 
 // nolint:govet
@@ -87,7 +80,6 @@ type Config struct {
 	BuildAppDoneMessage   string
 	BuildAppFailedMessage string
 	BuildAppBranchPrefix  string
-	BuildAppJobs          []*BuildAppJob
 
 	E2EDockerRepo                 string
 	E2EGitLabProject              string
