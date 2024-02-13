@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 make build-mattermod
 
 ################
 
-FROM ubuntu:jammy-20230916@sha256:b4b521bfcec90b11d2869e00fe1f2380c21cbfcd799ee35df8bd7ac09e6f63ea
+FROM ubuntu:noble-20240127.1@sha256:bce129bec07bab56ada102d312ebcfe70463885bdf68fb32182974bd994816e0
 
 RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get update \
@@ -26,17 +26,6 @@ RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get clean all \
     && rm -rf /var/cache/apt/
 
-RUN groupadd \
-    --gid 1000 mattermod \
-    && useradd \
-    --home-dir /app \
-    --create-home \
-    --uid 1000 \
-    --gid 1000 \
-    --shell /bin/sh \
-    --skel /dev/null \
-    mattermod \
-    && chown -R mattermod:mattermod /app
 
 COPY --from=builder /opt/hub/hub /usr/local/bin/hub
 COPY --from=builder /go/src/mattermod/dist/mattermod /usr/local/bin/
@@ -44,12 +33,13 @@ COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/
 
 WORKDIR /app
 
+RUN chown -R 1000:1000 /app
 RUN for d in .ssh repos logs; do \
     mkdir -p /app/${d} ; \
-    chown -R mattermod:mattermod /app/${d}/ ; \
+    chown -R 1000:1000 /app/${d}/ ; \
     done
 
-USER mattermod
+USER 1000
 EXPOSE 8080 9000
 
 ENTRYPOINT ["mattermod"]
