@@ -31,6 +31,7 @@ COPY --from=builder /opt/hub/hub /usr/local/bin/hub
 COPY --from=builder /go/src/mattermod/dist/mattermod /usr/local/bin/
 COPY --from=builder /go/src/mattermod/hack/cherry-pick.sh /app/scripts/
 
+RUN usermod -d /app $(id -un 1000)
 WORKDIR /app
 
 RUN chown -R 1000:1000 /app
