@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 make build-mattermod
 
 ################
 
-FROM ubuntu:jammy-20240212@sha256:f9d633ff6640178c2d0525017174a688e2c1aef28f0a0130b26bd5554491f0da
+FROM ubuntu:jammy-20240405@sha256:6f6ec53d36a9504f01e3636cf68e0e03761a3b6947a95ba430ae553ee3aaf4d9
 
 RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get update \
