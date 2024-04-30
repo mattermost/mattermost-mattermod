@@ -10,9 +10,6 @@
     "GithubWebhookSecret": "",
     "Org": "",
     "Username": "",
-    "CircleCIToken": "",
-    "GitLabInternalURL": "",
-    "GitLabInternalToken": "",
 
     "DriverName": "mysql",
     "DataSource": "mattermod:mattermod@tcp(mysql:3306)/mattermod?parseTime=true&multiStatements=true",
@@ -59,16 +56,6 @@
             "ExpectedArtifacts": 0
         }
     ],
-    "E2EDockerRepo": "",
-    "E2EGitLabProject": "",
-    "E2EWebappRef": "",
-    "E2EServerRef": "",
-    "E2EWebappReponame": "",
-    "E2EServerReponame": "",
-    "E2EWebappStatusContext": "",
-    "E2EServerStatusContext": "",
-    "E2ETriggerLabel": ["3: QA Review", "QA Deferred", "Run E2E Testing"],
-    "E2ETestAutomationDashboardURL": "",
 
     "EnterpriseReponame": "",
     "EnterpriseTriggerReponame": "",

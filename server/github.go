@@ -268,20 +268,6 @@ func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
 	return false
 }
 
-func (s *Server) areChecksSuccessfulForPR(ctx context.Context, pr *model.PullRequest) (bool, error) {
-	mlog.Debug("Checking combined status for ref", mlog.Int("prNumber", pr.Number), mlog.String("ref", pr.Ref), mlog.String("prSha", pr.Sha))
-	cStatus, _, err := s.GithubClient.Repositories.GetCombinedStatus(ctx, s.Config.Org, pr.RepoName, pr.Sha, nil)
-	if err != nil {
-		mlog.Err(err)
-		return false, err
-	}
-	mlog.Debug("Retrieved status for pr", mlog.String("status", cStatus.GetState()), mlog.Int("prNumber", pr.Number), mlog.String("prSha", pr.Sha))
-	if cStatus.GetState() == stateSuccess || cStatus.GetState() == statePending || cStatus.GetState() == "" {
-		return true, nil
-	}
-	return false, nil
-}
-
 func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) error {
 	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
 	if err != nil {

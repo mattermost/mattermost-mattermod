@@ -35,7 +35,6 @@ type Server struct {
 	Config                *Config
 	Store                 store.Store
 	GithubClient          *GithubClient
-	GitLabCIClientV4      *GitLabClient
 	OrgMembers            []string
 	commentLock           sync.Mutex
 	StartTime             time.Time
@@ -74,10 +73,6 @@ func New(config *Config, metrics MetricsProvider) (*Server, error) {
 	}
 	s.GithubClient = ghClient
 	s.Store, err = store.NewSQLStore(config.DriverName, config.DataSource)
-	if err != nil {
-		return nil, err
-	}
-	s.GitLabCIClientV4, err = NewGitLabClient(s.Config.GitLabInternalToken, s.Config.GitLabInternalURL)
 	if err != nil {
 		return nil, err
 	}

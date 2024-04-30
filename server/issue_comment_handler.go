@@ -91,39 +91,6 @@ func (s *Server) issueCommentEventHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if ev.HasE2ETest() {
-		if s.Config.E2EWebappReponame == *ev.Repository.Name ||
-			s.Config.E2EServerReponame == *ev.Repository.Name {
-			s.Metrics.IncreaseWebhookRequest("e2e_test")
-			if err := s.handleE2ETest(ctx, commenter, pr, ev.Comment.GetBody()); err != nil {
-				s.Metrics.IncreaseWebhookErrors("e2e_test")
-				errs = append(errs, fmt.Errorf("error e2e test: %w", err))
-			}
-		}
-		if s.Config.E2EMobileCoreReponame == *ev.Repository.Name {
-			s.Metrics.IncreaseWebhookRequest("e2e_test_mobile")
-			if err := s.handleE2ETestMobile(ctx, commenter, pr); err != nil {
-				s.Metrics.IncreaseWebhookErrors("e2e_test_mobile")
-				errs = append(errs, fmt.Errorf("error e2e test mobile: %w", err))
-			}
-		}
-		if s.Config.E2EDesktopCoreReponame == *ev.Repository.Name {
-			s.Metrics.IncreaseWebhookRequest("e2e_test_desktop")
-			if err := s.handleE2ETestDesktop(ctx, commenter, pr); err != nil {
-				s.Metrics.IncreaseWebhookErrors("e2e_test_desktop")
-				errs = append(errs, fmt.Errorf("error e2e test desktop: %w", err))
-			}
-		}
-	}
-
-	if ev.HasE2ECancel() {
-		s.Metrics.IncreaseWebhookRequest("e2e_cancel")
-		if err := s.handleE2ECancel(ctx, commenter, pr); err != nil {
-			s.Metrics.IncreaseWebhookErrors("e2e_cancel")
-			errs = append(errs, fmt.Errorf("error e2e cancel: %w", err))
-		}
-	}
-
 	for _, err := range errs {
 		mlog.Error("Error handling PR comment", mlog.Err(err))
 	}
@@ -171,14 +138,4 @@ func (e *issueCommentEvent) HasAutoAssign() bool {
 // HasUpdateBranch is true if body contains "/update-branch"
 func (e *issueCommentEvent) HasUpdateBranch() bool {
 	return strings.Contains(strings.TrimSpace(e.Comment.GetBody()), "/update-branch")
-}
-
-// HasE2ETest is true if body is prefixed with "/e2e-test"
-func (e *issueCommentEvent) HasE2ETest() bool {
-	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-test")
-}
-
-// HasE2ECancel is true if body is prefixed with "/e2e-cancel"
-func (e *issueCommentEvent) HasE2ECancel() bool {
-	return strings.HasPrefix(strings.TrimSpace(e.Comment.GetBody()), "/e2e-cancel")
 }
