@@ -96,11 +96,6 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		if (pr.RepoName == s.Config.E2EServerReponame || pr.RepoName == s.Config.E2EWebappReponame) && contains(s.Config.E2ETriggerLabel, *event.Label.Name) {
-			mlog.Info("Label to run e2e tests", mlog.Int("pr", event.PRNumber), mlog.String("repo", pr.RepoName), mlog.String("label", *event.Label.Name))
-			go s.triggerE2ETestFromLabel(pr)
-		}
-
 		if s.isBlockPRMerge(*event.Label.Name) {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))

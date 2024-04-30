@@ -19,7 +19,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sourcegraph/go-diff v0.6.1
 	github.com/stretchr/testify v1.7.0
-	github.com/xanzy/go-gitlab v0.51.1
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
 )

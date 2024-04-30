@@ -60,9 +60,6 @@ type Config struct {
 	Username                    string
 	AutoAssignerTeam            string
 	AutoAssignerTeamID          int64
-	CircleCIToken               string
-	GitLabInternalURL           string
-	GitLabInternalToken         string
 
 	TickRateMinutes int
 
@@ -80,25 +77,6 @@ type Config struct {
 	BuildAppDoneMessage   string
 	BuildAppFailedMessage string
 	BuildAppBranchPrefix  string
-
-	E2EDockerRepo                 string
-	E2EGitLabProject              string
-	E2EWebappRef                  string
-	E2EServerRef                  string
-	E2EWebappReponame             string
-	E2EServerReponame             string
-	E2EWebappStatusContext        string
-	E2EServerStatusContext        string
-	E2ETriggerLabel               []string
-	E2ETestAutomationDashboardURL string
-
-	E2EMobileCoreReponame          string
-	E2EMobileGitLabProject         string
-	E2EMobileGitLabProjectRefForPR string
-
-	E2EDesktopCoreReponame          string
-	E2EDesktopGitLabProject         string
-	E2EDesktopGitLabProjectRefForPR string
 
 	EnterpriseReponame            string
 	EnterpriseTriggerReponame     string
