@@ -30,8 +30,7 @@ func (s *Server) AutoMergePR() error {
 
 	for _, pr := range prs {
 		var autoMergePr = s.hasAutoMerge(pr.Labels)
-		var translationPr = s.isTranslationPr(pr) && s.hasTranslationMergeLabel(pr.Labels)
-		if !autoMergePr && !translationPr {
+		if !autoMergePr {
 			continue
 		}
 
@@ -122,23 +121,11 @@ func (s *Server) AutoMergePR() error {
 			MergeMethod: "squash",
 		}
 
-		if translationPr {
-			opt.MergeMethod = s.Config.TranslationsMergePolicy
-		}
-
 		merged, _, err := s.GithubClient.PullRequests.Merge(ctx, pr.RepoOwner, pr.RepoName, pr.Number, "Automatic Merge", opt)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error while trying to automerge the PR\nErr %s", err.Error())
 			if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, errMsg); err != nil {
 				mlog.Warn("Error while commenting", mlog.Err(err))
-			}
-			if translationPr {
-				if err = s.removeTranslationLabel(ctx, pr); err != nil {
-					mlog.Warn("Error while removing translation label", mlog.Err(err))
-				}
-				if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergeFailureMessage); err != nil {
-					mlog.Warn("Error while sending failure message to mattermost", mlog.Err(err))
-				}
 			}
 			continue
 		}
@@ -146,15 +133,6 @@ func (s *Server) AutoMergePR() error {
 		msg = fmt.Sprintf("%s\nSHA: %s", merged.GetMessage(), merged.GetSHA())
 		if err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
 			mlog.Warn("Error while commenting", mlog.Err(err))
-		}
-
-		if translationPr {
-			if err = s.removeTranslationLabel(ctx, pr); err != nil {
-				mlog.Warn("Error while removing translation label", mlog.Err(err))
-			}
-			if err = s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMergedMessage); err != nil {
-				mlog.Warn("Error while sending translations merged message to mattermost", mlog.Err(err))
-			}
 		}
 	}
 
