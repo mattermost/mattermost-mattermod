@@ -14,11 +14,6 @@ func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest)
 		return
 	}
 
-	label := []string{s.Config.TranslationsDoNotMergeLabel}
-	_, _, errLabel := s.GithubClient.Issues.AddLabelsToIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, label)
-	if errLabel != nil {
-		mlog.Error("Unable to label", mlog.Err(errLabel))
-	}
 	err := s.sendTranslationWebhookMessage(ctx, pr, s.Config.TranslationsMattermostMessage)
 	if err != nil {
 		mlog.Error("Unable to send message ", mlog.Err(err))
@@ -39,24 +34,6 @@ func (s *Server) sendTranslationWebhookMessage(ctx context.Context, pr *model.Pu
 	return nil
 }
 
-func (s *Server) removeTranslationLabel(ctx context.Context, pr *model.PullRequest) error {
-	_, err := s.GithubClient.Issues.RemoveLabelForIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, s.Config.TranslationsDoNotMergeLabel)
-	if err != nil {
-		mlog.Error("Error removing the automated label in the translation auto merge", mlog.Err(err), mlog.Int("PR", pr.Number), mlog.String("Repo", pr.RepoName))
-		return err
-	}
-	return nil
-}
-
 func (s *Server) isTranslationPr(pr *model.PullRequest) bool {
 	return pr.Username == s.Config.TranslationsBot
-}
-
-func (s *Server) hasTranslationMergeLabel(labels []string) bool {
-	for _, label := range labels {
-		if label == s.Config.TranslationsDoNotMergeLabel {
-			return true
-		}
-	}
-	return false
 }
