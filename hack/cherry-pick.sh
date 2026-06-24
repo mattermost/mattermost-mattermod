@@ -103,8 +103,8 @@ if ! which hub > /dev/null; then
   exit 1
 fi
 
-if [[ "$#" -lt 3 ]]; then
-  echo "${0} <remote branch> <pr-number> <commit-sha> [source-branch]: cherry pick <commit-sha> from <pr> onto <remote branch> and leave instructions for proposing pull request"
+if [[ "$#" -lt 4 ]]; then
+  echo "${0} <remote branch> <pr-number> <commit-sha> <source-branch>: cherry pick <commit-sha> from <pr> onto <remote branch> and leave instructions for proposing pull request"
   echo
   echo "  Checks out <remote branch> and handles the cherry-pick of <commit> for you."
   echo "  Examples:"
@@ -133,7 +133,7 @@ fi
 declare -r BRANCH="$1"
 declare -r PULL="$2"
 declare -r COMMITSHA="$3"
-declare -r SOURCE_BRANCH="${4:-}"
+declare -r SOURCE_BRANCH="$4"
 
 echo "+++ Updating remotes..."
 git remote update "${UPSTREAM_REMOTE}" "${FORK_REMOTE}"
@@ -150,11 +150,8 @@ FALLBACK_NEWBRANCH="$(echo "${FALLBACK_NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g'
 declare -r FALLBACK_NEWBRANCH
 TARGET_BRANCH="$(basename "${BRANCH}")"
 declare -r TARGET_BRANCH
-if [[ -n "${SOURCE_BRANCH}" ]]; then
-  NEWBRANCH="$(echo "${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
-else
-  NEWBRANCH="${FALLBACK_NEWBRANCH}"
-fi
+# For source branch my-branch targeting release-11.7, create my-branch-release-11.7.
+NEWBRANCH="$(echo "${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
 NEWBRANCHUNIQ="${FALLBACK_NEWBRANCH}-$(date +%s)"
 declare -r NEWBRANCHUNIQ
@@ -202,9 +199,5 @@ echo "  git push ${FORK_REMOTE} ${NEWBRANCHUNIQ}:${NEWBRANCH}"
 echo
 
 
-if [[ -n "${SOURCE_BRANCH}" ]]; then
-  git push "${FORK_REMOTE}" "${NEWBRANCHUNIQ}:${NEWBRANCH}"
-else
-  git push "${FORK_REMOTE}" -f "${NEWBRANCHUNIQ}:${NEWBRANCH}"
-fi
+git push "${FORK_REMOTE}" "${NEWBRANCHUNIQ}:${NEWBRANCH}"
 make-a-pr
