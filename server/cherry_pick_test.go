@@ -216,6 +216,45 @@ esac
 	assert.Equal(t, "my-branch-release-11.7", branchParts[1])
 }
 
+func TestCherryPickScriptRejectsEmptySourceBranch(t *testing.T) {
+	tempDir := t.TempDir()
+	binDir := filepath.Join(tempDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0700))
+	repoRoot := filepath.Join(tempDir, "repo")
+	require.NoError(t, os.MkdirAll(repoRoot, 0700))
+
+	t.Setenv("FAKE_REPO_ROOT", repoRoot)
+	t.Setenv("GITHUB_USER", "mattermod")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	fakeGit := `#!/usr/bin/env bash
+set -e
+
+case "$1" in
+  rev-parse)
+    echo "$FAKE_REPO_ROOT"
+    ;;
+  symbolic-ref)
+    echo "master"
+    ;;
+esac
+`
+	writeExecutableTestFile(t, filepath.Join(binDir, "git"), fakeGit)
+	writeExecutableTestFile(t, filepath.Join(binDir, "hub"), "#!/usr/bin/env bash\nexit 0\n")
+
+	cmd := exec.Command(
+		"bash",
+		filepath.Join("..", "hack", "cherry-pick.sh"),
+		"upstream/release-11.7",
+		"123",
+		"merge-sha",
+		"",
+	)
+	out, err := cmd.CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "error: source branch (argument 4) must not be empty")
+}
+
 func writeExecutableTestFile(t *testing.T, path string, content string) {
 	t.Helper()
 

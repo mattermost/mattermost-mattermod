@@ -134,6 +134,10 @@ declare -r BRANCH="$1"
 declare -r PULL="$2"
 declare -r COMMITSHA="$3"
 declare -r SOURCE_BRANCH="$4"
+if [[ -z "${SOURCE_BRANCH}" ]]; then
+  echo "error: source branch (argument 4) must not be empty" >&2
+  exit 1
+fi
 
 echo "+++ Updating remotes..."
 git remote update "${UPSTREAM_REMOTE}" "${FORK_REMOTE}"
