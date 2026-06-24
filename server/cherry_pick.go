@@ -211,7 +211,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
 
 	releaseBranch := fmt.Sprintf("upstream/%s", version)
-	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA)
+	cmd := exec.Command(cherryPickScript, releaseBranch, strconv.Itoa(pr.Number), pr.MergeCommitSHA, pr.Ref)
 	cmd.Dir = repoFolder
 	cmd.Env = append(
 		os.Environ(),

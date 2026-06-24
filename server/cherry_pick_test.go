@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -87,6 +89,66 @@ func TestHandleCherryPick(t *testing.T) {
 			require.NoError(t, err)
 		})
 	})
+}
+
+func TestDoCherryPickPassesSourceBranch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tempDir := t.TempDir()
+	repoName := "repo-name"
+	repoFolder := filepath.Join(tempDir, "repos")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoFolder, repoName), 0755))
+	scriptsFolder := filepath.Join(tempDir, "scripts")
+	require.NoError(t, os.MkdirAll(scriptsFolder, 0755))
+
+	argsFile := filepath.Join(tempDir, "args")
+	t.Setenv("CHERRY_PICK_ARGS_FILE", argsFile)
+	script := `#!/usr/bin/env bash
+printf "%s\n" "$@" > "$CHERRY_PICK_ARGS_FILE"
+echo "https://github.com/mattermost/repo-name/pull/456"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(scriptsFolder, "cherry-pick.sh"), []byte(script), 0755))
+
+	s := Server{
+		Config: &Config{
+			RepoFolder:    repoFolder,
+			ScriptsFolder: scriptsFolder,
+		},
+		OrgMembers: []string{
+			"org-member",
+		},
+		GithubClient: &GithubClient{},
+	}
+
+	pr := &model.PullRequest{
+		RepoOwner:      "mattermost",
+		RepoName:       repoName,
+		Number:         123,
+		Username:       "org-member",
+		MergeCommitSHA: "merge-sha",
+		Ref:            "feature/shared-branch",
+	}
+
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	is := mocks.NewMockIssuesService(ctrl)
+	is.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, []string{"AutomatedCherryPick", "Changelog/Not Needed", "Docs/Not Needed"}).Return(nil, nil, nil)
+	is.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, []string{"CherryPick/Done"}).Return(nil, nil, nil)
+	is.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPick/Approved").Return(nil, nil)
+	is.EXPECT().AddAssignees(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, []string{"org-member"}).Return(nil, nil, nil)
+	s.GithubClient.Issues = is
+
+	prs := mocks.NewMockPullRequestsService(ctrl)
+	prs.EXPECT().RequestReviewers(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, github.ReviewersRequest{Reviewers: []string{"org-member"}}).Return(nil, nil, nil)
+	s.GithubClient.PullRequests = prs
+
+	cmdOutput, err := s.doCherryPick(context.Background(), "release-5.28", nil, pr)
+	require.NoError(t, err)
+	require.Empty(t, cmdOutput)
+
+	args, err := os.ReadFile(argsFile)
+	require.NoError(t, err)
+	assert.Equal(t, "upstream/release-5.28\n123\nmerge-sha\nfeature/shared-branch\n", string(args))
 }
 
 func TestGetMilestone(t *testing.T) {
