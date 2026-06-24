@@ -108,6 +108,7 @@ func TestDoCherryPickPassesSourceBranch(t *testing.T) {
 printf "%s\n" "$@" > "$CHERRY_PICK_ARGS_FILE"
 echo "https://github.com/mattermost/repo-name/pull/456"
 `
+	// #nosec G306 -- the test script must be executable because doCherryPick runs it directly.
 	require.NoError(t, os.WriteFile(filepath.Join(scriptsFolder, "cherry-pick.sh"), []byte(script), 0755))
 
 	s := Server{
