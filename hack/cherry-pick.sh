@@ -144,16 +144,12 @@ if ! git log -n1 --format=%H "${BRANCH}" >/dev/null 2>&1; then
   exit 1
 fi
 
-FALLBACK_NEWBRANCHREQ="automated-cherry-pick-of-${MAIN_REPO_NAME}-#${PULL}" # "Required" portion for tools.
-declare -r FALLBACK_NEWBRANCHREQ
-FALLBACK_NEWBRANCH="$(echo "${FALLBACK_NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g')"
-declare -r FALLBACK_NEWBRANCH
 TARGET_BRANCH="$(basename "${BRANCH}")"
 declare -r TARGET_BRANCH
 # For source branch my-branch targeting release-11.7, create my-branch-release-11.7.
 NEWBRANCH="$(echo "${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
-NEWBRANCHUNIQ="${FALLBACK_NEWBRANCH}-$(date +%s)"
+NEWBRANCHUNIQ="${NEWBRANCH}-$(date +%s)"
 declare -r NEWBRANCHUNIQ
 echo "+++ Creating local branch ${NEWBRANCHUNIQ}"
 

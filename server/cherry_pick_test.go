@@ -212,6 +212,7 @@ esac
 	require.Len(t, args, 3)
 	branchParts := strings.SplitN(args[2], ":", 2)
 	require.Len(t, branchParts, 2)
+	assert.True(t, strings.HasPrefix(branchParts[0], "my-branch-release-11.7-"))
 	assert.Equal(t, "my-branch-release-11.7", branchParts[1])
 }
 
