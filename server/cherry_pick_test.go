@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -150,6 +152,75 @@ echo "https://github.com/mattermost/repo-name/pull/456"
 	args, err := os.ReadFile(argsFile)
 	require.NoError(t, err)
 	assert.Equal(t, "upstream/release-5.28\n123\nmerge-sha\nfeature/shared-branch\n", string(args))
+}
+
+func TestCherryPickScriptNamesBranchFromSourceAndTarget(t *testing.T) {
+	tempDir := t.TempDir()
+	binDir := filepath.Join(tempDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0700))
+	repoRoot := filepath.Join(tempDir, "repo")
+	require.NoError(t, os.MkdirAll(repoRoot, 0700))
+
+	pushArgsFile := filepath.Join(tempDir, "push-args")
+	t.Setenv("FAKE_REPO_ROOT", repoRoot)
+	t.Setenv("GIT_PUSH_ARGS_FILE", pushArgsFile)
+	t.Setenv("GITHUB_USER", "mattermod")
+	t.Setenv("ORIGINAL_AUTHOR", "author")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	fakeGit := `#!/usr/bin/env bash
+set -e
+
+case "$1" in
+  rev-parse)
+    echo "$FAKE_REPO_ROOT"
+    ;;
+  symbolic-ref)
+    echo "master"
+    ;;
+  remote)
+    if [[ "$2" == "get-url" ]]; then
+      echo "git@github.com:mattermost/repo-name.git"
+    fi
+    ;;
+  log)
+    echo "merge-sha"
+    ;;
+  push)
+    printf "%s\n" "$@" > "$GIT_PUSH_ARGS_FILE"
+    ;;
+esac
+`
+	writeExecutableTestFile(t, filepath.Join(binDir, "git"), fakeGit)
+	writeExecutableTestFile(t, filepath.Join(binDir, "hub"), "#!/usr/bin/env bash\nexit 0\n")
+
+	cmd := exec.Command(
+		"bash",
+		filepath.Join("..", "hack", "cherry-pick.sh"),
+		"upstream/release-11.7",
+		"123",
+		"merge-sha",
+		"my-branch",
+	)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	pushArgs, err := os.ReadFile(pushArgsFile)
+	require.NoError(t, err)
+
+	args := strings.Split(strings.TrimSpace(string(pushArgs)), "\n")
+	require.Len(t, args, 3)
+	branchParts := strings.SplitN(args[2], ":", 2)
+	require.Len(t, branchParts, 2)
+	assert.Equal(t, "my-branch-release-11.7", branchParts[1])
+}
+
+func writeExecutableTestFile(t *testing.T, path string, content string) {
+	t.Helper()
+
+	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+	// #nosec G302 -- these test command shims must be executable to appear in PATH.
+	require.NoError(t, os.Chmod(path, 0700))
 }
 
 func TestGetMilestone(t *testing.T) {
