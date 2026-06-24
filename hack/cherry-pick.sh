@@ -18,7 +18,7 @@
 
 # Checkout a PR from GitHub. (Yes, this is sitting in a Git tree. How
 # meta.) Assumes you care about pulls from remote "upstream" and
-# opens pull requests from a branch named after the original source branch when available.
+# opens pull requests from a branch named after the original source branch and target branch when available.
 
 # Modified by Mattermost to do a real cherry-pick instead of applying patches
 # via git am
@@ -108,7 +108,7 @@ if [[ "$#" -lt 3 ]]; then
   echo
   echo "  Checks out <remote branch> and handles the cherry-pick of <commit> for you."
   echo "  Examples:"
-  echo "    $0 upstream/release-3.14 12345 df243fd my-feature-branch # Cherry-picks commit sha df243fd onto upstream/release-3.14 and proposes that as a PR from my-feature-branch"
+  echo "    $0 upstream/release-3.14 12345 df243fd my-feature-branch # Cherry-picks commit sha df243fd onto upstream/release-3.14 and proposes that as a PR from my-feature-branch-release-3.14"
   echo
   echo "  Set the DRY_RUN environment var to skip git push and creating PR."
   echo "  This is useful for creating patches to a release branch without making a PR."
@@ -148,7 +148,13 @@ FALLBACK_NEWBRANCHREQ="automated-cherry-pick-of-${MAIN_REPO_NAME}-#${PULL}" # "R
 declare -r FALLBACK_NEWBRANCHREQ
 FALLBACK_NEWBRANCH="$(echo "${FALLBACK_NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g')"
 declare -r FALLBACK_NEWBRANCH
-NEWBRANCH="${SOURCE_BRANCH:-${FALLBACK_NEWBRANCH}}"
+TARGET_BRANCH="$(basename "${BRANCH}")"
+declare -r TARGET_BRANCH
+if [[ -n "${SOURCE_BRANCH}" ]]; then
+  NEWBRANCH="$(echo "${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
+else
+  NEWBRANCH="${FALLBACK_NEWBRANCH}"
+fi
 declare -r NEWBRANCH
 NEWBRANCHUNIQ="${FALLBACK_NEWBRANCH}-$(date +%s)"
 declare -r NEWBRANCHUNIQ
