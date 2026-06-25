@@ -150,8 +150,9 @@ fi
 
 TARGET_BRANCH="$(basename "${BRANCH}")"
 declare -r TARGET_BRANCH
-# For source branch my-branch targeting release-11.7, create my-branch-release-11.7.
-NEWBRANCH="$(echo "${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
+# For source branch my-branch targeting release-11.7, create
+# automated-cherry-pick-of-my-branch-release-11.7
+NEWBRANCH="$(echo "automated-cherry-pick-of-${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
 NEWBRANCHUNIQ="${NEWBRANCH}-$(date +%s)"
 declare -r NEWBRANCHUNIQ
