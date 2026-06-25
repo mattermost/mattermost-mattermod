@@ -18,8 +18,7 @@
 
 # Checkout a PR from GitHub. (Yes, this is sitting in a Git tree. How
 # meta.) Assumes you care about pulls from remote "upstream" and
-# checks them out to a branch named:
-#  automated-cherry-pick-of-<pr>-<target branch>-<timestamp>
+# opens pull requests from a branch named after the original source branch and target branch when available.
 
 # Modified by Mattermost to do a real cherry-pick instead of applying patches
 # via git am
@@ -104,12 +103,12 @@ if ! which hub > /dev/null; then
   exit 1
 fi
 
-if [[ "$#" -lt 2 ]]; then
-  echo "${0} <remote branch> <pr-number> <commit-sha>: cherry pick <commit-sha> from <pr> onto <remote branch> and leave instructions for proposing pull request"
+if [[ "$#" -lt 4 ]]; then
+  echo "${0} <remote branch> <pr-number> <commit-sha> <source-branch>: cherry pick <commit-sha> from <pr> onto <remote branch> and leave instructions for proposing pull request"
   echo
   echo "  Checks out <remote branch> and handles the cherry-pick of <commit> for you."
   echo "  Examples:"
-  echo "    $0 upstream/release-3.14 12345 df243fd # Cherry-picks commit sha df243fd onto upstream/release-3.14 and proposes that as a PR with a commit message referring to PR 12345"
+  echo "    $0 upstream/release-3.14 12345 df243fd my-feature-branch # Cherry-picks commit sha df243fd onto upstream/release-3.14 and proposes that as a PR from my-feature-branch-release-3.14"
   echo
   echo "  Set the DRY_RUN environment var to skip git push and creating PR."
   echo "  This is useful for creating patches to a release branch without making a PR."
@@ -134,6 +133,11 @@ fi
 declare -r BRANCH="$1"
 declare -r PULL="$2"
 declare -r COMMITSHA="$3"
+declare -r SOURCE_BRANCH="$4"
+if [[ -z "${SOURCE_BRANCH}" ]]; then
+  echo "error: source branch (argument 4) must not be empty" >&2
+  exit 1
+fi
 
 echo "+++ Updating remotes..."
 git remote update "${UPSTREAM_REMOTE}" "${FORK_REMOTE}"
@@ -144,9 +148,11 @@ if ! git log -n1 --format=%H "${BRANCH}" >/dev/null 2>&1; then
   exit 1
 fi
 
-NEWBRANCHREQ="automated-cherry-pick-of-${MAIN_REPO_NAME}-#${PULL}" # "Required" portion for tools.
-declare -r NEWBRANCHREQ
-NEWBRANCH="$(echo "${NEWBRANCHREQ}-${BRANCH}" | sed 's/\//-/g')"
+TARGET_BRANCH="$(basename "${BRANCH}")"
+declare -r TARGET_BRANCH
+# For source branch my-branch targeting release-11.7, create
+# automated-cherry-pick-of-my-branch-release-11.7
+NEWBRANCH="$(echo "automated-cherry-pick-of-${SOURCE_BRANCH}-${TARGET_BRANCH}" | sed 's/\//-/g')"
 declare -r NEWBRANCH
 NEWBRANCHUNIQ="${NEWBRANCH}-$(date +%s)"
 declare -r NEWBRANCHUNIQ
@@ -194,5 +200,5 @@ echo "  git push ${FORK_REMOTE} ${NEWBRANCHUNIQ}:${NEWBRANCH}"
 echo
 
 
-git push "${FORK_REMOTE}" -f "${NEWBRANCHUNIQ}:${NEWBRANCH}"
+git push "${FORK_REMOTE}" "${NEWBRANCHUNIQ}:${NEWBRANCH}"
 make-a-pr

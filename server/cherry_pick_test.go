@@ -2,7 +2,11 @@ package server
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -87,6 +91,176 @@ func TestHandleCherryPick(t *testing.T) {
 			require.NoError(t, err)
 		})
 	})
+}
+
+func TestDoCherryPickPassesSourceBranch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tempDir := t.TempDir()
+	repoName := "repo-name"
+	repoFolder := filepath.Join(tempDir, "repos")
+	require.NoError(t, os.MkdirAll(filepath.Join(repoFolder, repoName), 0755))
+	scriptsFolder := filepath.Join(tempDir, "scripts")
+	require.NoError(t, os.MkdirAll(scriptsFolder, 0755))
+
+	argsFile := filepath.Join(tempDir, "args")
+	t.Setenv("CHERRY_PICK_ARGS_FILE", argsFile)
+	script := `#!/usr/bin/env bash
+printf "%s\n" "$@" > "$CHERRY_PICK_ARGS_FILE"
+echo "https://github.com/mattermost/repo-name/pull/456"
+`
+	// #nosec G306 -- the test script must be executable because doCherryPick runs it directly.
+	require.NoError(t, os.WriteFile(filepath.Join(scriptsFolder, "cherry-pick.sh"), []byte(script), 0755))
+
+	s := Server{
+		Config: &Config{
+			RepoFolder:    repoFolder,
+			ScriptsFolder: scriptsFolder,
+		},
+		OrgMembers: []string{
+			"org-member",
+		},
+		GithubClient: &GithubClient{},
+	}
+
+	pr := &model.PullRequest{
+		RepoOwner:      "mattermost",
+		RepoName:       repoName,
+		Number:         123,
+		Username:       "org-member",
+		MergeCommitSHA: "merge-sha",
+		Ref:            "feature/shared-branch",
+	}
+
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	is := mocks.NewMockIssuesService(ctrl)
+	is.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, []string{"AutomatedCherryPick", "Changelog/Not Needed", "Docs/Not Needed"}).Return(nil, nil, nil)
+	is.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, []string{"CherryPick/Done"}).Return(nil, nil, nil)
+	is.EXPECT().RemoveLabelForIssue(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, "CherryPick/Approved").Return(nil, nil)
+	is.EXPECT().AddAssignees(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, []string{"org-member"}).Return(nil, nil, nil)
+	s.GithubClient.Issues = is
+
+	prs := mocks.NewMockPullRequestsService(ctrl)
+	prs.EXPECT().RequestReviewers(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, 456, github.ReviewersRequest{Reviewers: []string{"org-member"}}).Return(nil, nil, nil)
+	s.GithubClient.PullRequests = prs
+
+	cmdOutput, err := s.doCherryPick(context.Background(), "release-5.28", nil, pr)
+	require.NoError(t, err)
+	require.Empty(t, cmdOutput)
+
+	args, err := os.ReadFile(argsFile)
+	require.NoError(t, err)
+	assert.Equal(t, "upstream/release-5.28\n123\nmerge-sha\nfeature/shared-branch\n", string(args))
+}
+
+func TestCherryPickScriptNamesBranchFromSourceAndTarget(t *testing.T) {
+	tempDir := t.TempDir()
+	binDir := filepath.Join(tempDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0700))
+	repoRoot := filepath.Join(tempDir, "repo")
+	require.NoError(t, os.MkdirAll(repoRoot, 0700))
+
+	pushArgsFile := filepath.Join(tempDir, "push-args")
+	t.Setenv("FAKE_REPO_ROOT", repoRoot)
+	t.Setenv("GIT_PUSH_ARGS_FILE", pushArgsFile)
+	t.Setenv("GITHUB_USER", "mattermod")
+	t.Setenv("ORIGINAL_AUTHOR", "author")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	fakeGit := `#!/usr/bin/env bash
+set -e
+
+case "$1" in
+  rev-parse)
+    echo "$FAKE_REPO_ROOT"
+    ;;
+  symbolic-ref)
+    echo "master"
+    ;;
+  remote)
+    if [[ "$2" == "get-url" ]]; then
+      echo "git@github.com:mattermost/repo-name.git"
+    fi
+    ;;
+  log)
+    echo "merge-sha"
+    ;;
+  push)
+    printf "%s\n" "$@" > "$GIT_PUSH_ARGS_FILE"
+    ;;
+esac
+`
+	writeExecutableTestFile(t, filepath.Join(binDir, "git"), fakeGit)
+	writeExecutableTestFile(t, filepath.Join(binDir, "hub"), "#!/usr/bin/env bash\nexit 0\n")
+
+	cmd := exec.Command(
+		"bash",
+		filepath.Join("..", "hack", "cherry-pick.sh"),
+		"upstream/release-11.7",
+		"123",
+		"merge-sha",
+		"my-branch",
+	)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	pushArgs, err := os.ReadFile(pushArgsFile)
+	require.NoError(t, err)
+
+	args := strings.Split(strings.TrimSpace(string(pushArgs)), "\n")
+	require.Len(t, args, 3)
+	branchParts := strings.SplitN(args[2], ":", 2)
+	require.Len(t, branchParts, 2)
+	assert.True(t, strings.HasPrefix(branchParts[0], "automated-cherry-pick-of-my-branch-release-11.7-"))
+	assert.Equal(t, "automated-cherry-pick-of-my-branch-release-11.7", branchParts[1])
+}
+
+func TestCherryPickScriptRejectsEmptySourceBranch(t *testing.T) {
+	tempDir := t.TempDir()
+	binDir := filepath.Join(tempDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0700))
+	repoRoot := filepath.Join(tempDir, "repo")
+	require.NoError(t, os.MkdirAll(repoRoot, 0700))
+
+	t.Setenv("FAKE_REPO_ROOT", repoRoot)
+	t.Setenv("GITHUB_USER", "mattermod")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	fakeGit := `#!/usr/bin/env bash
+set -e
+
+case "$1" in
+  rev-parse)
+    echo "$FAKE_REPO_ROOT"
+    ;;
+  symbolic-ref)
+    echo "master"
+    ;;
+esac
+`
+	writeExecutableTestFile(t, filepath.Join(binDir, "git"), fakeGit)
+	writeExecutableTestFile(t, filepath.Join(binDir, "hub"), "#!/usr/bin/env bash\nexit 0\n")
+
+	cmd := exec.Command(
+		"bash",
+		filepath.Join("..", "hack", "cherry-pick.sh"),
+		"upstream/release-11.7",
+		"123",
+		"merge-sha",
+		"",
+	)
+	out, err := cmd.CombinedOutput()
+	require.Error(t, err)
+	assert.Contains(t, string(out), "error: source branch (argument 4) must not be empty")
+}
+
+func writeExecutableTestFile(t *testing.T, path string, content string) {
+	t.Helper()
+
+	require.NoError(t, os.WriteFile(path, []byte(content), 0600))
+	// #nosec G302 -- these test command shims must be executable to appear in PATH.
+	require.NoError(t, os.Chmod(path, 0700))
 }
 
 func TestGetMilestone(t *testing.T) {
