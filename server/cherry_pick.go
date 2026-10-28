@@ -4,9 +4,12 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,13 +29,32 @@ import (
 const (
 	cherryPickScheduledMsg = "Cherry pick is scheduled."
 	tooManyCherryPickMsg   = "There are too many cherry picking requests. Please do this manually or try again later."
+	cherryPickFailedMsg    = "Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n"
+	cherryPickHandedOffMsg = "Automated cherry pick to %s failed; handed off to an agent to complete it."
 	milestoneCloud         = "cloud"
+
+	cherryPickAgentTimeout        = 30 * time.Second
+	cherryPickAgentMaxOutputBytes = 16 * 1024
 )
+
+var errCherryPickAgentNotConfigured = errors.New("cherry pick agent webhook is not configured")
 
 type cherryPickRequest struct {
 	pr        *model.PullRequest
 	milestone *int
 	version   string
+}
+
+type cherryPickAgentPayload struct {
+	Repository      string `json:"repository"`
+	PRNumber        int    `json:"pr_number"`
+	PRURL           string `json:"pr_url"`
+	MergeCommitSHA  string `json:"merge_commit_sha"`
+	SourceRef       string `json:"source_ref"`
+	TargetBranch    string `json:"target_branch"`
+	MilestoneNumber *int   `json:"milestone_number"` // nil when triggered by /cherry-pick
+	OriginalAuthor  string `json:"original_author"`
+	FailureOutput   string `json:"failure_output"`
 }
 
 func (s *Server) listenCherryPickRequests() {
@@ -47,14 +69,91 @@ func (s *Server) listenCherryPickRequests() {
 			pr := job.pr
 			cmdOut, err := s.doCherryPick(ctx, strings.TrimSpace(job.version), job.milestone, pr)
 			if err != nil {
-				msg := fmt.Sprintf("Error trying doing the automated Cherry picking. Please do this manually\n\n```\n%s\n```\n", cmdOut)
-				if cErr := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); cErr != nil {
-					mlog.Warn("Error while commenting", mlog.Err(cErr))
-				}
 				mlog.Error("Error while cherry picking", mlog.Err(err))
+				s.handleCherryPickFailure(job, cmdOut)
 			}
 		}()
 	}
+}
+
+// handleCherryPickFailure hands a failed cherry-pick.sh run off to the agent webhook,
+// falling back to posting the script output on the PR.
+func (s *Server) handleCherryPickFailure(job *cherryPickRequest, cmdOut string) {
+	// The job's context may already be used up by a long script run.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	defer cancel()
+
+	pr := job.pr
+	msg := fmt.Sprintf(cherryPickFailedMsg, cmdOut)
+	// An empty cmdOut means cherry-pick.sh never ran (setup or clone error), which an agent can't fix.
+	if cmdOut != "" {
+		err := s.dispatchCherryPickToAgent(ctx, job, cmdOut)
+		switch {
+		case err == nil:
+			msg = fmt.Sprintf(cherryPickHandedOffMsg, strings.TrimSpace(job.version))
+		case errors.Is(err, errCherryPickAgentNotConfigured):
+		default:
+			mlog.Warn("Failed to hand off cherry pick to agent, posting the error instead",
+				mlog.Err(err),
+				mlog.String("repo", pr.RepoName),
+				mlog.Int("PR", pr.Number),
+			)
+		}
+	}
+
+	if err := s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, msg); err != nil {
+		mlog.Warn("Error while commenting", mlog.Err(err))
+	}
+}
+
+func (s *Server) dispatchCherryPickToAgent(ctx context.Context, job *cherryPickRequest, cmdOut string) error {
+	if s.Config.CherryPickAgentWebhookURL == "" || s.Config.CherryPickAgentWebhookToken == "" {
+		return errCherryPickAgentNotConfigured
+	}
+
+	pr := job.pr
+	payload := cherryPickAgentPayload{
+		Repository:      pr.RepoOwner + "/" + pr.RepoName,
+		PRNumber:        pr.Number,
+		PRURL:           fmt.Sprintf("https://github.com/%s/%s/pull/%d", pr.RepoOwner, pr.RepoName, pr.Number),
+		MergeCommitSHA:  pr.MergeCommitSHA,
+		SourceRef:       pr.Ref,
+		TargetBranch:    strings.TrimSpace(job.version),
+		MilestoneNumber: job.milestone,
+		OriginalAuthor:  pr.Username,
+		FailureOutput:   trimCherryPickOutput(cmdOut),
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal cherry pick agent payload")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Config.CherryPickAgentWebhookURL, bytes.NewReader(body))
+	if err != nil {
+		return errors.Wrap(err, "failed to create cherry pick agent request")
+	}
+	req.Header.Set("Authorization", "Bearer "+s.Config.CherryPickAgentWebhookToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: cherryPickAgentTimeout}
+	r, err := client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed to call cherry pick agent webhook")
+	}
+	closeBody(r)
+
+	if r.StatusCode < http.StatusOK || r.StatusCode >= http.StatusMultipleChoices {
+		return errors.Errorf("cherry pick agent webhook returned status %d", r.StatusCode)
+	}
+	return nil
+}
+
+// trimCherryPickOutput keeps the tail of the script output, where the failure is reported.
+func trimCherryPickOutput(out string) string {
+	if len(out) <= cherryPickAgentMaxOutputBytes {
+		return out
+	}
+	return out[len(out)-cherryPickAgentMaxOutputBytes:]
 }
 
 func (s *Server) finishCherryPickRequests() {
