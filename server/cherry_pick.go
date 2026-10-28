@@ -88,11 +88,9 @@ func (s *Server) handleCherryPickFailure(job *cherryPickRequest, cmdOut string) 
 	// An empty cmdOut means cherry-pick.sh never ran (setup or clone error), which an agent can't fix.
 	if cmdOut != "" {
 		err := s.dispatchCherryPickToAgent(ctx, job, cmdOut)
-		switch {
-		case err == nil:
+		if err == nil {
 			msg = fmt.Sprintf(cherryPickHandedOffMsg, strings.TrimSpace(job.version))
-		case errors.Is(err, errCherryPickAgentNotConfigured):
-		default:
+		} else if !errors.Is(err, errCherryPickAgentNotConfigured) {
 			mlog.Warn("Failed to hand off cherry pick to agent, posting the error instead",
 				mlog.Err(err),
 				mlog.String("repo", pr.RepoName),
