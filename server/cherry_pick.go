@@ -79,8 +79,9 @@ func (s *Server) listenCherryPickRequests() {
 // handleCherryPickFailure hands a failed cherry-pick.sh run off to the agent webhook,
 // falling back to posting the script output on the PR.
 func (s *Server) handleCherryPickFailure(job *cherryPickRequest, cmdOut string) {
-	// The job's context may already be used up by a long script run.
-	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second)
+	// The job's context may already be used up by a long script run. The budget covers the
+	// webhook call plus a full request timeout for the fallback comment.
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout*time.Second+cherryPickAgentTimeout)
 	defer cancel()
 
 	pr := job.pr
@@ -126,6 +127,9 @@ func (s *Server) dispatchCherryPickToAgent(ctx context.Context, job *cherryPickR
 		return errors.Wrap(err, "failed to marshal cherry pick agent payload")
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, cherryPickAgentTimeout)
+	defer cancel()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Config.CherryPickAgentWebhookURL, bytes.NewReader(body))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cherry pick agent request")
@@ -133,8 +137,7 @@ func (s *Server) dispatchCherryPickToAgent(ctx context.Context, job *cherryPickR
 	req.Header.Set("Authorization", "Bearer "+s.Config.CherryPickAgentWebhookToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: cherryPickAgentTimeout}
-	r, err := client.Do(req)
+	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "failed to call cherry pick agent webhook")
 	}
