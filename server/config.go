@@ -55,6 +55,8 @@ type Config struct {
 	GithubEmail                 string
 	GitConfigMergeRenameLimit   string
 	GithubAccessTokenCherryPick string
+	CherryPickAgentWebhookURL   string
+	CherryPickAgentWebhookToken string
 	GitHubWebhookSecret         string
 	Org                         string
 	Username                    string
