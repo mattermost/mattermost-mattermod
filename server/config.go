@@ -55,6 +55,8 @@ type Config struct {
 	GithubEmail                 string
 	GitConfigMergeRenameLimit   string
 	GithubAccessTokenCherryPick string
+	CherryPickAgentWebhookURL   string // Cursor automation webhook; failed cherry-picks are handed off to it
+	CherryPickAgentWebhookToken string // Bearer token for CherryPickAgentWebhookURL
 	GitHubWebhookSecret         string
 	Org                         string
 	Username                    string
