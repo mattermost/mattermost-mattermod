@@ -7,6 +7,8 @@
     "GithubEmail": "",
     "GitConfigMergeRenameLimit": "15000",
     "GithubAccessTokenCherryPick": "",
+    "CherryPickAgentWebhookURL": "",
+    "CherryPickAgentWebhookToken": "",
     "GithubWebhookSecret": "",
     "Org": "",
     "Username": "",

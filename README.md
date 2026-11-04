@@ -110,6 +110,7 @@ $ ./scripts/cleanup.sh
     For any other relevant config which is missing, please see https://github.com/mattermost/platform-private/blob/master/mattermod/config.json.
 
 6. For cherry-picking to work, [hub](https://github.com/github/hub) needs to be installed in the system, and the script from `hacks/cherry-pick.sh` should be placed at `/app/scripts/cherry-pick.sh`.
+    Optionally, set `CherryPickAgentWebhookURL` and `CherryPickAgentWebhookToken` to a Cursor automation webhook and its bearer token. When `cherry-pick.sh` fails, the job is handed off to that webhook so an agent can complete the cherry-pick, instead of posting the error on the PR. If either value is unset or the webhook call fails, the error comment is posted as before.
 
 7. Start up Mattermod server.
 

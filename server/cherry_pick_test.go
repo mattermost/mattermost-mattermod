@@ -2,11 +2,16 @@ package server
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -90,6 +95,140 @@ func TestHandleCherryPick(t *testing.T) {
 			err := s.handleCherryPick(context.Background(), "org-member", "/cherry-pick", pr)
 			require.NoError(t, err)
 		})
+	})
+}
+
+func TestHandleCherryPickFailure(t *testing.T) {
+	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
+	milestone := 42
+	cmdOut := "+++ Conflicts detected:\nUU server/app/app.go\nAborting."
+
+	newJob := func() *cherryPickRequest {
+		return &cherryPickRequest{
+			pr: &model.PullRequest{
+				RepoOwner:      "mattermost",
+				RepoName:       "mattermost",
+				Number:         123,
+				Username:       "author",
+				MergeCommitSHA: "merge-sha",
+				Ref:            "feature-branch",
+			},
+			milestone: &milestone,
+			version:   " release-11.1 ",
+		}
+	}
+
+	type webhookCall struct {
+		authorization string
+		contentType   string
+		payload       cherryPickAgentPayload
+	}
+
+	newWebhook := func(t *testing.T, status int) (*httptest.Server, *int32, *webhookCall) {
+		var calls int32
+		call := &webhookCall{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			atomic.AddInt32(&calls, 1)
+			call.authorization = r.Header.Get("Authorization")
+			call.contentType = r.Header.Get("Content-Type")
+			assert.NoError(t, json.NewDecoder(r.Body).Decode(&call.payload))
+			w.WriteHeader(status)
+		}))
+		t.Cleanup(server.Close)
+		return server, &calls, call
+	}
+
+	newServer := func(t *testing.T, webhookURL, token, expectedComment string) *Server {
+		ctrl := gomock.NewController(t)
+		is := mocks.NewMockIssuesService(ctrl)
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattermost", "mattermost", 123, &github.IssueComment{Body: &expectedComment}).Return(nil, nil, nil)
+		return &Server{
+			Config: &Config{
+				CherryPickAgentWebhookURL:   webhookURL,
+				CherryPickAgentWebhookToken: token,
+			},
+			GithubClient: &GithubClient{Issues: is},
+		}
+	}
+
+	errorComment := fmt.Sprintf(cherryPickFailedMsg, cmdOut)
+
+	t.Run("hands off to the agent and posts a short comment", func(t *testing.T) {
+		webhook, calls, call := newWebhook(t, http.StatusOK)
+		s := newServer(t, webhook.URL, "secret-token", fmt.Sprintf(cherryPickHandedOffMsg, "release-11.1"))
+
+		s.handleCherryPickFailure(newJob(), cmdOut)
+
+		require.EqualValues(t, 1, atomic.LoadInt32(calls))
+		assert.Equal(t, "Bearer secret-token", call.authorization)
+		assert.Equal(t, "application/json", call.contentType)
+		assert.Equal(t, cherryPickAgentPayload{
+			Repository:      "mattermost/mattermost",
+			PRNumber:        123,
+			PRURL:           "https://github.com/mattermost/mattermost/pull/123",
+			MergeCommitSHA:  "merge-sha",
+			SourceRef:       "feature-branch",
+			TargetBranch:    "release-11.1",
+			MilestoneNumber: &milestone,
+			OriginalAuthor:  "author",
+			FailureOutput:   cmdOut,
+		}, call.payload)
+	})
+
+	t.Run("omits the milestone for /cherry-pick requests", func(t *testing.T) {
+		webhook, _, call := newWebhook(t, http.StatusOK)
+		s := newServer(t, webhook.URL, "secret-token", fmt.Sprintf(cherryPickHandedOffMsg, "release-11.1"))
+		job := newJob()
+		job.milestone = nil
+
+		s.handleCherryPickFailure(job, cmdOut)
+
+		assert.Nil(t, call.payload.MilestoneNumber)
+	})
+
+	t.Run("posts the error when the webhook fails", func(t *testing.T) {
+		webhook, calls, _ := newWebhook(t, http.StatusInternalServerError)
+		s := newServer(t, webhook.URL, "secret-token", errorComment)
+
+		s.handleCherryPickFailure(newJob(), cmdOut)
+
+		require.EqualValues(t, 1, atomic.LoadInt32(calls))
+	})
+
+	t.Run("posts the error when the webhook is not configured", func(t *testing.T) {
+		webhook, calls, _ := newWebhook(t, http.StatusOK)
+
+		for name, cfg := range map[string][2]string{
+			"no URL":   {"", "secret-token"},
+			"no token": {webhook.URL, ""},
+		} {
+			t.Run(name, func(t *testing.T) {
+				s := newServer(t, cfg[0], cfg[1], errorComment)
+				s.handleCherryPickFailure(newJob(), cmdOut)
+			})
+		}
+
+		require.EqualValues(t, 0, atomic.LoadInt32(calls))
+	})
+
+	t.Run("posts the error without calling the webhook when the script did not run", func(t *testing.T) {
+		webhook, calls, _ := newWebhook(t, http.StatusOK)
+		s := newServer(t, webhook.URL, "secret-token", fmt.Sprintf(cherryPickFailedMsg, ""))
+
+		s.handleCherryPickFailure(newJob(), "")
+
+		require.EqualValues(t, 0, atomic.LoadInt32(calls))
+	})
+
+	t.Run("sends only the tail of long output", func(t *testing.T) {
+		webhook, _, call := newWebhook(t, http.StatusOK)
+		s := newServer(t, webhook.URL, "secret-token", fmt.Sprintf(cherryPickHandedOffMsg, "release-11.1"))
+		longOut := strings.Repeat("a", cherryPickAgentMaxOutputBytes) + cmdOut
+
+		s.handleCherryPickFailure(newJob(), longOut)
+
+		require.Len(t, call.payload.FailureOutput, cherryPickAgentMaxOutputBytes)
+		assert.True(t, strings.HasSuffix(call.payload.FailureOutput, cmdOut))
 	})
 }
 
