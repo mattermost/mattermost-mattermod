@@ -189,6 +189,10 @@ func (s *Server) Tick() {
 	}()
 
 	for _, repository := range s.Config.Repositories {
+		if s.tickExpired(ctx, repository) {
+			return
+		}
+
 		prListOpts := &github.PullRequestListOptions{
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
@@ -202,7 +206,9 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get PRs", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
-				continue
+				// Retrying the same page would spin forever once ctx has expired,
+				// so skip the rest of this repository instead.
+				break
 			}
 			if resp.NextPage == 0 {
 				break
@@ -229,6 +235,10 @@ func (s *Server) Tick() {
 
 		time.Sleep(time.Second)
 
+		if s.tickExpired(ctx, repository) {
+			return
+		}
+
 		issueListOpts := &github.IssueListByRepoOptions{
 			State:       "open",
 			ListOptions: github.ListOptions{PerPage: 50},
@@ -239,7 +249,7 @@ func (s *Server) Tick() {
 			if err != nil {
 				mlog.Error("Failed to get issues", mlog.Err(err), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
 				s.Metrics.IncreaseCronTaskErrors("tick")
-				continue
+				break
 			}
 			if resp.NextPage == 0 {
 				break
@@ -267,6 +277,16 @@ func (s *Server) Tick() {
 			}
 		}
 	}
+}
+
+// tickExpired reports whether the tick context has ended, logging which repository was not reached.
+func (s *Server) tickExpired(ctx context.Context, repository *Repository) bool {
+	if ctx.Err() == nil {
+		return false
+	}
+	mlog.Error("Tick stopped before checking every repository", mlog.Err(ctx.Err()), mlog.String("repo_owner", repository.Owner), mlog.String("repo_name", repository.Name))
+	s.Metrics.IncreaseCronTaskErrors("tick")
+	return true
 }
 
 func (s *Server) ping(w http.ResponseWriter, r *http.Request) {
