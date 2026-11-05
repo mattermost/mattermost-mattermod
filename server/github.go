@@ -50,8 +50,10 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	return pr, nil
 }
 
-// listAllLabels follows pagination: without it GitHub returns only the first 30 labels.
+// listAllLabels follows pagination (GitHub returns 30 labels by default) and revalidates
+// cached pages, so a label added seconds ago is not missed.
 func (s *Server) listAllLabels(ctx context.Context, owner, repo string, number int) ([]*github.Label, error) {
+	ctx = withRevalidation(ctx)
 	opt := &github.ListOptions{PerPage: 100}
 	var all []*github.Label
 	for {

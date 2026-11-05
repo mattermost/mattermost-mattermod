@@ -452,7 +452,7 @@ func TestPullRequestEventHandlerBlockLabels(t *testing.T) {
 
 			stored := &model.PullRequest{
 				RepoOwner: "mattertest", RepoName: "mattermod", Number: 1, State: "open", Sha: "sha",
-				Labels: tc.currentLabels, Merged: NewBool(false), MaintainerCanModify: NewBool(false),
+				Labels: append(append([]string{}, tc.currentLabels...), tc.secondPage...), Merged: NewBool(false), MaintainerCanModify: NewBool(false),
 				MilestoneNumber: NewInt64(0), MilestoneTitle: NewString(""),
 			}
 			prStore.EXPECT().Save(gomock.Any()).Return(nil, nil).AnyTimes()

@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	"github.com/die-net/lrucache"
@@ -85,6 +86,27 @@ type GithubClient struct {
 	Teams         TeamsService
 }
 
+type revalidateKey struct{}
+
+// withRevalidation makes GitHub reads on ctx revalidate cached responses with their ETag
+// instead of trusting GitHub's max-age. An unchanged resource costs a 304, which is free
+// against the rate limit.
+func withRevalidation(ctx context.Context) context.Context {
+	return context.WithValue(ctx, revalidateKey{}, true)
+}
+
+type revalidateTransport struct {
+	next http.RoundTripper
+}
+
+func (t *revalidateTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if revalidate, _ := req.Context().Value(revalidateKey{}).(bool); revalidate {
+		req = req.Clone(req.Context())
+		req.Header.Set("Cache-Control", "max-age=0")
+	}
+	return t.next.RoundTrip(req)
+}
+
 // NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
 // that will be used by the rate limit transport.
 func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int, metricsProvider MetricsProvider) *GithubClient {
@@ -99,7 +121,7 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 	httpCache := lrucache.New(lruCacheMaxSizeInBytes, lruCacheMaxAgeInSeconds)
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport
-	metricsTransport := NewMetricsTransport(httpCacheTransport, metricsProvider)
+	metricsTransport := NewMetricsTransport(&revalidateTransport{next: httpCacheTransport}, metricsProvider)
 	client := github.NewClient(metricsTransport.Client())
 
 	return &GithubClient{
