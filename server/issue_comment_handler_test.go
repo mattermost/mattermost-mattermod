@@ -155,7 +155,7 @@ func TestIssueCommentEventHandler(t *testing.T) {
 			Times(1).
 			Return(nil, nil, nil)
 
-		is.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "", "", 0, nil).
+		is.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "", "", 0, &github.ListOptions{PerPage: 100}).
 			Times(1).
 			Return([]*github.Label{}, nil, nil)
 

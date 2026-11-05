@@ -35,7 +35,7 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 
 	// if is opened it might not have any label yet
 	if action != prEventOpened {
-		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		labels, err := s.listAllLabels(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			return nil, err
 		}
@@ -48,6 +48,25 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 	}
 
 	return pr, nil
+}
+
+// listAllLabels follows pagination (GitHub returns 30 labels by default) and revalidates
+// cached pages, so a label added seconds ago is not missed.
+func (s *Server) listAllLabels(ctx context.Context, owner, repo string, number int) ([]*github.Label, error) {
+	ctx = withRevalidation(ctx)
+	opt := &github.ListOptions{PerPage: 100}
+	var all []*github.Label
+	for {
+		labels, resp, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, owner, repo, number, opt)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, labels...)
+		if resp == nil || resp.NextPage == 0 {
+			return all, nil
+		}
+		opt.Page = resp.NextPage
+	}
 }
 
 // buildPullRequest converts a GitHub pull request to the model, including the build
