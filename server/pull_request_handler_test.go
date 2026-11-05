@@ -122,7 +122,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.ListCheckRunsResults{}, nil, nil)
 
 		is.EXPECT().
-			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100}).
 			Times(1).
 			Return([]*github.Label{}, nil, nil)
 
@@ -164,7 +164,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.ListCheckRunsResults{}, nil, nil)
 
 		is.EXPECT().
-			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100}).
 			Times(1).
 			Return([]*github.Label{}, nil, nil)
 
@@ -203,7 +203,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.ListCheckRunsResults{}, nil, nil)
 
 		is.EXPECT().
-			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100}).
 			Times(1).
 			Return([]*github.Label{}, nil, nil)
 
@@ -254,7 +254,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.ListCheckRunsResults{}, nil, nil)
 
 		is.EXPECT().
-			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
+			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100}).
 			Times(1).
 			Return([]*github.Label{{Name: NewString("old-label")}}, nil, nil)
 
@@ -406,12 +406,14 @@ func TestPullRequestEventHandlerBlockLabels(t *testing.T) {
 		action        string
 		label         string
 		currentLabels []string
+		secondPage    []string
 		wantState     string
 	}{
-		{"block label added", prEventLabeled, blockLabel, []string{blockLabel}, statePending},
-		{"last block label removed", prEventUnLabeled, blockLabel, nil, stateSuccess},
-		{"block label removed, another remains", prEventUnLabeled, blockLabel, []string{otherBlockLabel}, statePending},
-		{"non-block label added", prEventLabeled, "Bug", []string{"Bug"}, ""},
+		{"block label added", prEventLabeled, blockLabel, []string{blockLabel}, nil, statePending},
+		{"last block label removed", prEventUnLabeled, blockLabel, nil, nil, stateSuccess},
+		{"block label removed, another remains", prEventUnLabeled, blockLabel, []string{otherBlockLabel}, nil, statePending},
+		{"block label removed, another remains on the second page", prEventUnLabeled, blockLabel, []string{"Bug"}, []string{otherBlockLabel}, statePending},
+		{"non-block label added", prEventLabeled, "Bug", []string{"Bug"}, nil, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -432,11 +434,21 @@ func TestPullRequestEventHandlerBlockLabels(t *testing.T) {
 				},
 			}
 
-			ghLabels := make([]*github.Label, 0, len(tc.currentLabels))
-			for _, l := range tc.currentLabels {
-				ghLabels = append(ghLabels, &github.Label{Name: github.String(l)})
+			toGitHub := func(names []string) []*github.Label {
+				labels := make([]*github.Label, 0, len(names))
+				for _, l := range names {
+					labels = append(labels, &github.Label{Name: github.String(l)})
+				}
+				return labels
 			}
-			is.EXPECT().ListLabelsByIssue(gomock.Any(), "mattertest", "mattermod", 1, nil).Return(ghLabels, nil, nil)
+			var firstResp *github.Response
+			if tc.secondPage != nil {
+				firstResp = &github.Response{NextPage: 2}
+				is.EXPECT().ListLabelsByIssue(gomock.Any(), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100, Page: 2}).
+					Return(toGitHub(tc.secondPage), &github.Response{}, nil)
+			}
+			is.EXPECT().ListLabelsByIssue(gomock.Any(), "mattertest", "mattermod", 1, &github.ListOptions{PerPage: 100}).
+				Return(toGitHub(tc.currentLabels), firstResp, nil)
 
 			stored := &model.PullRequest{
 				RepoOwner: "mattertest", RepoName: "mattermod", Number: 1, State: "open", Sha: "sha",
