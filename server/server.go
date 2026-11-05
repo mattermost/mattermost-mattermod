@@ -210,19 +210,17 @@ func (s *Server) Tick() {
 				// so skip the rest of this repository instead.
 				break
 			}
-			if resp.NextPage == 0 {
-				break
-			}
-			prListOpts.Page = resp.NextPage
-			time.Sleep(200 * time.Millisecond)
 
 			for _, ghPullRequest := range ghPullRequests {
-				pullRequest, errPR := s.GetPullRequestFromGithub(ctx, ghPullRequest, "")
+				// Built from the list item: the list already carries the labels, and the PR
+				// must not be saved before checkPullRequestForChanges compares it to the store.
+				pullRequest, errPR := s.buildPullRequest(ctx, ghPullRequest)
 				if errPR != nil {
 					mlog.Error("failed to convert PR", mlog.Int("pr", *ghPullRequest.Number), mlog.Err(errPR))
 					s.Metrics.IncreaseCronTaskErrors("tick")
 					continue
 				}
+				pullRequest.Labels = labelsToStringArray(ghPullRequest.Labels)
 
 				changed, err2 := s.checkPullRequestForChanges(ctx, pullRequest)
 				if err2 != nil {
@@ -231,6 +229,12 @@ func (s *Server) Tick() {
 					mlog.Info("pr has changes", mlog.Int("pr", pullRequest.Number))
 				}
 			}
+
+			if resp.NextPage == 0 {
+				break
+			}
+			prListOpts.Page = resp.NextPage
+			time.Sleep(200 * time.Millisecond)
 		}
 
 		time.Sleep(time.Second)
@@ -251,12 +255,6 @@ func (s *Server) Tick() {
 				s.Metrics.IncreaseCronTaskErrors("tick")
 				break
 			}
-			if resp.NextPage == 0 {
-				break
-			}
-			issueListOpts.Page = resp.NextPage
-
-			time.Sleep(200 * time.Millisecond)
 
 			for _, ghIssue := range issues {
 				if ghIssue.PullRequestLinks != nil {
@@ -264,17 +262,24 @@ func (s *Server) Tick() {
 					continue
 				}
 
-				issue, err := s.GetIssueFromGithub(ctx, ghIssue)
+				issue, err := buildIssue(ghIssue)
 				if err != nil {
 					mlog.Error("failed to convert issue", mlog.Int("issue", *ghIssue.Number), mlog.Err(err))
 					s.Metrics.IncreaseCronTaskErrors("tick")
 					continue
 				}
+				issue.Labels = labelsToStringArray(ghIssue.Labels)
 
 				if err := s.checkIssueForChanges(ctx, issue); err != nil {
 					mlog.Error("could not check issue for changes", mlog.Err(err))
 				}
 			}
+
+			if resp.NextPage == 0 {
+				break
+			}
+			issueListOpts.Page = resp.NextPage
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 }

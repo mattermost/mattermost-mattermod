@@ -28,6 +28,31 @@ const (
 )
 
 func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *github.PullRequest, action string) (*model.PullRequest, error) {
+	pr, err := s.buildPullRequest(ctx, pullRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// if is opened it might not have any label yet
+	if action != prEventOpened {
+		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		pr.Labels = labelsToStringArray(labels)
+	}
+
+	if _, err := s.Store.PullRequest().Save(pr); err != nil {
+		return nil, err
+	}
+
+	return pr, nil
+}
+
+// buildPullRequest converts a GitHub pull request to the model, including the build
+// status when the repository tracks one. It does not fetch labels or save the result.
+func (s *Server) buildPullRequest(ctx context.Context, pullRequest *github.PullRequest) (*model.PullRequest, error) {
 	pr := &model.PullRequest{
 		RepoOwner:           pullRequest.GetBase().GetRepo().GetOwner().GetLogin(),
 		RepoName:            pullRequest.GetBase().GetRepo().GetName(),
@@ -79,24 +104,26 @@ func (s *Server) GetPullRequestFromGithub(ctx context.Context, pullRequest *gith
 		}
 	}
 
-	// if is opened it might not have any label yet
-	if action != prEventOpened {
-		labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		pr.Labels = labelsToStringArray(labels)
-	}
-
-	if _, err := s.Store.PullRequest().Save(pr); err != nil {
-		return nil, err
-	}
-
 	return pr, nil
 }
 
 func (s *Server) GetIssueFromGithub(ctx context.Context, ghIssue *github.Issue) (*model.Issue, error) {
+	issue, err := buildIssue(ghIssue)
+	if err != nil {
+		return nil, err
+	}
+
+	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
+	if err != nil {
+		return nil, err
+	}
+	issue.Labels = labelsToStringArray(labels)
+
+	return issue, nil
+}
+
+// buildIssue converts a GitHub issue to the model without fetching its labels.
+func buildIssue(ghIssue *github.Issue) (*model.Issue, error) {
 	issue := &model.Issue{
 		RepoOwner: ghIssue.GetRepository().GetOwner().GetLogin(),
 		RepoName:  ghIssue.GetRepository().GetName(),
@@ -114,12 +141,6 @@ func (s *Server) GetIssueFromGithub(ctx context.Context, ghIssue *github.Issue) 
 		issue.RepoOwner = parts[3]
 		issue.RepoName = parts[4]
 	}
-
-	labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, issue.RepoOwner, issue.RepoName, issue.Number, nil)
-	if err != nil {
-		return nil, err
-	}
-	issue.Labels = labelsToStringArray(labels)
 
 	return issue, nil
 }
