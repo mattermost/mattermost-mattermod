@@ -5,6 +5,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -100,4 +101,43 @@ func TestWithDurationMiddleware(t *testing.T) {
 		require.Equal(t, http.StatusCreated, resp.StatusCode)
 		defer resp.Body.Close()
 	})
+}
+
+func TestTickSkipsRepositoryOnListError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	prs := mocks.NewMockPullRequestsService(ctrl)
+	issues := mocks.NewMockIssuesService(ctrl)
+	metrics := mocks.NewMockMetricsProvider(ctrl)
+	metrics.EXPECT().IncreaseCronTaskErrors("tick").AnyTimes()
+	metrics.EXPECT().ObserveCronTaskDuration("tick", gomock.Any()).AnyTimes()
+
+	listErr := errors.New("context deadline exceeded")
+	for _, repo := range []string{"repo-a", "repo-b"} {
+		// Exactly one call per repository: a failed page must not be retried.
+		prs.EXPECT().List(gomock.Any(), "mattermost", repo, gomock.Any()).Return(nil, nil, listErr).Times(1)
+		issues.EXPECT().ListByRepo(gomock.Any(), "mattermost", repo, gomock.Any()).Return(nil, nil, listErr).Times(1)
+	}
+
+	s := &Server{
+		Config: &Config{Repositories: []*Repository{
+			{Owner: "mattermost", Name: "repo-a"},
+			{Owner: "mattermost", Name: "repo-b"},
+		}},
+		GithubClient: &GithubClient{PullRequests: prs, Issues: issues},
+		Metrics:      metrics,
+	}
+
+	done := make(chan struct{})
+	go func() {
+		s.Tick()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		require.Fail(t, "Tick did not return after list errors")
+	}
 }
