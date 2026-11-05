@@ -179,3 +179,5 @@ go run ./cmd/migrator/ -config config/config-mattermod.json -migration_version 2
 ```
 
 After this, we are free to start mattermod from that version.
+
+<!-- mattermod test, don't merge -->
