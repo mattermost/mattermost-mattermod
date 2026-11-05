@@ -97,9 +97,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		}
 
 		if s.isBlockPRMerge(*event.Label.Name) {
-			if err = s.unblockPRMerge(ctx, pr); err != nil {
-				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-			}
+			s.setBlockStatusForPR(ctx, pr)
 		}
 		if event.Label.GetName() == s.Config.AutoPRMergeLabel {
 			msg := "Will try to auto merge this PR once all tests and checks are passing. This might take up to an hour."
@@ -113,10 +111,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		// Another block label may still be on the PR.
 		if s.isBlockPRMerge(*event.Label.Name) {
-			if err = s.unblockPRMerge(ctx, pr); err != nil {
-				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
-			}
+			s.setBlockStatusForPR(ctx, pr)
 		}
 	case prEventSynchronize:
 		mlog.Debug("PR has a new commit", mlog.String("repo", pr.RepoName), mlog.Int("pr", pr.Number))

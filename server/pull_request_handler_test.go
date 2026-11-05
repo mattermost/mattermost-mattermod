@@ -398,6 +398,87 @@ func TestPullRequestEventHandler(t *testing.T) {
 	})
 }
 
+func TestPullRequestEventHandlerBlockLabels(t *testing.T) {
+	const blockLabel, otherBlockLabel = "Do Not Merge", "Work in Progress"
+
+	for _, tc := range []struct {
+		name          string
+		action        string
+		label         string
+		currentLabels []string
+		wantState     string
+	}{
+		{"block label added", prEventLabeled, blockLabel, []string{blockLabel}, statePending},
+		{"last block label removed", prEventUnLabeled, blockLabel, nil, stateSuccess},
+		{"block label removed, another remains", prEventUnLabeled, blockLabel, []string{otherBlockLabel}, statePending},
+		{"non-block label added", prEventLabeled, "Bug", []string{"Bug"}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			rs := mocks.NewMockRepositoriesService(ctrl)
+			is := mocks.NewMockIssuesService(ctrl)
+			prStore := stmock.NewMockPullRequestStore(ctrl)
+			st := stmock.NewMockStore(ctrl)
+			st.EXPECT().PullRequest().Return(prStore).AnyTimes()
+
+			s := &Server{
+				GithubClient: &GithubClient{Repositories: rs, Issues: is},
+				Store:        st,
+				Config: &Config{
+					Repositories:       []*Repository{{Owner: "mattertest", Name: "mattermod"}},
+					BlockPRMergeLabels: []string{blockLabel, otherBlockLabel},
+				},
+			}
+
+			ghLabels := make([]*github.Label, 0, len(tc.currentLabels))
+			for _, l := range tc.currentLabels {
+				ghLabels = append(ghLabels, &github.Label{Name: github.String(l)})
+			}
+			is.EXPECT().ListLabelsByIssue(gomock.Any(), "mattertest", "mattermod", 1, nil).Return(ghLabels, nil, nil)
+
+			stored := &model.PullRequest{
+				RepoOwner: "mattertest", RepoName: "mattermod", Number: 1, State: "open", Sha: "sha",
+				Labels: tc.currentLabels, Merged: NewBool(false), MaintainerCanModify: NewBool(false),
+				MilestoneNumber: NewInt64(0), MilestoneTitle: NewString(""),
+			}
+			prStore.EXPECT().Save(gomock.Any()).Return(nil, nil).AnyTimes()
+			prStore.EXPECT().Get("mattertest", "mattermod", 1).Return(stored, nil)
+
+			if tc.wantState != "" {
+				rs.EXPECT().CreateStatus(gomock.Any(), "mattertest", "mattermod", "sha", gomock.Any()).
+					DoAndReturn(func(_ context.Context, _, _, _ string, status *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
+						require.Equal(t, "merge/blocked", status.GetContext())
+						require.Equal(t, tc.wantState, status.GetState())
+						return status, nil, nil
+					}).Times(1)
+			}
+
+			event := pullRequestEvent{
+				Action:   tc.action,
+				PRNumber: 1,
+				Label:    &github.Label{Name: github.String(tc.label)},
+				PullRequest: &github.PullRequest{
+					Number: github.Int(1),
+					State:  github.String("open"),
+					Base: &github.PullRequestBranch{Repo: &github.Repository{
+						Owner: &github.User{Login: github.String("mattertest")},
+						Name:  github.String("mattermod"),
+					}},
+					Head: &github.PullRequestBranch{SHA: github.String("sha")},
+				},
+			}
+			b, err := json.Marshal(event)
+			require.NoError(t, err)
+
+			rec := httptest.NewRecorder()
+			s.pullRequestEventHandler(rec, httptest.NewRequest(http.MethodPost, "/pr_event", bytes.NewReader(b)))
+			require.Equal(t, http.StatusOK, rec.Code)
+		})
+	}
+}
+
 func TestCleanUpLabels(t *testing.T) {
 	pr := &model.PullRequest{
 		RepoOwner: "owner",
