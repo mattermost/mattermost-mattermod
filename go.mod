@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-mattermod
 
-go 1.17
+go 1.27
 
 require (
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11

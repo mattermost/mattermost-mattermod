@@ -55,6 +55,8 @@ const (
 	logFilename = "mattermod.log"
 
 	serverRepoName = "mattermost-server"
+
+	githubStateOpen = "open"
 )
 
 func New(config *Config, metrics MetricsProvider) (*Server, error) {
@@ -134,7 +136,7 @@ func (s *Server) RefreshMembers() {
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err)
 		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
@@ -142,7 +144,7 @@ func (s *Server) RefreshMembers() {
 	if members == nil {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n"+err.Error())
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err)
 		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
@@ -194,7 +196,7 @@ func (s *Server) Tick() {
 		}
 
 		prListOpts := &github.PullRequestListOptions{
-			State:       "open",
+			State:       githubStateOpen,
 			ListOptions: github.ListOptions{PerPage: 50},
 		}
 		// We sleep in between requests to remain within rate limits.
@@ -244,7 +246,7 @@ func (s *Server) Tick() {
 		}
 
 		issueListOpts := &github.IssueListByRepoOptions{
-			State:       "open",
+			State:       githubStateOpen,
 			ListOptions: github.ListOptions{PerPage: 50},
 		}
 

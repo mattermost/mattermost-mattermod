@@ -89,7 +89,7 @@ func (m *Server) Stop() {
 func (m *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	builder := strings.Builder{}
 	for _, handler := range m.handlers {
-		builder.WriteString(fmt.Sprintf("<div><a href=\"%s\">%s</a></div>\n", handler.Path, handler.Description))
+		fmt.Fprintf(&builder, "<div><a href=\"%s\">%s</a></div>\n", handler.Path, handler.Description)
 	}
 
 	html := fmt.Sprintf(`

@@ -71,11 +71,6 @@ endif
 run-jobserver:
 	go run ./cmd/jobserver --config=config/config-mattermod.json
 
-## Generate assets
-assets:
-	go install -modfile=go.tools.mod github.com/kevinburke/go-bindata/go-bindata/...
-	go generate ./...
-
 ## Runs tests.
 test:
 	@echo Running Go tests

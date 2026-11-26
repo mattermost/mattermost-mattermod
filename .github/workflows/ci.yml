@@ -9,17 +9,22 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
-  go-version: "1.17.6"
+  go-version: "1.27.4"
 
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     container:
-      image: golang:1.17.6
+      image: golang:1.27.4@sha256:5f1b98fa02fe396ebce2a0227a0e08309e11792915b9dd2e1f71053d7e7e6666
     services:
       mysql:
-        image: mysql:5.7
+        image: mysql:8.4@sha256:8c233bad33d520a7aae1c1e619c3a9775f4a1ba2d463d692fada04ec7f40be00
         env:
           MYSQL_ROOT_PASSWORD: mattermod
           MYSQL_DATABASE: mattermod
@@ -30,41 +35,43 @@ jobs:
         # needed because the mysql container does not provide a healthcheck
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=10s --health-retries=10
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Run tests
         run: make test
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: ${{ env.go-version }}
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: v1.50.1
+          version: v2.15.0
 
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs:
       - test
       - lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: ${{ env.go-version }}
-
-      - name: check assets
-        run: |
-          make assets
-          echo "Checking if 'make assets' was ran after adding files..."
-          git diff --exit-code
 
       - name: check dependencies
         run: make check-deps
@@ -73,26 +80,31 @@ jobs:
         run: make build
 
   build-images:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     needs:
       - build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build mattermod
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
+          context: .
           file: ./Dockerfile
           push: false
           tags: mattermost/mattermod:dirty
 
       - name: Build jobserver
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
+          context: .
           file: ./Dockerfile.jobserver
           push: false
-          tags: mattermost/mattermod-jobserver:durty
+          tags: mattermost/mattermod-jobserver:dirty

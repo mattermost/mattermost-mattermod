@@ -116,7 +116,7 @@ $ ./scripts/cleanup.sh
 
 ## Migrations
 
-We use the [golang-migrate](https://github.com/golang-migrate/migrate) library combined with code generation to handle migrations. To add a new migration in your code:
+We use the [golang-migrate](https://github.com/golang-migrate/migrate) library to handle migrations. The SQL files in `store/migrations` are embedded into the binary at compile time with `go:embed`. To add a new migration in your code:
 
 1. **Create files:** Go to the `store/migrations` directory and create 2 files by incrementing the latest sequence number of the files in that directory. For example, if the last number is 000004, then please create 2 files with names `000005_{migration_name}.up.sql` and `000005_{migration_name}.down.sql`.
 
@@ -124,11 +124,9 @@ The `migration_name` should be a friendly name for the migration. The number can
 
 For example, if the migration adds a column, then the up file can be `ALTER TABLE users ADD COLUMN IF NOT EXISTS ...`, and the down file can be `ALTER TABLE users DROP COLUMN IF EXISTS ...`. Give special attention to the idempotence of the commands and confirm that the same migration command can be applied more than once without any issues.
 
-2. **Generate code:** Now generate the code with `make assets`.
+2. **Commit changes**.
 
-3. **Commit changes**.
-
-4. **Test idempotency manually:** Download the migrate [tool](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate#download-pre-built-binary-windows-macos-or-linux) and test that your migration is working correctly by doing a series of up-up-down-down-up commands, and running the mattermod server with it.
+3. **Test idempotency manually:** Download the migrate [tool](https://github.com/golang-migrate/migrate/tree/master/cmd/migrate#download-pre-built-binary-windows-macos-or-linux) and test that your migration is working correctly by doing a series of up-up-down-down-up commands, and running the mattermod server with it.
 
 If we are going from version 1 to 2:
 

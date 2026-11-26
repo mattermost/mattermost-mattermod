@@ -14,7 +14,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // Load MySQL Driver
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
-	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 )
@@ -108,15 +108,13 @@ func runMigrations(db *sql.DB) {
 		os.Exit(1)
 	}
 	// Create source driver
-	s := bindata.Resource(migrations.AssetNames(), migrations.Asset)
-
-	srcDriver, err := bindata.WithInstance(s)
+	srcDriver, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		mlog.Critical("Failed to create source instance", mlog.Err(err))
 		os.Exit(1)
 	}
 
-	m, err := migrate.NewWithInstance("go-bindata", srcDriver, "mysql", dbDriver)
+	m, err := migrate.NewWithInstance("iofs", srcDriver, "mysql", dbDriver)
 	if err != nil {
 		mlog.Critical("Failed to create db instance", mlog.Err(err))
 		os.Exit(1)

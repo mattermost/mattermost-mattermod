@@ -1,70 +1,79 @@
+version: "2"
 run:
-  timeout: 5m
   modules-download-mode: readonly
-
-linters-settings:
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/mattermost/mattermod
-  govet:
-    check-shadowing: true
-    enable-all: true
-    disable:
-      - fieldalignment
-  misspell:
-    locale: US
-  gosec:
-    # To specify a set of rules to explicitly exclude.
-    # Available rules: https://github.com/securego/gosec#available-rules
-    excludes:
-      - G204
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
-    - deadcode
     - errcheck
     - goconst
     - gocritic
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
     - nakedret
     - revive
     - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
-
-issues:
-  exclude:
-    # github.com/go-gorp/gorp.TypeConverter isn't golint compliant
-    - "ST1003: method ToDb should be ToDB"
-    - "ST1003: method FromDb should be FromD"
-    # For executing git commands.
-    - "G204: Subprocess launched with function call as argument or cmd arguments"
-
-  exclude-rules:
-    - linters:
-        - gofmt
-        - goimports
-      # Ignore this file as it append generate tags and golangci-lint fails
-      path: assets.go
-    - linters:
-        - goconst
-      # Ignore warnings trying to change variables to constants.
-      # We can't do that because we are taking the address of those variables.
-      path: "issue_handler_test.go"
+  settings:
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gosec:
+      excludes:
+        - G204
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    misspell:
+      locale: US
+    revive:
+      enable-default-rules: true
+      rules:
+        - name: unused-parameter
+          disabled: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - goconst
+        path: (_test\.go|metrics/provider\.go)$
+      - linters:
+          - gosec
+        path: _test\.go$
+        text: 'G101:'
+      - path: (.+)\.go$
+        text: 'ST1003: method ToDb should be ToDB'
+      - path: (.+)\.go$
+        text: 'ST1003: method FromDb should be FromD'
+      - path: (.+)\.go$
+        text: 'G204: Subprocess launched with function call as argument or cmd arguments'
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/mattermost/mattermod
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

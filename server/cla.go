@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v39/github"
@@ -78,14 +77,14 @@ func (s *Server) getCSV(ctx context.Context) ([]byte, error) {
 	}
 	r, err := http.DefaultClient.Do(req) //nolint
 	if err != nil {
-		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```"+err.Error()+"```")
+		s.logToMattermost(ctx, "unable to get CLA google csv file Error: ```%s```", err)
 		return nil, err
 	}
 	defer closeBody(r)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		s.logToMattermost(ctx, "unable to read CLA google csv file Error: ```"+err.Error()+"```")
+		s.logToMattermost(ctx, "unable to read CLA google csv file Error: ```%s```", err)
 		return nil, err
 	}
 	return body, nil
@@ -111,6 +110,6 @@ func (s *Server) createCLAPendingStatus(ctx context.Context, pr *model.PullReque
 	}
 	err := s.createRepoStatus(ctx, pr, status)
 	if err != nil {
-		s.logToMattermost(ctx, "failed to create status for PR: "+strconv.Itoa(pr.Number)+" Context: "+s.Config.CLAGithubStatusContext+" Error: ```"+err.Error()+"```")
+		s.logToMattermost(ctx, "failed to create status for PR: %d Context: %s Error: ```%s```", pr.Number, s.Config.CLAGithubStatusContext, err)
 	}
 }
