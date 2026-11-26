@@ -12,10 +12,10 @@ import (
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v39/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestAutoMergePR(t *testing.T) {

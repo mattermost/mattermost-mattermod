@@ -14,8 +14,8 @@ import (
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/require"
 
-	"github.com/golang/mock/gomock"
 	"github.com/mattermost/mattermost-mattermod/model"
+	"go.uber.org/mock/gomock"
 )
 
 func TestBlockPRMerge(t *testing.T) {
