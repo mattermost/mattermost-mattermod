@@ -12,7 +12,7 @@ import (
 	_ "github.com/go-sql-driver/mysql" // Load MySQL Driver
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
-	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 func runMigrations(driverName, dataSource string, migrateVersion int) error {
@@ -31,14 +31,12 @@ func runMigrations(driverName, dataSource string, migrateVersion int) error {
 		return fmt.Errorf("failed to create migration driver: %v", err)
 	}
 	// Create source driver
-	s := bindata.Resource(migrations.AssetNames(), migrations.Asset)
-
-	srcDriver, err := bindata.WithInstance(s)
+	srcDriver, err := iofs.New(migrations.FS, ".")
 	if err != nil {
 		return fmt.Errorf("failed to create source instance: %v", err)
 	}
 
-	m, err := migrate.NewWithInstance("go-bindata", srcDriver, "mysql", dbDriver)
+	m, err := migrate.NewWithInstance("iofs", srcDriver, "mysql", dbDriver)
 	if err != nil {
 		return fmt.Errorf("failed to create db instance: %v", err)
 	}

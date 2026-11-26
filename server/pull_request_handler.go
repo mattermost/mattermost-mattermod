@@ -128,8 +128,9 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 		s.setBlockStatusForPR(ctx, pr)
 	case prEventClosed:
 		mlog.Info("PR was closed", mlog.String("repo", *event.Repo.Name), mlog.Int("pr", event.PRNumber))
-		go s.checkIfNeedCherryPick(pr)
-		go s.CleanUpLabels(pr)
+		// Both outlive the webhook request, so they must not inherit its context.
+		go s.checkIfNeedCherryPick(pr) //nolint:gosec
+		go s.CleanUpLabels(pr)         //nolint:gosec
 	}
 
 	changed, err := s.checkPullRequestForChanges(ctx, pr)
