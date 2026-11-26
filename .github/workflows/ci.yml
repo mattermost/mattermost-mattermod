@@ -40,6 +40,8 @@ jobs:
           persist-credentials: false
       - name: Run tests
         run: make test
+        env:
+          GOFLAGS: -buildvcs=false
 
   lint:
     runs-on: ubuntu-24.04

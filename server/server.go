@@ -136,7 +136,7 @@ func (s *Server) RefreshMembers() {
 	members, err := s.getMembers(ctx)
 	if err != nil {
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err)
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err.Error())
 		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
@@ -144,7 +144,7 @@ func (s *Server) RefreshMembers() {
 	if members == nil {
 		err = errors.New("no members found")
 		mlog.Error("failed to refresh org members", mlog.Err(err))
-		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err)
+		s.logToMattermost(ctx, "refresh failed, using org members of previous day\n%s", err.Error())
 		s.Metrics.IncreaseCronTaskErrors("refresh_members")
 		return
 	}
