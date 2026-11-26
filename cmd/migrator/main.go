@@ -7,8 +7,9 @@ import (
 	"flag"
 	"os"
 
-	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
+	"github.com/mattermost/mattermost-mattermod/server"
 )
 
 var (

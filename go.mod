@@ -19,8 +19,8 @@ require (
 	github.com/sourcegraph/go-diff v0.6.1
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/mock v0.6.0
-	golang.org/x/oauth2 v0.37.0
-	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324
+	golang.org/x/oauth2 v0.38.0
+	golang.org/x/time v0.16.0
 )
 
 require (
@@ -40,8 +40,9 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/crypto v0.59.0 // indirect
+	golang.org/x/crypto/openpgp v0.1.0-deprecated // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20261118221215-c8830f628b3f // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

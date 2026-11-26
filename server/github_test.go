@@ -13,10 +13,11 @@ import (
 	"go.uber.org/mock/gomock"
 	"golang.org/x/time/rate"
 
-	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mattermost/mattermost-mattermod/server"
+	"github.com/mattermost/mattermost-mattermod/server/mocks"
 )
 
 var testGetRefReturn = []byte(`{

@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
+	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 func (s *Server) handleTranslationPR(ctx context.Context, pr *model.PullRequest) {

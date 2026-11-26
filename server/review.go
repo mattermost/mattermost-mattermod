@@ -13,8 +13,9 @@ import (
 	"github.com/google/go-github/v39/github"
 	"github.com/sourcegraph/go-diff/diff"
 
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
+	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 const mlogReviewCommentBody = "Gentle reminder to check our logging [principles](https://developers.mattermost.com/contribute/server/style-guide/#log-levels) before merging this change."

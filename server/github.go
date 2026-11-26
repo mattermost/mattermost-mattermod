@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v39/github"
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 const (

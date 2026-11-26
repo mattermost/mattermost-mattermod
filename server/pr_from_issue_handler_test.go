@@ -11,10 +11,11 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v39/github"
-	"github.com/mattermost/mattermost-mattermod/model"
-	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	"github.com/mattermost/mattermost-mattermod/model"
+	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 )
 
 func TestPRFromIssueHandler(t *testing.T) {

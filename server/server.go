@@ -20,9 +20,10 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/gorilla/mux"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-mattermod/version"
-	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
 // Server is the mattermod server.

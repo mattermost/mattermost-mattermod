@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
+	"github.com/mattermost/mattermost-mattermod/model"
 
 	"github.com/google/go-github/v39/github"
 )
