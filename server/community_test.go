@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 
@@ -37,7 +37,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 					Issues: issueMocks,
 				}
 
-				comment := &github.IssueComment{Body: github.String("Hi @foo, thanks for the PR!")}
+				comment := github.IssueCommentRequest{Body: "Hi @foo, thanks for the PR!"}
 
 				issueMocks.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface),
 					gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),
@@ -55,7 +55,7 @@ func TestPostPRWelcomeMessage(t *testing.T) {
 					Issues: issueMocks,
 				}
 
-				comment := &github.IssueComment{Body: github.String("Hi @foo, thanks for the PR!\n\nYou need to sign the CLA.")}
+				comment := github.IssueCommentRequest{Body: "Hi @foo, thanks for the PR!\n\nYou need to sign the CLA."}
 
 				issueMocks.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface),
 					gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName),

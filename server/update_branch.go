@@ -10,7 +10,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 )
 
 const (
@@ -60,8 +60,8 @@ func (s *Server) handleUpdateBranch(ctx context.Context, commenter string, pr *m
 		}
 	}
 
-	opt := &github.PullRequestBranchUpdateOptions{
-		ExpectedHeadSHA: github.String(pr.Sha),
+	opt := github.UpdatePullRequestBranchRequest{
+		ExpectedHeadSHA: new(pr.Sha),
 	}
 
 	_, resp, err := s.GithubClient.PullRequests.UpdateBranch(ctx, pr.RepoOwner, pr.RepoName, pr.Number, opt)

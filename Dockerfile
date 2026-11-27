@@ -17,7 +17,7 @@ RUN CGO_ENABLED=0 make build-mattermod
 
 ################
 
-FROM ubuntu:jammy-20240405@sha256:6f6ec53d36a9504f01e3636cf68e0e03761a3b6947a95ba430ae553ee3aaf4d9
+FROM ubuntu:noble-20261110.1@sha256:562111b88caa79c71391c0c4d3c2114a7d5c35915c20561fd893cb1e07929e6b
 
 RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get update \
@@ -26,7 +26,9 @@ RUN export DEBIAN_FRONTEND="noninteractive" \
     && apt-get clean all \
     && rm -rf /var/cache/apt/
 
-RUN groupadd \
+# Ubuntu 24.04 images include an "ubuntu" user with UID/GID 1000; remove it so mattermod can keep UID 1000.
+RUN userdel --remove ubuntu \
+    && groupadd \
     --gid 1000 mattermod \
     && useradd \
     --home-dir /app \

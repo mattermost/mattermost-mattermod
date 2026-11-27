@@ -6,12 +6,12 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"text/template"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
-	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 )
@@ -48,7 +48,7 @@ func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest
 
 	t, err := template.New("welcomeMessage").Parse(s.Config.PRWelcomeMessage)
 	if err != nil {
-		return errors.Wrap(err, "failed to render welcome message template")
+		return fmt.Errorf("failed to render welcome message template: %w", err)
 	}
 
 	var output bytes.Buffer
@@ -58,12 +58,12 @@ func (s *Server) postPRWelcomeMessage(ctx context.Context, pr *model.PullRequest
 	}
 	err = t.Execute(&output, data)
 	if err != nil {
-		return errors.Wrap(err, "could not execute welcome message template")
+		return fmt.Errorf("could not execute welcome message template: %w", err)
 	}
 
 	err = s.sendGitHubComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, output.String())
 	if err != nil {
-		return errors.Wrap(err, "failed to send welcome message")
+		return fmt.Errorf("failed to send welcome message: %w", err)
 	}
 
 	return nil
@@ -86,7 +86,7 @@ func (s *Server) assignGreeter(ctx context.Context, pr *model.PullRequest, repo 
 
 	_, _, err := s.GithubClient.PullRequests.RequestReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, greetingRequest)
 	if err != nil {
-		return errors.Wrapf(err, "couldn't assign the greeting team %s", repo.GreetingTeam)
+		return fmt.Errorf("couldn't assign the greeting team %s: %w", repo.GreetingTeam, err)
 	}
 
 	return nil
@@ -119,7 +119,7 @@ func (s *Server) assignGreetingLabels(ctx context.Context, pr *model.PullRequest
 	if _, _, err := s.GithubClient.Issues.AddLabelsToIssue(
 		ctx, pr.RepoOwner, pr.RepoName, pr.Number, labels,
 	); err != nil {
-		return errors.Wrapf(err, "couldn't apply greeting labels to %s #%d", pr.RepoName, pr.Number)
+		return fmt.Errorf("couldn't apply greeting labels to %s #%d: %w", pr.RepoName, pr.Number, err)
 	}
 	return nil
 }

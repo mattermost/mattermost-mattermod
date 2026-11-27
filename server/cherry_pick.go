@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -22,8 +23,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 
-	"github.com/google/go-github/v39/github"
-	"github.com/pkg/errors"
+	"github.com/google/go-github/v93/github"
 )
 
 const (
@@ -124,7 +124,7 @@ func (s *Server) dispatchCherryPickToAgent(ctx context.Context, job *cherryPickR
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal cherry pick agent payload")
+		return fmt.Errorf("failed to marshal cherry pick agent payload: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, cherryPickAgentTimeout)
@@ -132,19 +132,19 @@ func (s *Server) dispatchCherryPickToAgent(ctx context.Context, job *cherryPickR
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Config.CherryPickAgentWebhookURL, bytes.NewReader(body))
 	if err != nil {
-		return errors.Wrap(err, "failed to create cherry pick agent request")
+		return fmt.Errorf("failed to create cherry pick agent request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+s.Config.CherryPickAgentWebhookToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "failed to call cherry pick agent webhook")
+		return fmt.Errorf("failed to call cherry pick agent webhook: %w", err)
 	}
 	closeBody(r)
 
 	if r.StatusCode < http.StatusOK || r.StatusCode >= http.StatusMultipleChoices {
-		return errors.Errorf("cherry pick agent webhook returned status %d", r.StatusCode)
+		return fmt.Errorf("cherry pick agent webhook returned status %d", r.StatusCode)
 	}
 	return nil
 }
@@ -290,11 +290,11 @@ func getMilestone(title string) string {
 
 func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumber *int, pr *model.PullRequest) (cmdOutput string, err error) {
 	if pr.MergeCommitSHA == "" {
-		return "", errors.Errorf("can't get merge commit SHA for PR: %d", pr.Number)
+		return "", fmt.Errorf("can't get merge commit SHA for PR: %d", pr.Number)
 	}
 
 	if s.Config.RepoFolder == "" {
-		return "", errors.Errorf("path to folder containing local checkout of repositories is not set in the config")
+		return "", errors.New("path to folder containing local checkout of repositories is not set in the config")
 	}
 	repoFolder := filepath.Join(s.Config.RepoFolder, pr.RepoName)
 
@@ -306,7 +306,7 @@ func (s *Server) doCherryPick(ctx context.Context, version string, milestoneNumb
 	}
 
 	if s.Config.ScriptsFolder == "" {
-		return "", errors.Errorf("path to folder containing the cherry-pick.sh script is not set in the config")
+		return "", errors.New("path to folder containing the cherry-pick.sh script is not set in the config")
 	}
 	cherryPickScript := filepath.Join(s.Config.ScriptsFolder, "cherry-pick.sh")
 
@@ -400,10 +400,10 @@ func (s *Server) updateCherryPickLabels(ctx context.Context, newPRNumber int, pr
 
 func (s *Server) addMilestone(ctx context.Context, newPRNumber int, pr *model.PullRequest, milestoneNumber *int) {
 	// Add the milestone to the new PR
-	request := &github.IssueRequest{
+	request := github.UpdateIssueRequest{
 		Milestone: milestoneNumber,
 	}
-	_, _, err := s.GithubClient.Issues.Edit(ctx, pr.RepoOwner, pr.RepoName, newPRNumber, request)
+	_, _, err := s.GithubClient.Issues.Update(ctx, pr.RepoOwner, pr.RepoName, newPRNumber, request)
 	if err != nil {
 		mlog.Error("Error applying the milestone in the new pr", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 	}

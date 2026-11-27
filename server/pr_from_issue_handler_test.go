@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -43,8 +43,8 @@ func TestPRFromIssueHandler(t *testing.T) {
 				HTMLURL: &url,
 			},
 			Milestone: &github.Milestone{
-				Number: github.Int(2),
-				Title:  github.String("release-5.28"),
+				Number: new(2),
+				Title:  new("release-5.28"),
 			},
 		},
 		Repo: &github.Repository{

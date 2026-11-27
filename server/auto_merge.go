@@ -10,7 +10,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
 
@@ -94,7 +94,7 @@ func (s *Server) AutoMergePR() error {
 		}
 
 		// Check if all reviewers did the review
-		prReviewers, _, err := s.GithubClient.PullRequests.ListReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)
+		prReviewers, _, err := s.GithubClient.PullRequests.ListReviewers(ctx, pr.RepoOwner, pr.RepoName, pr.Number)
 		if err != nil {
 			mlog.Error("Error to get the reviewers for the PR",
 				mlog.Int("pr", pr.Number),

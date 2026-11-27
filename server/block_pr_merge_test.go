@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
@@ -23,7 +23,7 @@ import (
 func TestBlockPRMerge(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
-	repoStatusType := reflect.TypeOf((*github.RepoStatus)(nil))
+	repoStatusType := reflect.TypeOf(github.RepoStatus{})
 	repoMock := srmock.NewMockRepositoriesService(ctrl)
 	client := &GithubClient{
 		Repositories: repoMock,
@@ -83,7 +83,7 @@ func TestBlockPRMerge(t *testing.T) {
 func TestUnblockPRMerge(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
-	repoStatusType := reflect.TypeOf((*github.RepoStatus)(nil))
+	repoStatusType := reflect.TypeOf(github.RepoStatus{})
 	repoMock := srmock.NewMockRepositoriesService(ctrl)
 	client := &GithubClient{
 		Repositories: repoMock,
@@ -150,17 +150,17 @@ func createExamplePR(state string, labels []string) *model.PullRequest {
 	}
 }
 
-func createRepoStatus(state string) *github.RepoStatus {
+func createRepoStatus(state string) github.RepoStatus {
 	var description string
 	if state == statePending {
 		description = fmt.Sprintf("Merge blocked due %s label", "test-block")
 	} else {
 		description = "Merged allowed"
 	}
-	return &github.RepoStatus{
-		Context:     github.String("merge/blocked"),
-		State:       github.String(state),
-		Description: github.String(description),
-		TargetURL:   github.String(""),
+	return github.RepoStatus{
+		Context:     new("merge/blocked"),
+		State:       new(state),
+		Description: new(description),
+		TargetURL:   new(""),
 	}
 }

@@ -6,10 +6,11 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/die-net/lrucache"
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/m4ns0ur/httpcache"
 	"golang.org/x/oauth2"
 	"golang.org/x/time/rate"
@@ -22,22 +23,22 @@ type ChecksService interface {
 type IssuesService interface {
 	AddAssignees(ctx context.Context, owner, repo string, number int, assignees []string) (*github.Issue, *github.Response, error)
 	AddLabelsToIssue(ctx context.Context, owner string, repo string, number int, labels []string) ([]*github.Label, *github.Response, error)
-	CreateComment(ctx context.Context, owner string, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error)
+	CreateComment(ctx context.Context, owner string, repo string, number int, body github.IssueCommentRequest) (*github.IssueComment, *github.Response, error)
 	DeleteComment(ctx context.Context, owner string, repo string, commentID int64) (*github.Response, error)
-	Edit(ctx context.Context, owner string, repo string, number int, issue *github.IssueRequest) (*github.Issue, *github.Response, error)
 	Get(ctx context.Context, owner string, repo string, number int) (*github.Issue, *github.Response, error)
 	ListByRepo(ctx context.Context, owner string, repo string, opts *github.IssueListByRepoOptions) ([]*github.Issue, *github.Response, error)
 	ListComments(ctx context.Context, owner string, repo string, number int, opts *github.IssueListCommentsOptions) ([]*github.IssueComment, *github.Response, error)
 	ListLabelsByIssue(ctx context.Context, owner string, repo string, number int, opt *github.ListOptions) ([]*github.Label, *github.Response, error)
 	RemoveLabelForIssue(ctx context.Context, owner string, repo string, number int, label string) (*github.Response, error)
+	Update(ctx context.Context, owner string, repo string, number int, body github.UpdateIssueRequest) (*github.Issue, *github.Response, error)
 }
 
 type GitService interface {
-	CreateRef(ctx context.Context, owner string, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
+	CreateRef(ctx context.Context, owner string, repo string, body github.CreateRef) (*github.Reference, *github.Response, error)
 	DeleteRef(ctx context.Context, owner string, repo string, ref string) (*github.Response, error)
 	GetRef(ctx context.Context, owner string, repo string, ref string) (*github.Reference, *github.Response, error)
 	GetCommit(ctx context.Context, owner string, repo string, ref string) (*github.Commit, *github.Response, error)
-	ListMatchingRefs(ctx context.Context, owner string, repo string, opts *github.ReferenceListOptions) ([]*github.Reference, *github.Response, error)
+	ListMatchingRefs(ctx context.Context, owner string, repo string, ref string) ([]*github.Reference, *github.Response, error)
 }
 
 type OrganizationsService interface {
@@ -50,18 +51,18 @@ type PullRequestsService interface {
 	Get(ctx context.Context, owner string, repo string, number int) (*github.PullRequest, *github.Response, error)
 	List(ctx context.Context, owner string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error)
 	ListFiles(ctx context.Context, owner string, repo string, number int, opts *github.ListOptions) ([]*github.CommitFile, *github.Response, error)
-	ListReviewers(ctx context.Context, owner, repo string, number int, opts *github.ListOptions) (*github.Reviewers, *github.Response, error)
+	ListReviewers(ctx context.Context, owner, repo string, number int) (*github.Reviewers, *github.Response, error)
 	ListReviews(ctx context.Context, owner, repo string, number int, opts *github.ListOptions) ([]*github.PullRequestReview, *github.Response, error)
 	Merge(ctx context.Context, owner string, repo string, number int, commitMessage string, options *github.PullRequestOptions) (*github.PullRequestMergeResult, *github.Response, error)
 	RequestReviewers(ctx context.Context, owner, repo string, number int, reviewers github.ReviewersRequest) (*github.PullRequest, *github.Response, error)
-	UpdateBranch(ctx context.Context, owner, repo string, number int, opts *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error)
+	UpdateBranch(ctx context.Context, owner, repo string, number int, body github.UpdatePullRequestBranchRequest) (*github.PullRequestBranchUpdateResponse, *github.Response, error)
 	CreateReview(ctx context.Context, owner, repo string, number int, review *github.PullRequestReviewRequest) (*github.PullRequestReview, *github.Response, error)
 }
 
 type RepositoriesService interface {
-	CreateStatus(ctx context.Context, owner, repo, ref string, status *github.RepoStatus) (*github.RepoStatus, *github.Response, error)
+	CreateStatus(ctx context.Context, owner, repo, ref string, status github.RepoStatus) (*github.RepoStatus, *github.Response, error)
 	Get(ctx context.Context, owner, repo string) (*github.Repository, *github.Response, error)
-	GetBranch(ctx context.Context, owner, repo, branch string, followRedirects bool) (*github.Branch, *github.Response, error)
+	GetBranch(ctx context.Context, owner, repo, branch string, maxRedirects int) (*github.Branch, *github.Response, error)
 	ListBranches(ctx context.Context, owner string, repo string, opts *github.BranchListOptions) ([]*github.Branch, *github.Response, error)
 	GetCombinedStatus(ctx context.Context, owner, repo, ref string, opts *github.ListOptions) (*github.CombinedStatus, *github.Response, error)
 	ListTeams(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.Team, *github.Response, error)
@@ -87,7 +88,7 @@ type GithubClient struct {
 
 // NewGithubClientWithLimiter returns a new Github client with the provided limit and burst tokens
 // that will be used by the rate limit transport.
-func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int, metricsProvider MetricsProvider) *GithubClient {
+func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstTokens int, metricsProvider MetricsProvider) (*GithubClient, error) {
 	const (
 		lruCacheMaxSizeInBytes  = 1000 * 1000 * 1000 // 1GB
 		lruCacheMaxAgeInSeconds = 2629800            // 1 month
@@ -100,7 +101,10 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 	httpCacheTransport := httpcache.NewTransport(httpCache)
 	httpCacheTransport.Transport = limiterTransport
 	metricsTransport := NewMetricsTransport(httpCacheTransport, metricsProvider)
-	client := github.NewClient(metricsTransport.Client())
+	client, err := github.NewClient(github.WithHTTPClient(metricsTransport.Client()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
 
 	return &GithubClient{
 		client:        client,
@@ -111,7 +115,7 @@ func NewGithubClientWithLimiter(accessToken string, limit rate.Limit, burstToken
 		PullRequests:  client.PullRequests,
 		Repositories:  client.Repositories,
 		Teams:         client.Teams,
-	}
+	}, nil
 }
 
 // NewGithubClient returns a new Github client that will use a fixed 10 req/sec / 10 burst
@@ -121,9 +125,9 @@ func NewGithubClient(accessToken string, limitTokens int, metrics MetricsProvide
 		return nil, errors.New("rate limit tokens for github client must be greater than 0")
 	}
 	limit := rate.Every(time.Second / time.Duration(limitTokens))
-	return NewGithubClientWithLimiter(accessToken, limit, limitTokens, metrics), nil
+	return NewGithubClientWithLimiter(accessToken, limit, limitTokens, metrics)
 }
 
 func (c *GithubClient) RateLimits(ctx context.Context) (*github.RateLimits, *github.Response, error) {
-	return c.client.RateLimits(ctx)
+	return c.client.RateLimit.Get(ctx)
 }

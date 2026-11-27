@@ -9,7 +9,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -26,8 +26,8 @@ func TestGetComments(t *testing.T) {
 
 	t.Run("One page", func(t *testing.T) {
 		comments := []*github.IssueComment{
-			{ID: github.Int64(1), NodeID: github.String("nodeid")},
-			{ID: github.Int64(2), NodeID: github.String("nodeid2")},
+			{ID: new(int64(1)), NodeID: new("nodeid")},
+			{ID: new(int64(2)), NodeID: new("nodeid2")},
 		}
 
 		s := &Server{
@@ -56,11 +56,11 @@ func TestGetComments(t *testing.T) {
 
 	t.Run("Two pages", func(t *testing.T) {
 		comments := []*github.IssueComment{
-			{ID: github.Int64(1), NodeID: github.String("nodeid")},
+			{ID: new(int64(1)), NodeID: new("nodeid")},
 		}
 
 		comments2 := []*github.IssueComment{
-			{ID: github.Int64(2), NodeID: github.String("nodeid2")},
+			{ID: new(int64(2)), NodeID: new("nodeid2")},
 		}
 
 		s := &Server{
@@ -133,8 +133,8 @@ func TestGetFiles(t *testing.T) {
 
 	t.Run("One page", func(t *testing.T) {
 		files := []*github.CommitFile{
-			{SHA: github.String("sha1"), Filename: github.String("file1")},
-			{SHA: github.String("sha2"), Filename: github.String("file2")},
+			{SHA: new("sha1"), Filename: new("file1")},
+			{SHA: new("sha2"), Filename: new("file2")},
 		}
 
 		s := &Server{
@@ -163,11 +163,11 @@ func TestGetFiles(t *testing.T) {
 
 	t.Run("Two pages", func(t *testing.T) {
 		files := []*github.CommitFile{
-			{SHA: github.String("sha1"), Filename: github.String("file1")},
+			{SHA: new("sha1"), Filename: new("file1")},
 		}
 
 		files2 := []*github.CommitFile{
-			{SHA: github.String("sha2"), Filename: github.String("file2")},
+			{SHA: new("sha2"), Filename: new("file2")},
 		}
 
 		s := &Server{

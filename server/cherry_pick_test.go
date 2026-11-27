@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -47,7 +47,7 @@ func TestHandleCherryPick(t *testing.T) {
 	ctxInterface := reflect.TypeOf((*context.Context)(nil)).Elem()
 
 	msg := new(string)
-	comment := &github.IssueComment{Body: msg}
+	comment := gomock.Cond(func(c github.IssueCommentRequest) bool { return c.Body == *msg })
 	is := mocks.NewMockIssuesService(ctrl)
 	is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), pr.RepoOwner, pr.RepoName, pr.Number, comment).AnyTimes().Return(nil, nil, nil)
 	s.GithubClient.Issues = is
@@ -142,7 +142,7 @@ func TestHandleCherryPickFailure(t *testing.T) {
 	newServer := func(t *testing.T, webhookURL, token, expectedComment string) *Server {
 		ctrl := gomock.NewController(t)
 		is := mocks.NewMockIssuesService(ctrl)
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattermost", "mattermost", 123, &github.IssueComment{Body: &expectedComment}).Return(nil, nil, nil)
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), "mattermost", "mattermost", 123, github.IssueCommentRequest{Body: expectedComment}).Return(nil, nil, nil)
 		return &Server{
 			Config: &Config{
 				CherryPickAgentWebhookURL:   webhookURL,

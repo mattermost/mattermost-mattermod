@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -18,11 +18,11 @@ func (s *Server) blockPRMerge(ctx context.Context, pr *model.PullRequest) error 
 		return nil
 	}
 
-	mergeStatus := &github.RepoStatus{
-		Context:     github.String("merge/blocked"),
-		State:       github.String(statePending),
-		Description: github.String(fmt.Sprintf("Merge blocked due %s label", s.getBlockLabelFromPR(pr.Labels))),
-		TargetURL:   github.String(""),
+	mergeStatus := github.RepoStatus{
+		Context:     new("merge/blocked"),
+		State:       new(statePending),
+		Description: new(fmt.Sprintf("Merge blocked due %s label", s.getBlockLabelFromPR(pr.Labels))),
+		TargetURL:   new(""),
 	}
 
 	mlog.Info("will block PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
@@ -46,11 +46,11 @@ func (s *Server) unblockPRMerge(ctx context.Context, pr *model.PullRequest) erro
 		return nil
 	}
 
-	mergeStatus := &github.RepoStatus{
-		Context:     github.String("merge/blocked"),
-		State:       github.String(stateSuccess),
-		Description: github.String("Merged allowed"),
-		TargetURL:   github.String(""),
+	mergeStatus := github.RepoStatus{
+		Context:     new("merge/blocked"),
+		State:       new(stateSuccess),
+		Description: new("Merged allowed"),
+		TargetURL:   new(""),
 	}
 
 	mlog.Info("will unblock PR merge status", mlog.Int("pr", pr.Number), mlog.String("repo", pr.RepoName))
