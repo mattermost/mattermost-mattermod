@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
-	"github.com/pkg/errors"
 )
 
 const (
