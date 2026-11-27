@@ -3,16 +3,18 @@ package server
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
 )
+
+// GitHub caps webhook payloads at 25 MB.
+const maxWebhookBodyBytes = 25 << 20
 
 func (s *Server) withValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,15 +22,22 @@ func (s *Server) withValidation(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		receivedHash := strings.SplitN(r.Header.Get("X-Hub-Signature"), "=", 2)
-		if receivedHash[0] != "sha1" {
-			mlog.Error("Invalid webhook hash signature: SHA1")
+
+		signature, ok := strings.CutPrefix(r.Header.Get("X-Hub-Signature-256"), "sha256=")
+		if !ok {
+			mlog.Error("Missing or malformed webhook signature header")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		buf, err := io.ReadAll(r.Body)
+		buf, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes))
 		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				mlog.Error("Webhook body too large")
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				return
+			}
 			mlog.Error("Failed to read body", mlog.Err(err))
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -36,9 +45,8 @@ func (s *Server) withValidation(next http.Handler) http.Handler {
 		r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewBuffer(buf))
 
-		err = validateSignature(receivedHash, buf, s.Config.GitHubWebhookSecret)
-		if err != nil {
-			mlog.Error(err.Error())
+		if !validSignature(signature, buf, s.Config.GitHubWebhookSecret) {
+			mlog.Error("Webhook signature does not match")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -47,20 +55,19 @@ func (s *Server) withValidation(next http.Handler) http.Handler {
 	})
 }
 
-// validateSignature function used for validation of webhook requests based on
-// config secret.
-func validateSignature(receivedHash []string, bodyBuffer []byte, secretKey string) error {
-	hash := hmac.New(sha1.New, []byte(secretKey))
-	if _, err := hash.Write(bodyBuffer); err != nil {
-		msg := fmt.Sprintf("Cannot compute the HMAC for request: %s\n", err)
-		return errors.New(msg)
+// validSignature reports whether signature is the hex HMAC-SHA256 of body
+// under secret. An empty secret never validates.
+func validSignature(signature string, body []byte, secret string) bool {
+	if secret == "" {
+		return false
 	}
 
-	expectedHash := hex.EncodeToString(hash.Sum(nil))
-	if receivedHash[1] != expectedHash {
-		msg := fmt.Sprintf("Expected Hash does not match the received hash: %s\n", expectedHash)
-		return errors.New(msg)
+	received, err := hex.DecodeString(signature)
+	if err != nil {
+		return false
 	}
 
-	return nil
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	return hmac.Equal(received, mac.Sum(nil))
 }

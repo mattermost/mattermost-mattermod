@@ -18,8 +18,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
 	"github.com/mattermost/mattermost-mattermod/model"
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
 
 	"github.com/google/go-github/v39/github"
 	"github.com/pkg/errors"

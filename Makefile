@@ -124,7 +124,7 @@ push-jobserver:
 ## Generate mocks.
 .PHONY: mocks
 mocks:
-	go install github.com/golang/mock/mockgen@v1.6.0
+	go install go.uber.org/mock/mockgen@v0.6.0
 	mockgen -package=mocks -source=server/github_client.go -destination=server/mocks/github_client.go
 	mockgen -package=mocks -source=server/metrics.go -destination=server/mocks/metrics.go
 	mockgen -package=mocks -source=store/store.go -destination=store/mocks/store.go

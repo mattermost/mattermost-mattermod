@@ -9,10 +9,11 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+	"github.com/robfig/cron/v3"
+
 	"github.com/mattermost/mattermost-mattermod/metrics"
 	"github.com/mattermost/mattermost-mattermod/server"
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
-	"github.com/robfig/cron/v3"
 )
 
 var (

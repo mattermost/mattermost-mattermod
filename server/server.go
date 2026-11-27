@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -21,12 +20,10 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/gorilla/mux"
+	"github.com/mattermost/mattermost/server/public/shared/mlog"
+
 	"github.com/mattermost/mattermost-mattermod/store"
 	"github.com/mattermost/mattermost-mattermod/version"
-	"github.com/mattermost/mattermost-server/v6/config"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/shared/mlog"
-	"github.com/mattermost/mattermost-server/v6/utils/fileutils"
 )
 
 // Server is the mattermod server.
@@ -52,8 +49,6 @@ type pingResponse struct {
 }
 
 const (
-	logFilename = "mattermod.log"
-
 	serverRepoName = "mattermost-server"
 
 	githubStateOpen = "open"
@@ -314,7 +309,7 @@ func (s *Server) githubEvent(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "could not parse ping event", http.StatusBadRequest)
 			return
 		}
-		mlog.Info("ping event", mlog.Int64("HookID", pingEvent.GetHookID()))
+		mlog.Info("ping event", mlog.Int("HookID", pingEvent.GetHookID()))
 	case "issues":
 		buf, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -360,46 +355,6 @@ func messageByUserContains(comments []*github.IssueComment, username string, tex
 	}
 
 	return false
-}
-
-func GetLogFileLocation(fileLocation string) string {
-	if fileLocation == "" {
-		fileLocation, _ = fileutils.FindDir("logs")
-	}
-
-	return filepath.Join(fileLocation, logFilename)
-}
-
-func SetupLogging(c *Config) error {
-	loggingConfig := &model.LogSettings{
-		EnableConsole: model.NewBool(c.LogSettings.EnableConsole),
-		ConsoleJson:   model.NewBool(c.LogSettings.ConsoleJSON),
-		ConsoleLevel:  model.NewString(strings.ToLower(c.LogSettings.ConsoleLevel)),
-		EnableFile:    model.NewBool(c.LogSettings.EnableFile),
-		EnableColor:   model.NewBool(c.LogSettings.EnableColor),
-		FileJson:      model.NewBool(c.LogSettings.FileJSON),
-		FileLevel:     model.NewString(strings.ToLower(c.LogSettings.FileLevel)),
-		FileLocation:  model.NewString(GetLogFileLocation(c.LogSettings.FileLocation)),
-	}
-
-	logger, err := mlog.NewLogger()
-	if err != nil {
-		return err
-	}
-
-	cfg, err := config.MloggerConfigFromLoggerConfig(loggingConfig, nil, GetLogFileLocation)
-	if err != nil {
-		return fmt.Errorf("could not configure logger: %w", err)
-	}
-
-	if err := logger.ConfigureTargets(cfg, nil); err != nil {
-		return fmt.Errorf("could not configure config targets: %w", err)
-	}
-
-	logger.RedirectStdLog(mlog.LvlStdLog)
-	mlog.InitGlobalLogger(logger)
-
-	return nil
 }
 
 func closeBody(r *http.Response) {

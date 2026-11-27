@@ -11,10 +11,12 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v39/github"
-	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	"github.com/stretchr/testify/require"
 
-	"github.com/golang/mock/gomock"
+	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
+
+	"go.uber.org/mock/gomock"
+
 	"github.com/mattermost/mattermost-mattermod/model"
 )
 

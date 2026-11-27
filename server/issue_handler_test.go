@@ -17,9 +17,9 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v39/github"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func TestIssueEventHandler(t *testing.T) {

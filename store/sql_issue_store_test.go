@@ -6,8 +6,9 @@ package store
 import (
 	"testing"
 
-	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/mattermost/mattermost-mattermod/model"
 )
 
 func TestIssueStore(t *testing.T) {

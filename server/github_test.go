@@ -8,15 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v39/github"
 	"github.com/jarcoal/httpmock"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/time/rate"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-mattermod/server"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var testGetRefReturn = []byte(`{
