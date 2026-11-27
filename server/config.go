@@ -5,10 +5,9 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -156,13 +155,13 @@ func GetConfig(fileName string) (*Config, error) {
 
 	file, err := os.Open(fileName)
 	if err != nil {
-		return config, errors.Wrap(err, "unable to open config file")
+		return config, fmt.Errorf("unable to open config file: %w", err)
 	}
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(config)
 	if err != nil {
-		return config, errors.Wrap(err, "unable to decode config file")
+		return config, fmt.Errorf("unable to decode config file: %w", err)
 	}
 
 	return config, nil

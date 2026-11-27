@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/go-github/v39/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
-	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-mattermod/model"
 )
@@ -186,7 +185,7 @@ func (s *Server) getComments(ctx context.Context, repoOwner, repoName string, is
 		}
 		allComments = append(allComments, commentsPerPage...)
 		if r != nil && r.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("failed fetching comments: got http status %s", r.Status)
+			return nil, fmt.Errorf("failed fetching comments: got http status %s", r.Status)
 		}
 		if r.NextPage == 0 {
 			break
@@ -247,7 +246,7 @@ func (s *Server) getMembers(ctx context.Context) (orgMembers []string, err error
 		}
 		allUsers = append(allUsers, users...)
 		if r != nil && r.StatusCode != http.StatusOK {
-			return nil, errors.Errorf("failed listing org members: got http status %s", r.Status)
+			return nil, fmt.Errorf("failed listing org members: got http status %s", r.Status)
 		}
 		if r.NextPage == 0 {
 			break

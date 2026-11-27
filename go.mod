@@ -12,7 +12,6 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/m4ns0ur/httpcache v0.0.0-20200426190423-1040e2e8823f
 	github.com/mattermost/mattermost/server/public v0.6.1
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/client_model v0.6.3
 	github.com/robfig/cron/v3 v3.0.1
@@ -32,6 +31,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/mattermost/logr/v2 v2.0.25 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/common v0.72.0 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
 	github.com/wiggin77/merror v1.0.5 // indirect
