@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -60,17 +60,17 @@ func TestPullRequestEventHandler(t *testing.T) {
 		Action:   "",
 		PRNumber: 1,
 		PullRequest: &github.PullRequest{
-			Number: github.Int(1),
+			Number: new(1),
 			Base: &github.PullRequestBranch{
 				Repo: &github.Repository{
 					Owner: &github.User{
-						Login: github.String("mattertest"),
+						Login: new("mattertest"),
 					},
-					Name: github.String("mattermod"),
+					Name: new("mattermod"),
 				},
 			},
 			Head: &github.PullRequestBranch{
-				SHA: github.String("sha"),
+				SHA: new("sha"),
 			},
 		},
 	}
@@ -111,7 +111,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.CombinedStatus{
 				Statuses: []*github.RepoStatus{
 					{
-						Context: github.String("something"),
+						Context: new("something"),
 					},
 				},
 			}, nil, nil)
@@ -153,7 +153,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.CombinedStatus{
 				Statuses: []*github.RepoStatus{
 					{
-						Context: github.String("something"),
+						Context: new("something"),
 					},
 				},
 			}, nil, nil)
@@ -192,7 +192,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.CombinedStatus{
 				Statuses: []*github.RepoStatus{
 					{
-						Context: github.String("something"),
+						Context: new("something"),
 					},
 				},
 			}, nil, nil)
@@ -243,7 +243,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 			Return(&github.CombinedStatus{
 				Statuses: []*github.RepoStatus{
 					{
-						Context: github.String("something"),
+						Context: new("something"),
 					},
 				},
 			}, nil, nil)
@@ -256,7 +256,7 @@ func TestPullRequestEventHandler(t *testing.T) {
 		is.EXPECT().
 			ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), "mattertest", "mattermod", 1, nil).
 			Times(1).
-			Return([]*github.Label{{Name: NewString("old-label")}}, nil, nil)
+			Return([]*github.Label{{Name: "old-label"}}, nil, nil)
 
 		prStoreMock.EXPECT().Get("mattertest", "mattermod", 1).
 			Times(1).Return(modelPR, nil)
@@ -418,9 +418,9 @@ func TestCleanUpLabels(t *testing.T) {
 				}
 
 				labels := []*github.Label{{
-					Name: github.String("abc"),
+					Name: "abc",
 				}, {
-					Name: github.String("def"),
+					Name: "def",
 				}}
 
 				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface),
@@ -438,11 +438,11 @@ func TestCleanUpLabels(t *testing.T) {
 				}
 
 				labels := []*github.Label{{
-					Name: github.String("AutoMerge"),
+					Name: "AutoMerge",
 				}, {
-					Name: github.String("Do Not Merge"),
+					Name: "Do Not Merge",
 				}, {
-					Name: github.String("Work In Progress"),
+					Name: "Work In Progress",
 				}}
 
 				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
@@ -461,13 +461,13 @@ func TestCleanUpLabels(t *testing.T) {
 				}
 
 				labels := []*github.Label{{
-					Name: github.String("Work In Progress"),
+					Name: "Work In Progress",
 				}, {
-					Name: github.String("abc"),
+					Name: "abc",
 				}, {
-					Name: github.String("AutoMerge"),
+					Name: "AutoMerge",
 				}, {
-					Name: github.String("def"),
+					Name: "def",
 				}}
 
 				issueMocks.EXPECT().ListLabelsByIssue(gomock.AssignableToTypeOf(ctxInterface), gomock.Eq(pr.RepoOwner), gomock.Eq(pr.RepoName), gomock.Eq(pr.Number), nil).Return(labels, nil, nil)
@@ -505,13 +505,13 @@ func TestCheckPRActivity(t *testing.T) {
 		RepoName:  "repoName",
 		Number:    456,
 	}
-	updatedAt := time.Now()
+	updatedAt := github.Timestamp{Time: time.Now()}
 	ghPR := &github.PullRequest{
-		State:     github.String("open"),
+		State:     new("open"),
 		UpdatedAt: &updatedAt,
 	}
 	ghPR2 := &github.PullRequest{
-		State:     github.String("open"),
+		State:     new("open"),
 		UpdatedAt: &updatedAt,
 	}
 	ctrl := gomock.NewController(t)
@@ -670,7 +670,7 @@ func TestCheckPRActivity(t *testing.T) {
 			gomock.Any(),
 			gomock.Any(),
 			456,
-			nil).Times(1).Return([]*github.Label{{Name: github.String("nostale")}}, nil, nil)
+			nil).Times(1).Return([]*github.Label{{Name: "nostale"}}, nil, nil)
 		issuesServiceMock.EXPECT().AddLabelsToIssue(gomock.AssignableToTypeOf(ctxInterface),
 			gomock.Any(),
 			gomock.Any(),

@@ -8,7 +8,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 )
 
 func (s *Server) handleAutoAssign(ctx context.Context, url string, pr *model.PullRequest) error {

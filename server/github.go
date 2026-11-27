@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -63,7 +63,7 @@ func (s *Server) buildPullRequest(ctx context.Context, pullRequest *github.PullR
 		Sha:                 pullRequest.GetHead().GetSHA(),
 		State:               pullRequest.GetState(),
 		URL:                 pullRequest.GetURL(),
-		CreatedAt:           pullRequest.GetCreatedAt(),
+		CreatedAt:           pullRequest.GetCreatedAt().Time,
 		Merged:              NewBool(pullRequest.GetMerged()),
 		MergeCommitSHA:      pullRequest.GetMergeCommitSHA(),
 		MaintainerCanModify: NewBool(pullRequest.GetMaintainerCanModify()),
@@ -149,7 +149,7 @@ func labelsToStringArray(labels []*github.Label) []string {
 	out := make([]string, len(labels))
 
 	for i, label := range labels {
-		out[i] = *label.Name
+		out[i] = label.GetName()
 	}
 
 	return out
@@ -157,7 +157,7 @@ func labelsToStringArray(labels []*github.Label) []string {
 
 func (s *Server) sendGitHubComment(ctx context.Context, repoOwner, repoName string, number int, comment string) error {
 	mlog.Debug("Sending GitHub comment", mlog.Int("issue", number), mlog.String("comment", comment))
-	_, _, err := s.GithubClient.Issues.CreateComment(ctx, repoOwner, repoName, number, &github.IssueComment{Body: &comment})
+	_, _, err := s.GithubClient.Issues.CreateComment(ctx, repoOwner, repoName, number, github.IssueCommentRequest{Body: comment})
 	return err
 }
 
@@ -290,7 +290,7 @@ func (s *Server) IsBotUserFromCLAExclusionsList(user string) bool {
 }
 
 func (s *Server) createRepoStatus(ctx context.Context, pr *model.PullRequest, status *github.RepoStatus) error {
-	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, status)
+	_, _, err := s.GithubClient.Repositories.CreateStatus(ctx, pr.RepoOwner, pr.RepoName, pr.Sha, *status)
 	if err != nil {
 		return err
 	}

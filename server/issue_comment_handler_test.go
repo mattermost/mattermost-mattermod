@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -50,24 +50,24 @@ func TestIssueCommentEventHandler(t *testing.T) {
 	event := issueCommentEvent{
 		Repository: &github.Repository{
 			Owner: &github.User{
-				Login: github.String("mattertest"),
+				Login: new("mattertest"),
 			},
-			Name: github.String("mattermod"),
+			Name: new("mattermod"),
 		},
 		Comment: &github.PullRequestComment{
-			Body: github.String("some-text"),
+			Body: new("some-text"),
 		},
 		Issue: &github.Issue{
 			Repository: &github.Repository{
 				Owner: &github.User{
-					Login: github.String("mattertest"),
+					Login: new("mattertest"),
 				},
-				Name: github.String("mattermod"),
+				Name: new("mattermod"),
 			},
-			Number: github.Int(1),
-			State:  github.String("a-state"),
+			Number: new(1),
+			State:  new("a-state"),
 			User: &github.User{
-				Login: github.String("mattertest"),
+				Login: new("mattertest"),
 			},
 			PullRequestLinks: &github.PullRequestLinks{},
 		},

@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	github "github.com/google/go-github/v39/github"
+	github "github.com/google/go-github/v93/github"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -114,9 +114,9 @@ func (mr *MockIssuesServiceMockRecorder) AddLabelsToIssue(ctx, owner, repo, numb
 }
 
 // CreateComment mocks base method.
-func (m *MockIssuesService) CreateComment(ctx context.Context, owner, repo string, number int, comment *github.IssueComment) (*github.IssueComment, *github.Response, error) {
+func (m *MockIssuesService) CreateComment(ctx context.Context, owner, repo string, number int, body github.IssueCommentRequest) (*github.IssueComment, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateComment", ctx, owner, repo, number, comment)
+	ret := m.ctrl.Call(m, "CreateComment", ctx, owner, repo, number, body)
 	ret0, _ := ret[0].(*github.IssueComment)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -124,9 +124,9 @@ func (m *MockIssuesService) CreateComment(ctx context.Context, owner, repo strin
 }
 
 // CreateComment indicates an expected call of CreateComment.
-func (mr *MockIssuesServiceMockRecorder) CreateComment(ctx, owner, repo, number, comment any) *gomock.Call {
+func (mr *MockIssuesServiceMockRecorder) CreateComment(ctx, owner, repo, number, body any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateComment", reflect.TypeOf((*MockIssuesService)(nil).CreateComment), ctx, owner, repo, number, comment)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateComment", reflect.TypeOf((*MockIssuesService)(nil).CreateComment), ctx, owner, repo, number, body)
 }
 
 // DeleteComment mocks base method.
@@ -142,22 +142,6 @@ func (m *MockIssuesService) DeleteComment(ctx context.Context, owner, repo strin
 func (mr *MockIssuesServiceMockRecorder) DeleteComment(ctx, owner, repo, commentID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteComment", reflect.TypeOf((*MockIssuesService)(nil).DeleteComment), ctx, owner, repo, commentID)
-}
-
-// Edit mocks base method.
-func (m *MockIssuesService) Edit(ctx context.Context, owner, repo string, number int, issue *github.IssueRequest) (*github.Issue, *github.Response, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Edit", ctx, owner, repo, number, issue)
-	ret0, _ := ret[0].(*github.Issue)
-	ret1, _ := ret[1].(*github.Response)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// Edit indicates an expected call of Edit.
-func (mr *MockIssuesServiceMockRecorder) Edit(ctx, owner, repo, number, issue any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Edit", reflect.TypeOf((*MockIssuesService)(nil).Edit), ctx, owner, repo, number, issue)
 }
 
 // Get mocks base method.
@@ -239,6 +223,22 @@ func (mr *MockIssuesServiceMockRecorder) RemoveLabelForIssue(ctx, owner, repo, n
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveLabelForIssue", reflect.TypeOf((*MockIssuesService)(nil).RemoveLabelForIssue), ctx, owner, repo, number, label)
 }
 
+// Update mocks base method.
+func (m *MockIssuesService) Update(ctx context.Context, owner, repo string, number int, body github.UpdateIssueRequest) (*github.Issue, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, owner, repo, number, body)
+	ret0, _ := ret[0].(*github.Issue)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockIssuesServiceMockRecorder) Update(ctx, owner, repo, number, body any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockIssuesService)(nil).Update), ctx, owner, repo, number, body)
+}
+
 // MockGitService is a mock of GitService interface.
 type MockGitService struct {
 	ctrl     *gomock.Controller
@@ -264,9 +264,9 @@ func (m *MockGitService) EXPECT() *MockGitServiceMockRecorder {
 }
 
 // CreateRef mocks base method.
-func (m *MockGitService) CreateRef(ctx context.Context, owner, repo string, ref *github.Reference) (*github.Reference, *github.Response, error) {
+func (m *MockGitService) CreateRef(ctx context.Context, owner, repo string, body github.CreateRef) (*github.Reference, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRef", ctx, owner, repo, ref)
+	ret := m.ctrl.Call(m, "CreateRef", ctx, owner, repo, body)
 	ret0, _ := ret[0].(*github.Reference)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -274,9 +274,9 @@ func (m *MockGitService) CreateRef(ctx context.Context, owner, repo string, ref 
 }
 
 // CreateRef indicates an expected call of CreateRef.
-func (mr *MockGitServiceMockRecorder) CreateRef(ctx, owner, repo, ref any) *gomock.Call {
+func (mr *MockGitServiceMockRecorder) CreateRef(ctx, owner, repo, body any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRef", reflect.TypeOf((*MockGitService)(nil).CreateRef), ctx, owner, repo, ref)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRef", reflect.TypeOf((*MockGitService)(nil).CreateRef), ctx, owner, repo, body)
 }
 
 // DeleteRef mocks base method.
@@ -327,9 +327,9 @@ func (mr *MockGitServiceMockRecorder) GetRef(ctx, owner, repo, ref any) *gomock.
 }
 
 // ListMatchingRefs mocks base method.
-func (m *MockGitService) ListMatchingRefs(ctx context.Context, owner, repo string, opts *github.ReferenceListOptions) ([]*github.Reference, *github.Response, error) {
+func (m *MockGitService) ListMatchingRefs(ctx context.Context, owner, repo, ref string) ([]*github.Reference, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMatchingRefs", ctx, owner, repo, opts)
+	ret := m.ctrl.Call(m, "ListMatchingRefs", ctx, owner, repo, ref)
 	ret0, _ := ret[0].([]*github.Reference)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -337,9 +337,9 @@ func (m *MockGitService) ListMatchingRefs(ctx context.Context, owner, repo strin
 }
 
 // ListMatchingRefs indicates an expected call of ListMatchingRefs.
-func (mr *MockGitServiceMockRecorder) ListMatchingRefs(ctx, owner, repo, opts any) *gomock.Call {
+func (mr *MockGitServiceMockRecorder) ListMatchingRefs(ctx, owner, repo, ref any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchingRefs", reflect.TypeOf((*MockGitService)(nil).ListMatchingRefs), ctx, owner, repo, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchingRefs", reflect.TypeOf((*MockGitService)(nil).ListMatchingRefs), ctx, owner, repo, ref)
 }
 
 // MockOrganizationsService is a mock of OrganizationsService interface.
@@ -503,9 +503,9 @@ func (mr *MockPullRequestsServiceMockRecorder) ListFiles(ctx, owner, repo, numbe
 }
 
 // ListReviewers mocks base method.
-func (m *MockPullRequestsService) ListReviewers(ctx context.Context, owner, repo string, number int, opts *github.ListOptions) (*github.Reviewers, *github.Response, error) {
+func (m *MockPullRequestsService) ListReviewers(ctx context.Context, owner, repo string, number int) (*github.Reviewers, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListReviewers", ctx, owner, repo, number, opts)
+	ret := m.ctrl.Call(m, "ListReviewers", ctx, owner, repo, number)
 	ret0, _ := ret[0].(*github.Reviewers)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -513,9 +513,9 @@ func (m *MockPullRequestsService) ListReviewers(ctx context.Context, owner, repo
 }
 
 // ListReviewers indicates an expected call of ListReviewers.
-func (mr *MockPullRequestsServiceMockRecorder) ListReviewers(ctx, owner, repo, number, opts any) *gomock.Call {
+func (mr *MockPullRequestsServiceMockRecorder) ListReviewers(ctx, owner, repo, number any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReviewers", reflect.TypeOf((*MockPullRequestsService)(nil).ListReviewers), ctx, owner, repo, number, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListReviewers", reflect.TypeOf((*MockPullRequestsService)(nil).ListReviewers), ctx, owner, repo, number)
 }
 
 // ListReviews mocks base method.
@@ -567,9 +567,9 @@ func (mr *MockPullRequestsServiceMockRecorder) RequestReviewers(ctx, owner, repo
 }
 
 // UpdateBranch mocks base method.
-func (m *MockPullRequestsService) UpdateBranch(ctx context.Context, owner, repo string, number int, opts *github.PullRequestBranchUpdateOptions) (*github.PullRequestBranchUpdateResponse, *github.Response, error) {
+func (m *MockPullRequestsService) UpdateBranch(ctx context.Context, owner, repo string, number int, body github.UpdatePullRequestBranchRequest) (*github.PullRequestBranchUpdateResponse, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateBranch", ctx, owner, repo, number, opts)
+	ret := m.ctrl.Call(m, "UpdateBranch", ctx, owner, repo, number, body)
 	ret0, _ := ret[0].(*github.PullRequestBranchUpdateResponse)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -577,9 +577,9 @@ func (m *MockPullRequestsService) UpdateBranch(ctx context.Context, owner, repo 
 }
 
 // UpdateBranch indicates an expected call of UpdateBranch.
-func (mr *MockPullRequestsServiceMockRecorder) UpdateBranch(ctx, owner, repo, number, opts any) *gomock.Call {
+func (mr *MockPullRequestsServiceMockRecorder) UpdateBranch(ctx, owner, repo, number, body any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBranch", reflect.TypeOf((*MockPullRequestsService)(nil).UpdateBranch), ctx, owner, repo, number, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBranch", reflect.TypeOf((*MockPullRequestsService)(nil).UpdateBranch), ctx, owner, repo, number, body)
 }
 
 // MockRepositoriesService is a mock of RepositoriesService interface.
@@ -607,7 +607,7 @@ func (m *MockRepositoriesService) EXPECT() *MockRepositoriesServiceMockRecorder 
 }
 
 // CreateStatus mocks base method.
-func (m *MockRepositoriesService) CreateStatus(ctx context.Context, owner, repo, ref string, status *github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
+func (m *MockRepositoriesService) CreateStatus(ctx context.Context, owner, repo, ref string, status github.RepoStatus) (*github.RepoStatus, *github.Response, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateStatus", ctx, owner, repo, ref, status)
 	ret0, _ := ret[0].(*github.RepoStatus)
@@ -639,9 +639,9 @@ func (mr *MockRepositoriesServiceMockRecorder) Get(ctx, owner, repo any) *gomock
 }
 
 // GetBranch mocks base method.
-func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, branch string, followRedirects bool) (*github.Branch, *github.Response, error) {
+func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, branch string, maxRedirects int) (*github.Branch, *github.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBranch", ctx, owner, repo, branch, followRedirects)
+	ret := m.ctrl.Call(m, "GetBranch", ctx, owner, repo, branch, maxRedirects)
 	ret0, _ := ret[0].(*github.Branch)
 	ret1, _ := ret[1].(*github.Response)
 	ret2, _ := ret[2].(error)
@@ -649,9 +649,9 @@ func (m *MockRepositoriesService) GetBranch(ctx context.Context, owner, repo, br
 }
 
 // GetBranch indicates an expected call of GetBranch.
-func (mr *MockRepositoriesServiceMockRecorder) GetBranch(ctx, owner, repo, branch, followRedirects any) *gomock.Call {
+func (mr *MockRepositoriesServiceMockRecorder) GetBranch(ctx, owner, repo, branch, maxRedirects any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), ctx, owner, repo, branch, followRedirects)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBranch", reflect.TypeOf((*MockRepositoriesService)(nil).GetBranch), ctx, owner, repo, branch, maxRedirects)
 }
 
 // GetCombinedStatus mocks base method.

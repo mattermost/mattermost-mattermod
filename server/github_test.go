@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/jarcoal/httpmock"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/time/rate"
@@ -48,7 +48,7 @@ func TestIsOrgMember(t *testing.T) {
 	dummyUsers := make([]*github.User, expectedUserSize)
 	var user *github.User
 	for i := 0; i < expectedUserSize; i++ {
-		user = &github.User{Login: github.String("test" + strconv.Itoa(i))}
+		user = &github.User{Login: new("test" + strconv.Itoa(i))}
 		dummyUsers[i] = user
 	}
 	r := &http.Response{StatusCode: http.StatusOK}
@@ -133,7 +133,7 @@ func TestCannotGetAllOrgMembersDueToRateLimit(t *testing.T) {
 	newUsers := make([]*github.User, rateLimitedUserSize)
 	var newUser *github.User
 	for i := 0; i < rateLimitedUserSize; i++ {
-		newUser = &github.User{Login: github.String("test" + strconv.Itoa(i))}
+		newUser = &github.User{Login: new("test" + strconv.Itoa(i))}
 		newUsers[i] = newUser
 	}
 
@@ -339,8 +339,9 @@ func TestRateLimitTransport(t *testing.T) {
 			},
 		)
 
-		ghClient := server.NewGithubClientWithLimiter("testtoken", 0, 0, metricsMock)
-		_, _, err := ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
+		ghClient, err := server.NewGithubClientWithLimiter("testtoken", 0, 0, metricsMock)
+		require.NoError(t, err)
+		_, _, err = ghClient.Git.GetRef(context.TODO(), "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "exceeds limiter's burst 0")
 	})
@@ -413,11 +414,12 @@ func TestRateLimitTransport(t *testing.T) {
 		)
 
 		limit := rate.Every(time.Minute * 1)
-		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
+		ghClient, err := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
+		require.NoError(t, err)
 		opts := &github.ListMembersOptions{
 			ListOptions: github.ListOptions{},
 		}
-		_, _, err := ghClient.Organizations.ListMembers(context.TODO(), "ownerTest", opts)
+		_, _, err = ghClient.Organizations.ListMembers(context.TODO(), "ownerTest", opts)
 		require.NoError(t, err)
 		// TODO: verify the mlog warning message by mocking the logger. MM-27987
 	})
@@ -438,8 +440,9 @@ func TestRateLimitTransport(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Microsecond)
 		defer cancel()
 		limit := rate.Every(time.Minute * 1)
-		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 10, metricsMock)
-		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		ghClient, err := server.NewGithubClientWithLimiter("testtoken", limit, 10, metricsMock)
+		require.NoError(t, err)
+		_, _, err = ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "context deadline")
 	})
@@ -460,8 +463,9 @@ func TestRateLimitTransport(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		limit := rate.Every(time.Millisecond * 100)
-		ghClient := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
-		_, _, err := ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
+		ghClient, err := server.NewGithubClientWithLimiter("testtoken", limit, 1, metricsMock)
+		require.NoError(t, err)
+		_, _, err = ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")
 		require.NoError(t, err)
 		start := time.Now()
 		_, _, err = ghClient.Git.GetRef(ctx, "ownerTest", "repoTest", "refTest")

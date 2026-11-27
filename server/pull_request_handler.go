@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -97,7 +97,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		if s.isBlockPRMerge(*event.Label.Name) {
+		if s.isBlockPRMerge(event.Label.GetName()) {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
@@ -114,7 +114,7 @@ func (s *Server) pullRequestEventHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		if s.isBlockPRMerge(*event.Label.Name) {
+		if s.isBlockPRMerge(event.Label.GetName()) {
 			if err = s.unblockPRMerge(ctx, pr); err != nil {
 				mlog.Error("Unable to create the github status for for PR", mlog.Int("pr", pr.Number), mlog.Err(err))
 			}
@@ -318,7 +318,8 @@ func (s *Server) CheckPRActivity() {
 		}
 
 		timeToStale := time.Now().AddDate(0, 0, -s.Config.DaysUntilStale)
-		if timeToStale.After(*pull.UpdatedAt) || timeToStale.Equal(*pull.UpdatedAt) {
+		updatedAt := pull.GetUpdatedAt().Time
+		if timeToStale.After(updatedAt) || timeToStale.Equal(updatedAt) {
 			var prLabels []string
 			canStale := true
 			labels, _, err := s.GithubClient.Issues.ListLabelsByIssue(ctx, pr.RepoOwner, pr.RepoName, pr.Number, nil)

@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
@@ -275,7 +275,7 @@ func (s *Server) Tick() {
 			if resp.NextPage == 0 {
 				break
 			}
-			issueListOpts.Page = resp.NextPage
+			issueListOpts.ListOptions.Page = resp.NextPage
 			time.Sleep(200 * time.Millisecond)
 		}
 	}

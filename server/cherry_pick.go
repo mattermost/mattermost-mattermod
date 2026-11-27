@@ -23,7 +23,7 @@ import (
 
 	"github.com/mattermost/mattermost-mattermod/model"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 )
 
 const (
@@ -400,10 +400,10 @@ func (s *Server) updateCherryPickLabels(ctx context.Context, newPRNumber int, pr
 
 func (s *Server) addMilestone(ctx context.Context, newPRNumber int, pr *model.PullRequest, milestoneNumber *int) {
 	// Add the milestone to the new PR
-	request := &github.IssueRequest{
+	request := github.UpdateIssueRequest{
 		Milestone: milestoneNumber,
 	}
-	_, _, err := s.GithubClient.Issues.Edit(ctx, pr.RepoOwner, pr.RepoName, newPRNumber, request)
+	_, _, err := s.GithubClient.Issues.Update(ctx, pr.RepoOwner, pr.RepoName, newPRNumber, request)
 	if err != nil {
 		mlog.Error("Error applying the milestone in the new pr", mlog.Err(err), mlog.Int("PR", newPRNumber), mlog.String("Repo", pr.RepoName))
 	}

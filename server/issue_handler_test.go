@@ -17,7 +17,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -229,7 +229,7 @@ func TestIssueEventHandler(t *testing.T) {
 			Times(1).
 			Return([]*github.Label{
 				{
-					Name: &label,
+					Name: label,
 				},
 			}, nil, nil)
 
@@ -246,7 +246,7 @@ func TestIssueEventHandler(t *testing.T) {
 				NextPage: 0,
 				Response: &http.Response{StatusCode: http.StatusOK}}, nil)
 
-		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, &github.IssueComment{Body: &body}).
+		is.EXPECT().CreateComment(gomock.AssignableToTypeOf(ctxInterface), issue.RepoOwner, issue.RepoName, issue.Number, github.IssueCommentRequest{Body: body}).
 			Times(1).Return(nil, nil, nil)
 
 		newIssue := *issue

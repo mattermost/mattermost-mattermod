@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -96,13 +96,13 @@ func TestReviewMlog(t *testing.T) {
 		defer ts.Close()
 
 		review := &github.PullRequestReviewRequest{
-			NodeID: github.String(node),
-			Event:  github.String("COMMENT"),
+			NodeID: new(node),
+			Event:  new("COMMENT"),
 			Comments: []*github.DraftReviewComment{
 				{
-					Path:     github.String("app/server.go"),
-					Position: github.Int(5),
-					Body:     github.String(mlogReviewCommentBody),
+					Path:     new("app/server.go"),
+					Position: new(5),
+					Body:     new(mlogReviewCommentBody),
 				},
 			},
 		}
@@ -126,13 +126,13 @@ func TestReviewMlog(t *testing.T) {
 		defer ts.Close()
 
 		review := &github.PullRequestReviewRequest{
-			NodeID: github.String(node),
-			Event:  github.String("COMMENT"),
+			NodeID: new(node),
+			Event:  new("COMMENT"),
 			Comments: []*github.DraftReviewComment{
 				{
-					Path:     github.String("app/server.go"),
-					Position: github.Int(5),
-					Body:     github.String(mlogReviewCommentBody),
+					Path:     new("app/server.go"),
+					Position: new(5),
+					Body:     new(mlogReviewCommentBody),
 				},
 			},
 		}

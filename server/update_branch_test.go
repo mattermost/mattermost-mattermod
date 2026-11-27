@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/mattermost-mattermod/model"
 	"github.com/mattermost/mattermost-mattermod/server/mocks"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -39,12 +39,12 @@ func TestHandeUpdateBranch(t *testing.T) {
 		Sha:       "some-sha",
 	}
 
-	opt := &github.PullRequestBranchUpdateOptions{
-		ExpectedHeadSHA: github.String(pr.Sha),
+	opt := github.UpdatePullRequestBranchRequest{
+		ExpectedHeadSHA: new(pr.Sha),
 	}
 
 	msg := new(string)
-	comment := &github.IssueComment{Body: msg}
+	comment := gomock.Cond(func(c github.IssueCommentRequest) bool { return c.Body == *msg })
 	is := mocks.NewMockIssuesService(ctrl)
 	is.EXPECT().CreateComment(ctx, pr.RepoOwner, pr.RepoName, pr.Number, comment).Times(5).Return(nil, nil, nil)
 	s.GithubClient.Issues = is

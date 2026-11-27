@@ -12,7 +12,7 @@ import (
 	srmock "github.com/mattermost/mattermost-mattermod/server/mocks"
 	stmock "github.com/mattermost/mattermost-mattermod/store/mocks"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -48,16 +48,16 @@ func TestAutoMergePR(t *testing.T) {
 
 	t.Run("Basic", func(t *testing.T) {
 		ghPR := &github.PullRequest{
-			State:          github.String("open"),
-			MergeableState: github.String("clean"),
+			State:          new("open"),
+			MergeableState: new("clean"),
 			Head: &github.PullRequestBranch{
-				SHA: github.String("sha"),
+				SHA: new("sha"),
 			},
 		}
 
 		ghStatus := &github.CombinedStatus{
-			SHA:   github.String(ghPR.Head.GetSHA()),
-			State: github.String("success"),
+			SHA:   new(ghPR.Head.GetSHA()),
+			State: new("success"),
 		}
 
 		ghReviewers := &github.Reviewers{
@@ -66,8 +66,8 @@ func TestAutoMergePR(t *testing.T) {
 		}
 
 		prMergeResult := &github.PullRequestMergeResult{
-			Message: github.String("merge message"),
-			SHA:     github.String("sha"),
+			Message: new("merge message"),
+			SHA:     new("sha"),
 		}
 
 		repoMock := srmock.NewMockRepositoriesService(ctrl)
@@ -90,8 +90,7 @@ func TestAutoMergePR(t *testing.T) {
 			ListReviewers(gomock.AssignableToTypeOf(ctxInterface),
 				gomock.Eq(prs[0].RepoOwner),
 				gomock.Eq(prs[0].RepoName),
-				gomock.Eq(prs[0].Number),
-				nil).
+				gomock.Eq(prs[0].Number)).
 			Return(ghReviewers, &github.Response{}, nil)
 		prOpts := &github.PullRequestOptions{}
 		prMock.EXPECT().
@@ -104,7 +103,7 @@ func TestAutoMergePR(t *testing.T) {
 			Return(prMergeResult, &github.Response{}, nil)
 
 		issueMock := srmock.NewMockIssuesService(ctrl)
-		comment := &github.IssueComment{}
+		comment := github.IssueCommentRequest{}
 		issueMock.EXPECT().
 			CreateComment(gomock.AssignableToTypeOf(ctxInterface),
 				gomock.Eq(prs[0].RepoOwner),
@@ -135,10 +134,10 @@ func TestAutoMergePR(t *testing.T) {
 
 	t.Run("Closed", func(t *testing.T) {
 		ghPR := &github.PullRequest{
-			State:          github.String("closed"),
-			MergeableState: github.String("clean"),
+			State:          new("closed"),
+			MergeableState: new("clean"),
 			Head: &github.PullRequestBranch{
-				SHA: github.String("sha"),
+				SHA: new("sha"),
 			},
 		}
 
@@ -171,10 +170,10 @@ func TestAutoMergePR(t *testing.T) {
 	// TODO: verify the log line once MM-26709 is done.
 	t.Run("Unclean", func(t *testing.T) {
 		ghPR := &github.PullRequest{
-			State:          github.String("open"),
-			MergeableState: github.String("unclean"),
+			State:          new("open"),
+			MergeableState: new("unclean"),
 			Head: &github.PullRequestBranch{
-				SHA: github.String("sha"),
+				SHA: new("sha"),
 			},
 		}
 
@@ -207,20 +206,20 @@ func TestAutoMergePR(t *testing.T) {
 	// TODO: verify the log line once MM-26709 is done.
 	t.Run("PendingReviewers", func(t *testing.T) {
 		ghPR := &github.PullRequest{
-			State:          github.String("open"),
-			MergeableState: github.String("clean"),
+			State:          new("open"),
+			MergeableState: new("clean"),
 			Head: &github.PullRequestBranch{
-				SHA: github.String("sha"),
+				SHA: new("sha"),
 			},
 		}
 
 		ghStatus := &github.CombinedStatus{
-			SHA:   github.String(ghPR.Head.GetSHA()),
-			State: github.String("success"),
+			SHA:   new(ghPR.Head.GetSHA()),
+			State: new("success"),
 		}
 
 		ghReviewers := &github.Reviewers{
-			Users: []*github.User{{Name: github.String("name")}},
+			Users: []*github.User{{Name: new("name")}},
 			Teams: []*github.Team{},
 		}
 
@@ -244,8 +243,7 @@ func TestAutoMergePR(t *testing.T) {
 			ListReviewers(gomock.AssignableToTypeOf(ctxInterface),
 				gomock.Eq(prs[0].RepoOwner),
 				gomock.Eq(prs[0].RepoName),
-				gomock.Eq(prs[0].Number),
-				nil).
+				gomock.Eq(prs[0].Number)).
 			Return(ghReviewers, &github.Response{}, nil)
 
 		client := &GithubClient{

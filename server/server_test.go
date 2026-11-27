@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -150,23 +150,23 @@ func TestTickUsesListItemsAndChecksLastPage(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	label := func(name string) *github.Label { return &github.Label{Name: github.String(name)} }
+	label := func(name string) *github.Label { return &github.Label{Name: name} }
 	owner, repo := "mattermost", "repo-a"
 
 	ghPR := &github.PullRequest{
-		Number: github.Int(1),
-		State:  github.String("open"),
-		Base:   &github.PullRequestBranch{Repo: &github.Repository{Name: github.String(repo), Owner: &github.User{Login: github.String(owner)}}},
-		Head:   &github.PullRequestBranch{Ref: github.String("feature"), SHA: github.String("abc")},
+		Number: new(1),
+		State:  new("open"),
+		Base:   &github.PullRequestBranch{Repo: &github.Repository{Name: new(repo), Owner: &github.User{Login: new(owner)}}},
+		Head:   &github.PullRequestBranch{Ref: new("feature"), SHA: new("abc")},
 		Labels: []*github.Label{label("Do Not Merge")},
 	}
 	ghIssue := &github.Issue{
-		Number:  github.Int(2),
-		State:   github.String("open"),
-		HTMLURL: github.String("https://github.com/mattermost/repo-a/issues/2"),
+		Number:  new(2),
+		State:   new("open"),
+		HTMLURL: new("https://github.com/mattermost/repo-a/issues/2"),
 		Labels:  []*github.Label{label("Bug")},
 	}
-	ghIssueForPR := &github.Issue{Number: github.Int(1), PullRequestLinks: &github.PullRequestLinks{}}
+	ghIssueForPR := &github.Issue{Number: new(1), PullRequestLinks: &github.PullRequestLinks{}}
 
 	// A single page (NextPage == 0) must still be checked. No per-item ListLabelsByIssue
 	// calls are expected: gomock fails the test on any call without an expectation.
@@ -181,8 +181,8 @@ func TestTickUsesListItemsAndChecksLastPage(t *testing.T) {
 	prStore := stmock.NewMockPullRequestStore(ctrl)
 	prStore.EXPECT().Get(owner, repo, 1).Return(&model.PullRequest{
 		RepoOwner: owner, RepoName: repo, Number: 1, State: "open", Ref: "feature", Sha: "abc",
-		Labels: []string{"Do Not Merge"}, Merged: github.Bool(false), MaintainerCanModify: github.Bool(false),
-		MilestoneNumber: github.Int64(0), MilestoneTitle: github.String(""),
+		Labels: []string{"Do Not Merge"}, Merged: new(false), MaintainerCanModify: new(false),
+		MilestoneNumber: new(int64(0)), MilestoneTitle: new(""),
 	}, nil).Times(1)
 	// The issue is new to the store: it is saved with the labels from the list item.
 	issueStore := stmock.NewMockIssueStore(ctrl)

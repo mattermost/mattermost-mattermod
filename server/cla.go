@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
 
 	"github.com/mattermost/mattermost-mattermod/model"
@@ -36,10 +36,10 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) (boo
 
 	if s.IsBotUserFromCLAExclusionsList(username) {
 		status := &github.RepoStatus{
-			State:       github.String(stateSuccess),
-			Description: github.String(fmt.Sprintf("%s excluded", username)),
-			TargetURL:   github.String(s.Config.SignedCLAURL),
-			Context:     github.String(s.Config.CLAGithubStatusContext),
+			State:       new(stateSuccess),
+			Description: new(fmt.Sprintf("%s excluded", username)),
+			TargetURL:   new(s.Config.SignedCLAURL),
+			Context:     new(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will succeed CLA status for excluded user", mlog.String("user", username))
 		return false, s.createRepoStatus(ctx, pr, status)
@@ -52,20 +52,20 @@ func (s *Server) handleCheckCLA(ctx context.Context, pr *model.PullRequest) (boo
 
 	if !isNameInCLAList(strings.Split(string(body), "\n"), username) {
 		status := &github.RepoStatus{
-			State:       github.String(stateError),
-			Description: github.String(fmt.Sprintf("%v needs to sign the CLA", username)),
-			TargetURL:   github.String(s.Config.SignedCLAURL),
-			Context:     github.String(s.Config.CLAGithubStatusContext),
+			State:       new(stateError),
+			Description: new(fmt.Sprintf("%v needs to sign the CLA", username)),
+			TargetURL:   new(s.Config.SignedCLAURL),
+			Context:     new(s.Config.CLAGithubStatusContext),
 		}
 		mlog.Debug("will post error on CLA", mlog.String("user", username))
 		return true, s.createRepoStatus(ctx, pr, status)
 	}
 
 	status := &github.RepoStatus{
-		State:       github.String(stateSuccess),
-		Description: github.String(fmt.Sprintf("%s authorized", username)),
-		TargetURL:   github.String(s.Config.SignedCLAURL),
-		Context:     github.String(s.Config.CLAGithubStatusContext),
+		State:       new(stateSuccess),
+		Description: new(fmt.Sprintf("%s authorized", username)),
+		TargetURL:   new(s.Config.SignedCLAURL),
+		Context:     new(s.Config.CLAGithubStatusContext),
 	}
 	mlog.Debug("will post success on CLA", mlog.String("user", username))
 	return false, s.createRepoStatus(ctx, pr, status)
@@ -104,10 +104,10 @@ func isNameInCLAList(usersWhoSignedCLA []string, authorToTrim string) bool {
 
 func (s *Server) createCLAPendingStatus(ctx context.Context, pr *model.PullRequest) {
 	status := &github.RepoStatus{
-		State:       github.String(statePending),
-		Description: github.String("Checking if " + pr.Username + " signed CLA"),
-		TargetURL:   github.String(s.Config.SignedCLAURL),
-		Context:     github.String(s.Config.CLAGithubStatusContext),
+		State:       new(statePending),
+		Description: new("Checking if " + pr.Username + " signed CLA"),
+		TargetURL:   new(s.Config.SignedCLAURL),
+		Context:     new(s.Config.CLAGithubStatusContext),
 	}
 	err := s.createRepoStatus(ctx, pr, status)
 	if err != nil {

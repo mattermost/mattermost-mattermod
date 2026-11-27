@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/v39/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/sourcegraph/go-diff/diff"
 
 	"github.com/mattermost/mattermost/server/public/shared/mlog"
@@ -55,13 +55,13 @@ func (s *Server) reviewMlog(ctx context.Context, pr *model.PullRequest, nodeID, 
 					mlog.Info("Found mlog.Error/mlog.Critical insertion", mlog.String("file", fileDiff.NewName), mlog.Int("line", int(position)))
 
 					review := &github.PullRequestReviewRequest{
-						NodeID: github.String(nodeID),
-						Event:  github.String("COMMENT"),
+						NodeID: new(nodeID),
+						Event:  new("COMMENT"),
 						Comments: []*github.DraftReviewComment{
 							{
-								Path:     github.String(strings.TrimPrefix(fileDiff.NewName, "b/")), // b/{file_name} is the file on the right side
-								Position: github.Int(int(position)),
-								Body:     github.String(mlogReviewCommentBody),
+								Path:     new(strings.TrimPrefix(fileDiff.NewName, "b/")), // b/{file_name} is the file on the right side
+								Position: new(int(position)),
+								Body:     new(mlogReviewCommentBody),
 							},
 						},
 					}
